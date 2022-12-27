@@ -12,6 +12,7 @@ export default function Home() {
       const results = await fetch('/api/list').then((response) =>
         response.json(),
       );
+      console.log(results);
       setRestaurants(results);
     })();
   }, []);
