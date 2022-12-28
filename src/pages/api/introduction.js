@@ -2,7 +2,7 @@ import { connectToDatabase } from '../../../lib/mongodb';
 
 export default async function handler(request, response) {
   const { database } = await connectToDatabase();
-  const collection = database.collection('hobbys');
+  const collection = database.collection('current_occupation');
 
   const results = await collection
     .find({})

@@ -1,16 +1,12 @@
-import { ObjectId, Timestamp } from 'mongodb';
+import { ObjectId } from 'mongodb';
 
-export interface RestaurantResponseType {
+export interface IntroductionType {
   _id: ObjectId;
-  address: {
-    building: string;
-    coord: number[];
-    street: string;
-    zipcode: string;
-  };
-  borough: string;
-  cuisine: string;
-  grades: [{ date: Timestamp; grade: string; score: number }];
-  name: 'Riviera Caterer';
-  restaurant_id: '40356018';
+  occupationType: string;
+  description: string;
+  from: string;
+  to: string;
+  introduction: string;
+  name: string;
+  link: string;
 }
