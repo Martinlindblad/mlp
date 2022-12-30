@@ -1,11 +1,14 @@
 @layer base {
   body {
-    @apply bg-neutral-50 text-neutral-600;
+    @apply bg-neutral-50 text-fuchsia-100;
   }
   body.dark {
-    @apply bg-neutral-800 text-neutral-300;
+    @apply bg-neutral-900 text-neutral-300;
   }
-
+  html {
+    scroll-behavior: smooth;
+    font-family: Comfortaa, Righteous;
+  }
   /* Make clicks pass-through */
   #nprogress {
     pointer-events: none;
