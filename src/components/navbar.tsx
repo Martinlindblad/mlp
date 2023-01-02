@@ -7,7 +7,7 @@ export default function Navbar() {
     return cmImage;
   }, []);
   return (
-    <nav className="bg-white border-gray-200 px-2 sm:px-4 py-2.5 rounded dark:bg-gray-900">
+    <nav className="bg-white border-gray-200 px-2 sm:px-4 py-2.5 rounded dark:bg-gray-900 shadow-gold-100 shadow-sm">
       <div className="container flex flex-wrap items-center justify-between mx-auto">
         <a href="https://carlmartins.com" className="flex item-center">
           <div className="h-6 mr-3 sm:h-9 ml-4">

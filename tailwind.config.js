@@ -3,17 +3,68 @@ const path = require('path');
 const colors = require('tailwindcss/colors');
 
 const customColors = {
-  cerise: {
-    50: '#fdfcfa',
-    100: '#fbf0ed',
-    200: '#f8cfda',
-    300: '#eea1b5',
-    400: '#eb718d',
-    500: '#de4e6b',
-    600: '#c7344c',
-    700: '#a02738',
-    800: '#741b25',
-    900: '#471114',
+  gray: {
+    50: '#fafafa',
+    100: '#f2f1f5',
+    200: '#e2dbea',
+    300: '#c3b6d0',
+    400: '#a28cae',
+    500: '#85688e',
+    600: '#6b4c6f',
+    700: '#503952',
+    800: '#362637',
+    900: '#1f1721',
+  },
+
+  indigo: {
+    50: '#fafafa',
+    100: '#f1f1f7',
+    200: '#e0dbef',
+    300: '#c0b6d9',
+    400: '#9e8cbc',
+    500: '#8267a0',
+    600: '#684c81',
+    700: '#4e3861',
+    800: '#352641',
+    900: '#1e1727',
+  },
+
+  beaver: {
+    50: '#fbfbfa',
+    100: '#f4f1f5',
+    200: '#e8d9ea',
+    300: '#cdb3cf',
+    400: '#b487ad',
+    500: '#98638e',
+    600: '#7b476e',
+    700: '#5c3551',
+    800: '#3e2436',
+    900: '#241620',
+  },
+
+  navy: {
+    50: '#f3f8f9',
+    100: '#d9f1fa',
+    200: '#aee1f5',
+    300: '#7bc2e6',
+    400: '#459fd2',
+    500: '#337ebe',
+    600: '#2b63a6',
+    700: '#244b84',
+    800: '#1a325e',
+    900: '#101f3e',
+  },
+  blue: {
+    50: '#f6f9fb',
+    100: '#e3f0fd',
+    200: '#c5d9fa',
+    300: '#9db5f3',
+    400: '#798eea',
+    500: '#6269e3',
+    600: '#514dd6',
+    700: '#3e39b6',
+    800: '#2b2788',
+    900: '#181956',
   },
   cocoa: {
     50: '#fcfbf8',
@@ -39,30 +90,6 @@ const customColors = {
     800: '#432c0b',
     900: '#2c1b08',
   },
-  navy: {
-    50: '#f3f8f9',
-    100: '#d9f1fa',
-    200: '#aee1f5',
-    300: '#7bc2e6',
-    400: '#459fd2',
-    500: '#337ebe',
-    600: '#2b63a6',
-    700: '#244b84',
-    800: '#1a325e',
-    900: '#101f3e',
-  },
-  blue: {
-    50: '#f6f9fb',
-    100: '#e3f0fd',
-    200: '#c5d9fa',
-    300: '#9db5f3',
-    400: '#798eea',
-    500: '#6269e3',
-    600: '#514dd6',
-    700: '#3e39b6',
-    800: '#2b2788',
-    900: '#181956',
-  },
 };
 
 module.exports = {
@@ -77,8 +104,8 @@ module.exports = {
       },
       colors: {
         primary: {
-          DEFAULT: customColors.navy[500],
-          ...customColors.navy,
+          DEFAULT: customColors.gray[500],
+          ...customColors.gray,
         },
         onPrimary: {
           DEFAULT: colors.neutral[100],
@@ -93,6 +120,7 @@ module.exports = {
           800: colors.neutral[100],
           900: colors.neutral[100],
         },
+        ...customColors,
       },
       boxShadow: {
         right: '6px 1px 7px -3px rgb(0 0 0 / 20%)',

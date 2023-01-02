@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "dayjs": "^1.11.7",
+    "framer-motion": "^8.0.2",
     "mongodb": "^4.8.1",
     "next": "latest",
     "react": "^18.2.0",
