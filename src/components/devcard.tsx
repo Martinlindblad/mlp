@@ -3,7 +3,7 @@ import React from 'react';
 
 const DevCard = (): JSX.Element => {
   return (
-    <div className="px-5 py-10 mx-auto">
+    <div className="px-5 py-10 w-full flex justify-center">
       <a
         href="#"
         className="flex flex-col items-center bg-white border rounded-lg shadow-md md:flex-row md:max-w-xl hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
@@ -13,7 +13,7 @@ const DevCard = (): JSX.Element => {
             Technologys and frameworks
           </h5>
           <p className="mb-3 font-normal text-gray-700 dark:text-gray-400">
-            Here are the main technologys and frameworks I use.
+            Here the main technologys and frameworks I use.
           </p>
           <div className=" inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white  rounded-lg   ">
             <span>Read more</span>
