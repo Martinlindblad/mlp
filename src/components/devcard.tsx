@@ -15,7 +15,7 @@ const DevCard = (): JSX.Element => {
           <p className="mb-3 font-normal text-gray-700 dark:text-gray-400">
             Here the main technologys and frameworks I use.
           </p>
-          <div className=" inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white  rounded-lg   ">
+          <div className=" inline-flex items-center px-3 py-2 text-sm font-medium text-center   rounded-lg   ">
             <span>Read more</span>
             <svg
               aria-hidden="true"
