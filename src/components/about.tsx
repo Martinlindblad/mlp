@@ -38,7 +38,7 @@ export default function About() {
               <div className="object-fill w-full h-72 bg-[url('../../assets/beach.jpg')] bg-cover bg-center absolute mix-blend-multiply" />
             )}
 
-            <div className=" relative w-full h-full flex items-center flex-col justify-start pt-4">
+            <div className=" relative w-full h-full flex items-center flex-col justify-center ">
               <div className="object-fill h-52 w-52 rounded-full bg-cover bg-center absolute mix-blend-multiple" />
               <div className=" bg-[url('../../assets/profilepicture.png')] rounded-full shadow-indigo-200 dark:shadow-sky-300  shadow-lg bg-cover h-52 w-52 object-fill " />
               <div className=" bg-[url('../../assets/profilepicture.png')] rounded-full  absolute mix-blend-multiply dark:bg-gray-100 bg-gray-400  scale-105 bg-cover h-52 w-52 object-fill" />

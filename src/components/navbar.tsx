@@ -19,7 +19,7 @@ export default function Navbar() {
             />
           </div>
         </a>
-        <div className="flex flex-row">
+        <div className="flex flex-row justify-end align items-center">
           <ThemeButton />
 
           <button
