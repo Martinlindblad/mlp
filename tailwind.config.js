@@ -96,7 +96,9 @@ module.exports = {
   content: [
     path.join(__dirname, 'src', 'components', '**', '*.{js,ts,jsx,tsx}'),
     path.join(__dirname, 'src', 'pages', '**', '*.{js,ts,jsx,tsx}'),
+    path.join(__dirname, 'node_modules', 'flowbite', '**', '*.{js,ts,jsx,tsx}'),
   ],
+
   theme: {
     extend: {
       container: {
@@ -108,17 +110,17 @@ module.exports = {
           ...customColors.gray,
         },
         onPrimary: {
-          DEFAULT: colors.neutral[100],
-          50: colors.neutral[900],
-          100: colors.neutral[900],
-          200: colors.neutral[900],
-          300: colors.neutral[900],
-          400: colors.neutral[900],
-          500: colors.neutral[100],
-          600: colors.neutral[100],
-          700: colors.neutral[100],
-          800: colors.neutral[100],
-          900: colors.neutral[100],
+          DEFAULT: colors.gray[100],
+          50: colors.gray[900],
+          100: colors.gray[900],
+          200: colors.gray[900],
+          300: colors.gray[900],
+          400: colors.gray[900],
+          500: colors.gray[100],
+          600: colors.gray[100],
+          700: colors.gray[100],
+          800: colors.gray[100],
+          900: colors.gray[100],
         },
         ...customColors,
       },
@@ -131,5 +133,9 @@ module.exports = {
   variants: {
     extend: {},
   },
-  plugins: [require('tailwindcss-rtl'), require('@tailwindcss/forms')],
+  plugins: [
+    require('flowbite/plugin'),
+    require('tailwindcss-rtl'),
+    require('@tailwindcss/forms'),
+  ],
 };

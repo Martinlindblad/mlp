@@ -1,9 +1,10 @@
 @layer base {
   body {
-    @apply bg-neutral-50 text-gold-100;
+    @apply bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100;
+    @apply min-h-screen;
   }
   body.dark {
-    @apply bg-neutral-900 text-neutral-300;
+    @apply bg-gray-900 text-gray-100;
   }
   html {
     scroll-behavior: smooth;
