@@ -1,6 +1,7 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 import { AboutType } from 'src/../types/DBTypes';
+import AboutCard from './aboutCard';
 export default function About() {
   const [introduction, setIntroduction] = useState<AboutType>();
   const { systemTheme, theme } = useTheme();
@@ -25,7 +26,7 @@ export default function About() {
 
   if (!mounted) return null;
   return (
-    <main className="flex pt-10 w-full lg:container">
+    <main className="flex pt-10 lg:mt-12 w-full lg:container min-h-screen">
       <div className="min-w-full">
         <div className="flex justify-center min-w-full flex-col items-center">
           <h1 className="p-1 text-start text-4xl  font-black uppercase fw tracking-widest ">
@@ -53,14 +54,15 @@ export default function About() {
           </div>
         </div>
 
-        <h2 className=" text-3xl font-extrabold px-8 md:text-5xl lg:text-6xl text-center">
+        <h2 className="text-3xl font-extrabold px-8 md:text-5xl lg:text-6xl text-center lg:mt-8">
           <span className="text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-gold-400 ">
             {introduction?.title}
           </span>
         </h2>
-        <p className="text-lg font-normal lg:text-xl px-8  text-center py-3">
+        <p className="text-lg font-normal lg:text-xl px-8  text-center lg:w-2/3 mx-auto py-8">
           {introduction?.info}
         </p>
+        <AboutCard />
       </div>
     </main>
   );
