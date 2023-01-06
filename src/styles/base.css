@@ -1,16 +1,17 @@
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100;
+    @apply text-gray-900  dark:text-gray-100;
     @apply min-h-screen;
   }
   body.dark {
-    @apply bg-gray-900 text-gray-100;
+    @apply bg-gray-900 text-gray-100 min-h-screen;
   }
   html {
     scroll-behavior: smooth;
 
     font-family: Comfortaa, Righteous;
   }
+
   /* Make clicks pass-through */
   #nprogress {
     pointer-events: none;

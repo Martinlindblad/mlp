@@ -1,7 +1,17 @@
-import Image from 'next/image';
+/* eslint-disable jsx-a11y/anchor-is-valid */
+import { useState, useEffect } from 'react';
+import { HobbyType } from 'src/../types/DBTypes';
 
-import socialMediaImage from '../../assets/social-media.jpg';
 export default function Collection() {
+  const [hobbys, setHobbys] = useState<HobbyType[]>();
+  useEffect(() => {
+    void (async () => {
+      const results = await fetch('/api/introduction').then((response) =>
+        response.json(),
+      );
+      setHobbys(results[0]);
+    })();
+  }, []);
   return (
     <div className=" bg-[url('../../assets/wallpaper.jpg')] bg-cover w-full relative">
       <div className="p-10 col-span-3">
@@ -18,13 +28,7 @@ export default function Collection() {
           <p className="text-white fw-">Media</p>
         </div>
       </div>
-      <div>
-        <Image
-          className="rounded w-28 object-cover h-16 sm:w-12 absolute left-10 top-16 "
-          src={socialMediaImage}
-          alt="Carl Martins Logo"
-        />
-      </div>
+      <div></div>
     </div>
   );
 }

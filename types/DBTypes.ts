@@ -17,3 +17,10 @@ export interface IntroductionType {
   name: string;
   link: string;
 }
+
+export interface HobbyType {
+  _id: ObjectId;
+  title: string;
+  content: string;
+  type: 'japanese';
+}
