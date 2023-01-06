@@ -1,6 +1,5 @@
 import Head from 'next/head';
 import About from 'src/components/about';
-import Collection from 'src/components/collection';
 import DevCard from 'src/components/devcard';
 import Navbar from 'src/components/navbar';
 

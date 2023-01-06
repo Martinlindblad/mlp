@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { HobbyType } from 'src/../types/DBTypes';
 
 export default function Collection() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [hobbys, setHobbys] = useState<HobbyType[]>();
   useEffect(() => {
     void (async () => {

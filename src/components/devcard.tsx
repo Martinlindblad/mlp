@@ -22,7 +22,7 @@ const DevCard = (): JSX.Element => {
             Read more
             <svg
               aria-hidden="true"
-              class="w-4 h-4 ml-2 -mr-1"
+              className="w-4 h-4 ml-2 -mr-1"
               fill="currentColor"
               viewBox="0 0 20 20"
               xmlns="http://www.w3.org/2000/svg"
