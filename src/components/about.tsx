@@ -17,6 +17,13 @@ export default function About() {
     })();
   }, []);
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
   return (
     <main className="flex pt-10 w-full lg:container">
       <div className="min-w-full">
