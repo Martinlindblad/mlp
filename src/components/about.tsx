@@ -22,10 +22,10 @@ export default function About() {
 
   if (!mounted) return null;
   return (
-    <main className="flex pt-32 lg:p-60  lg:justify-center w-full lg:container min-h-screen">
+    <main className="flex pt-32 lg:p-60 lg:justify-center w-full lg:container min-h-screen">
       <div className="min-w-full">
         <div className="flex justify-center min-w-full flex-col items-center">
-          <h1 className="p-1 text-start text-7xl  font-weight:7rem uppercase fw tracking-widest ">
+          <h1 className="p-1 text-start md:text-7xl text-2xl font-weight:7rem uppercase fw tracking-widest ">
             {introduction?.name + ' ' + introduction?.surname}
           </h1>
         </div>

@@ -5,7 +5,7 @@ const DevCard = ({ data }: any): JSX.Element => {
   return (
     <Link
       href="/webwork"
-      className="flex flex-col items-center bg-white border rounded-lg shadow-md md:flex-row md:max-w-xl hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+      className="flex flex-col items-center  md:flex-row md:max-w-xl text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-gold-400"
     >
       <div className="flex flex-col justify-between p-4 leading-normal">
         <h5 className="text-3xl font-extrabold px-8 md:text-1xl lg:text-2xl text-center">

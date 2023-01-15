@@ -7,9 +7,9 @@ const AboutCard = (): JSX.Element => {
     <div className="px-5 justify-center">
       <Link
         href="/about"
-        className="flex flex-col items-center bg-white border rounded-lg shadow-md md:flex-row md:max-w-xl hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 justify-center p-3"
+        className="flex flex-col items-center border rounded-lg  md:flex-row md:max-w-xl hover:bg-gray-100 0 dark:hover:bg-gray-700 justify-center p-3"
       >
-        <p className="text-1xl font-medium text-gray-900 dark:text-white">
+        <p className="text-1xl font-medium text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-gold-400">
           More about me
         </p>
         <div className="pl-3 font-sans text-sm font-semibold">
