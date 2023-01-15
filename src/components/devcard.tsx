@@ -12,7 +12,7 @@ const DevCard = ({ data }: any): JSX.Element => {
           <h5 className="text-3xl font-extrabold px-8 md:text-1xl lg:text-2xl text-center">
             {data.title}
           </h5>
-          <p className="text-lg font-normal lg:text-xl px-2 text-center text-left lg:w-2/3 mx-auto py-3">
+          <p className="text-lg font-normal lg:text-xl px-2 text-center lg:w-2/3 mx-auto py-3">
             {data.description}
           </p>
           <div className=" inline-flex items-center px-3 py-2 text-sm font-medium text-center mx-auto  rounded-lg   ">

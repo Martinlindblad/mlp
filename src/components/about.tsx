@@ -26,7 +26,7 @@ export default function About() {
 
   if (!mounted) return null;
   return (
-    <main className="flex pt-10 lg:mt-12 w-full lg:container min-h-screen">
+    <main className="flex pt-32 lg:pt-10 lg:items-center lg:justify-center w-full lg:container min-h-screen">
       <div className="min-w-full">
         <div className="flex justify-center min-w-full flex-col items-center">
           <h1 className="p-1 text-start text-4xl  font-black uppercase fw tracking-widest ">
@@ -36,7 +36,7 @@ export default function About() {
             {introduction?.surname}
           </h1>
         </div>
-        <div className=" w-full flex pt-10 pb-5 ">
+        <div className=" w-full flex pt-10 pb-5  ">
           <div className="w-full h-72 relative ">
             <div className="object-fill w-full h-72 bg-cover bg-center absolute mix-blend-lighten dark:bg-gray-300 bg-gray-100  " />
             <div className="object-fill w-full h-72  bg-cover bg-center absolute mix-blend-multiply dark:bg-gray-100 bg-gray-300" />
@@ -45,11 +45,10 @@ export default function About() {
             ) : (
               <div className="object-fill w-full h-72 bg-[url('../../assets/beach.jpg')] bg-cover bg-center absolute mix-blend-multiply" />
             )}
-
             <div className=" relative w-full h-full flex items-center flex-col justify-center ">
               <div className="object-fill h-52 w-52 rounded-full bg-cover bg-center absolute mix-blend-multiple" />
-              <div className=" bg-[url('../../assets/profilepicture.png')] rounded-full shadow-indigo-200 dark:shadow-sky-300  shadow-lg bg-cover h-52 w-52 object-fill mix-blend-lighten" />
-              <div className=" bg-[url('../../assets/profilepicture.png')] rounded-full  absolute mix-blend-multiply dark:bg-gray-100 bg-gray-400  scale-105 bg-cover h-52 w-52 object-fill" />
+              <div className=" bg-[url('../../assets/profilepicture.png')] rounded-full shadow-indigo-200 dark:shadow-sky-300 opacity-90 shadow-lg bg-cover h-52 w-52 object-fill mix-blend-lighten" />
+              <div className=" bg-[url('../../assets/profilepicture.png')] rounded-full  absolute mix-blend-multiply dark:bg-gray-900 opacity-80 bg-gray-400  scale-105 bg-cover h-52 w-52 object-fill" />
             </div>
           </div>
         </div>
