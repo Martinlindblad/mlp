@@ -13,7 +13,7 @@ const customColors = {
     600: '#6b4c6f',
     700: '#503952',
     800: '#362637',
-    900: '#1f1721',
+    900: '#080808',
   },
 
   indigo: {
@@ -101,6 +101,19 @@ module.exports = {
   ],
 
   theme: {
+    fontWeight: {
+      hairline: 100,
+      'extra-light': 100,
+      thin: 200,
+      light: 300,
+      normal: 400,
+      medium: 500,
+      semibold: 600,
+      bold: 700,
+      extrabold: 800,
+      'extra-bold': 800,
+      black: 900,
+    },
     extend: {
       container: {
         center: true,

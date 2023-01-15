@@ -2,7 +2,6 @@ import Head from 'next/head';
 import About from 'src/components/about';
 
 import Navbar from 'src/components/navbar';
-import Skills from 'src/sections/skills';
 
 export default function Home() {
   return (
@@ -14,7 +13,6 @@ export default function Home() {
       </Head>
       <Navbar />
       <About />
-      <Skills />
       {/* <Collection /> */}
     </div>
   );

@@ -4,7 +4,7 @@ import React from 'react';
 
 const AboutCard = (): JSX.Element => {
   return (
-    <div className="px-5 w-full flex justify-center">
+    <div className="px-5 justify-center">
       <Link
         href="/about"
         className="flex flex-col items-center bg-white border rounded-lg shadow-md md:flex-row md:max-w-xl hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 justify-center p-3"
