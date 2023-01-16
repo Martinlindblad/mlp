@@ -1,19 +1,10 @@
 import { useEffect, useState } from 'react';
-import { AboutType } from 'src/../types/DBTypes';
+
+import useIntroductionQuery from 'src/hooks/useAboutQuery';
 import Skills from 'src/sections/skills';
 import AboutCard from './aboutCard';
 export default function About() {
-  const [introduction, setIntroduction] = useState<AboutType>();
-
-  useEffect(() => {
-    void (async () => {
-      const results = await fetch('/api/introduction').then((response) =>
-        response.json(),
-      );
-      setIntroduction(results[0]);
-    })();
-  }, []);
-
+  const { data: aboutData } = useIntroductionQuery();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -26,17 +17,17 @@ export default function About() {
       <div className="min-w-full">
         <div className="flex justify-center min-w-full flex-col items-center">
           <h1 className="p-1 text-start md:text-7xl text-2xl font-weight:7rem uppercase fw tracking-widest ">
-            {introduction?.name + ' ' + introduction?.surname}
+            {aboutData?.name + ' ' + aboutData?.surname}
           </h1>
         </div>
 
         <h2 className="text-3xl font-extrabold px-8 md:text-5xl lg:text-6xl text-center lg:mt-8">
           <span className="text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-gold-400 ">
-            {introduction?.title}
+            {aboutData?.title}
           </span>
         </h2>
         <p className="text-lg font-normal lg:text-xl px-8  text-center lg:w-2/3 mx-auto py-8">
-          {introduction?.info}
+          {aboutData?.info}
         </p>
         <div className="flex flex-row justify-center ">
           <div className="relative flex items-center flex-col justify-center ">

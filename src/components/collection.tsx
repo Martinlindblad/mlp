@@ -1,18 +1,6 @@
-/* eslint-disable jsx-a11y/anchor-is-valid */
-import { useState, useEffect } from 'react';
-import { HobbyType } from 'src/../types/DBTypes';
+import React from 'react';
 
 export default function Collection() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [hobbys, setHobbys] = useState<HobbyType[]>();
-  useEffect(() => {
-    void (async () => {
-      const results = await fetch('/api/introduction').then((response) =>
-        response.json(),
-      );
-      setHobbys(results[0]);
-    })();
-  }, []);
   return (
     <div className=" bg-[url('../../assets/wallpaper.jpg')] bg-cover w-full relative">
       <div className="p-10 col-span-3">
