@@ -29,6 +29,7 @@
     "dayjs": "^1.11.7",
     "flowbite": "^1.6.0",
     "framer-motion": "^8.0.2",
+    "install": "^0.13.0",
     "mongodb": "^4.8.1",
     "next": "latest",
     "next-themes": "^0.2.1",
