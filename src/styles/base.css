@@ -8,7 +8,7 @@
   }
   html {
     scroll-behavior: smooth;
-
+    overflow-x: hidden;
     font-family: Comfortaa, Righteous;
   }
 
@@ -59,6 +59,90 @@
     }
     100% {
       transform: rotate(360deg);
+    }
+  }
+  @keyframes darkColors {
+    0% {
+      color: #080808;
+      text-shadow: 0 0 50px #080808;
+      transform: scale(0);
+    }
+    25% {
+      color: #080808;
+      text-shadow: 0 0 50px #f4f4f4;
+      transform: scale(1.1);
+    }
+    50% {
+      color: #f4f4f4;
+      text-shadow: 0 0 50px #e3a008;
+      transform: scale(1);
+    }
+    100% {
+      color: #f4f4f4;
+      text-shadow: 0 0 50px #080808;
+      transform: scale(1);
+    }
+  }
+  @keyframes lightColors {
+    0% {
+      color: #f4f4f4;
+      text-shadow: 0 0 50px #f4f4f4;
+      transform: scale(0);
+    }
+    33% {
+      color: #f4f4f4;
+      text-shadow: 0 0 50px #080808;
+      transform: scale(1.1);
+    }
+    66% {
+      color: #080808;
+      text-shadow: 0 0 50px #080808;
+      transform: scale(0.8);
+    }
+    100% {
+      color: #080808;
+      text-shadow: 0 0 50px #f4f4f4;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes colors {
+    0% {
+      background: #e3a008;
+      filter: blur(20px);
+    }
+    25% {
+      background: #b92b27;
+      filter: blur(20px);
+    }
+    50% {
+      background: #e3a008;
+      filter: blur(20px);
+    }
+    75% {
+      background: #3f83f8;
+      filter: blur(20px);
+    }
+    100% {
+      background: #e3a008;
+      filter: blur(20px);
+    }
+  }
+
+  .gradientContainer {
+    background: linear-gradient(-45deg, #b92b27, #243b55, #b92b27);
+    background-size: 400% 400%;
+    height: 100vh;
+  }
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
     }
   }
 }

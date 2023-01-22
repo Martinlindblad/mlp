@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import DevCard from 'src/components/devcard';
+import DevCard from 'src/components/Devcard';
+import AnimatedContainer from 'src/components/Layouts/AnimatedContainer';
 import usePageCardsQuery from 'src/hooks/usePageCardsQuery';
 
 const Skills = (): JSX.Element => {
@@ -10,12 +11,29 @@ const Skills = (): JSX.Element => {
     return pageCards?.filter((item) => item.type === 'introdcution');
   }, [pageCards]);
 
+  const container = useMemo(
+    () => ({
+      hidden: {
+        opacity: 0,
+        scale: 0,
+      },
+      visible: {
+        opacity: 1,
+        scale: 1,
+      },
+    }),
+    [],
+  );
+
   return (
-    <section className="md:min-h-max pb-10 flex flex-col md:flex-row px-4 justify-between space-y-6 md:space-y-0 md:space-x-6">
-      {SkillData.map((item) => {
-        return <DevCard key={item.key} data={item} />;
+    <AnimatedContainer
+      className="md:min-h-max pb-10 flex flex-col md:flex-row px-4 justify-between space-y-6 md:space-y-0 md:space-x-6"
+      containerVariant={container}
+    >
+      {SkillData.map((item, index) => {
+        return <DevCard key={item.key} data={item} index={index} />;
       })}
-    </section>
+    </AnimatedContainer>
   );
 };
 

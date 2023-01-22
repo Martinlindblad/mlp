@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import useWindowDimensions from 'src/hooks/useWindowDimensions';
-import cmImage from '../../assets/cm.jpg';
-import ThemeButton from './themeButton';
+import cmImage from '../../../assets/cm.jpg';
+import ThemeButton from '../../components/ThemeButton';
 
 export default function Navbar() {
   const router = useRouter();
@@ -40,15 +40,16 @@ export default function Navbar() {
       path: '/about',
     } as const,
     {
-      name: 'Services',
-      path: '/services',
+      name: 'Frameworks',
+      path: '/frameworks',
     } as const,
     {
-      name: 'Blog',
-      path: '/blog',
+      name: 'Experience',
+      path: '/experience',
     } as const,
+
     {
-      name: 'Contact Us',
+      name: 'Contact',
       path: '#contact',
     } as const,
   ];
