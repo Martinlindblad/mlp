@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import useWindowDimensions from 'src/hooks/useWindowDimensions';
 import cmImage from '../../../assets/cm.jpg';
-import ThemeButton from '../../components/ThemeButton';
+import ThemeButton from '../../components/themeButton';
 
 export default function Navbar() {
   const router = useRouter();

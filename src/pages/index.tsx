@@ -1,8 +1,8 @@
 import Head from 'next/head';
-import About from 'src/components/About/About';
-import Layout from 'src/components/Layouts/Layout';
+import About from 'src/components/about/about';
+import Layout from 'src/components/layouts/layout';
 
-import Navbar from 'src/sections/navigation/Navbar';
+import Navbar from 'src/sections/navigation/navbar';
 
 export default function Home() {
   return (

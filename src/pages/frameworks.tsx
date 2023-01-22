@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import React from 'react';
-import AnimatedFadeInContainer from 'src/components/Layouts/AnimatedFadeInContainer';
-import Navbar from 'src/sections/navigation/Navbar';
+import AnimatedFadeInContainer from 'src/components/layouts/animatedFadeInContainer';
+import Navbar from 'src/sections/navigation/navbar';
 
 const About = (): JSX.Element => {
   return (

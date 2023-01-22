@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import Link from 'next/link';
 import React from 'react';
-import Avatar from '../Profile/Avatar';
+import Avatar from '../profile/Avatar';
 
 const AboutCard = (): JSX.Element => {
   return (

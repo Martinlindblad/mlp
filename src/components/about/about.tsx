@@ -3,9 +3,10 @@ import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 
 import useIntroductionQuery from 'src/hooks/useAboutQuery';
-import AnimatedContainer from '../Layouts/AnimatedContainer';
-import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
-import AboutCard from './AboutCard';
+import Skills from '../../sections/skills';
+import AnimatedContainer from '../layouts/animatedContainer';
+import AnimatedFadeInContainer from '../layouts/animatedFadeInContainer';
+import AboutCard from './aboutCard';
 export default function About() {
   const { data: aboutData } = useIntroductionQuery();
   const [mounted, setMounted] = useState(false);
@@ -103,7 +104,9 @@ export default function About() {
             <AboutCard />
           </div>
         </AnimatedFadeInContainer>
-        <div className="pt-16"></div>
+        <div className="pt-16">
+          <Skills />
+        </div>
       </div>
     </main>
   );
