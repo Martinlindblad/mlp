@@ -6,6 +6,7 @@ export interface AboutType {
   info: string;
   name: string;
   surname: string;
+  key: 'introduction' | 'about' | 'more' | 'japanese';
 }
 export interface IntroductionType {
   _id: ObjectId;
@@ -23,4 +24,13 @@ export interface HobbyType {
   title: string;
   content: string;
   type: 'japanese';
+}
+export interface PageCardType {
+  _id: ObjectId;
+  title: string;
+  description: string;
+  link: string;
+  content: string;
+  key: 'experience' | 'frameworks';
+  type: 'introdcution';
 }

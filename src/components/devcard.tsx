@@ -1,21 +1,24 @@
 import Link from 'next/link';
 import React from 'react';
+import { PageCardType } from 'src/../types/DBTypes';
 
-const DevCard = ({ data }: any): JSX.Element => {
+const DevCard = ({ data }: { data: PageCardType }): JSX.Element => {
   return (
     <Link
-      href="/webwork"
-      className="flex flex-col items-center  md:flex-row md:max-w-xl text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-gold-400"
+      href={data.link}
+      className="rounded flex flex-col py-2 md:flex-row md:w-1/3 h-48 first-letter dark:bg-gray-800 bg-gray-200 'dark:shadow-gray-100 shadow-gray-800 shadow-md"
     >
-      <div className="flex flex-col justify-between p-4 leading-normal">
-        <h5 className="text-3xl font-extrabold px-8 md:text-1xl lg:text-2xl text-center">
+      <div className="flex flex-col justify-between py-4 leading-normal">
+        <h5 className="text-md font-extrabold px-3 text-center">
           {data.title}
         </h5>
-        <p className="text-lg font-normal lg:text-xl px-2 text-center lg:w-2/3 mx-auto py-3">
+        <p className="text-sm font-normal px-5 lg:text-sm text-center  mx-auto py-3">
           {data.description}
         </p>
-        <div className=" inline-flex items-center px-3 py-2 text-sm font-medium text-center mx-auto  rounded-lg   ">
-          <span>Read more</span>
+        <div className=" inline-flex items-center  py-2 text-sm font-medium text-center mx-auto  rounded-lg   ">
+          <span className=" hover:text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-yellow-400">
+            Read more
+          </span>
           <svg
             aria-hidden="true"
             className="w-4 h-4 ml-2 -mr-1"

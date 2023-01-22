@@ -3,13 +3,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import useWindowDimensions from 'src/hooks/useWindowDimensions';
 import cmImage from '../../assets/cm.jpg';
 import ThemeButton from './themeButton';
 
 export default function Navbar() {
   const router = useRouter();
   const [animateHeader, setAnimateHeader] = useState<boolean>(false);
-
+  const { width } = useWindowDimensions();
   const [burgerMenuOpen, setBurgerMenuOpen] = useState<boolean>(false);
 
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function Navbar() {
               <div className="relative">
                 <svg
                   className={`${
-                    burgerMenuOpen ? 'scale-100' : 'scale-0'
+                    burgerMenuOpen ? 'scale-0' : 'scale-100'
                   } w-6 h-6 ease-in-out duration-300 absolute`}
                   aria-hidden="true"
                   fill="currentColor"
@@ -105,7 +106,7 @@ export default function Navbar() {
                   strokeWidth={1.5}
                   stroke="currentColor"
                   className={`${
-                    burgerMenuOpen ? 'scale-0' : 'scale-100'
+                    burgerMenuOpen ? 'scale-100' : 'scale-0'
                   } w-6 h-6 ease-in-out duration-500 `}
                 >
                   <path
@@ -119,15 +120,19 @@ export default function Navbar() {
           </div>
 
           <div
-            className={`w-full absolute md:relative md:w-auto trasition ease-in-out duration-300 ${
-              burgerMenuOpen
-                ? 'fixed z-50 -translate-y-30 scale-0'
-                : ' translate-y-0 scale-100 right-0 opacity-95'
-            }`}
+            className={
+              width && width > 414
+                ? ''
+                : `w-full absolute md:relative md:w-auto trasition ease-in-out duration-300 ${
+                    Boolean(burgerMenuOpen)
+                      ? 'translate-y-0 scale-100 right-0 opacity-95'
+                      : 'fixed z-50 -translate-y-30 scale-0'
+                  }`
+            }
             id="navbar-default"
           >
             <ul
-              className="flex flex-col items-start  justify-center w-screen h-auto p-10 md:p-0 top-8 md:top-0 border fixed border-gray-100 rounded-lg  md:w-fit md:flex md:relative 
+              className="flex flex-col items-start  justify-center w-screen h-auto p-10 md:p-0 top-8 md:top-0 border fixed border-gray-100 rounded-lg  md:w-fit md:flex md:relative
             md:flex-row md:space-x-8  md:text-sm md:font-medium md:border-0 md:bg-transparent bg-gray-100 dark:bg-gray-900  md:dark:bg-transparent dark:border-gray-700"
             >
               {navLinks.map((link) => {

@@ -10,7 +10,7 @@ const getAboutData = () =>
       },
     })
     .then(({ data }) => {
-      return data[0];
+      return data.find((item) => item.key === 'introduction');
     })
     .catch((err: unknown) => console.log(err));
 
