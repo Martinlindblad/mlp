@@ -3,7 +3,6 @@ import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 
 import useIntroductionQuery from 'src/hooks/useAboutQuery';
-import Skills from '../../sections/Skills';
 import AnimatedContainer from '../Layouts/AnimatedContainer';
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
 import AboutCard from './AboutCard';
@@ -104,9 +103,7 @@ export default function About() {
             <AboutCard />
           </div>
         </AnimatedFadeInContainer>
-        <div className="pt-16">
-          <Skills />
-        </div>
+        <div className="pt-16"></div>
       </div>
     </main>
   );
