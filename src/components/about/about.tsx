@@ -3,7 +3,7 @@ import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 
 import useIntroductionQuery from 'src/hooks/useAboutQuery';
-import Skills from 'src/sections/Skills';
+import Skills from '../../sections/Skills';
 import AnimatedContainer from '../Layouts/AnimatedContainer';
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
 import AboutCard from './AboutCard';
