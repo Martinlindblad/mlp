@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import useIntroductionQuery from 'src/hooks/useAboutQuery';
 import Skills from '../../sections/skills';
-import AnimatedContainer from '../layouts/animatedContainer';
+import AnimatedContainer from '../layouts/AnimatedContainer';
 import AnimatedFadeInContainer from '../layouts/animatedFadeInContainer';
 import AboutCard from './aboutCard';
 export default function About() {
