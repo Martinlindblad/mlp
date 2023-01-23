@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import React, { useMemo } from 'react';
 import { PageCardType } from 'src/../types/DBTypes';
-import AnimatedItem from './layouts/animatedItem';
+import AnimatedItem from './Layouts/animatedItem';
 
 const DevCard = ({
   data,
