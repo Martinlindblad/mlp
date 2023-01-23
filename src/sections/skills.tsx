@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import DevCard from 'src/components/devcard';
-import AnimatedContainer from 'src/components/layouts/AnimatedContainer';
+import AnimatedContainer from 'src/components/layouts/animatedContainer';
 import usePageCardsQuery from 'src/hooks/usePageCardsQuery';
 
 const Skills = (): JSX.Element => {
