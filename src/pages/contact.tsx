@@ -2,7 +2,7 @@ import React from 'react';
 import AnimatedFadeInContainer from 'src/components/Layouts/AnimatedFadeInContainer';
 import Navbar from 'src/sections/navigation/navbar';
 
-const About = (): JSX.Element => {
+const Contact = (): JSX.Element => {
   return (
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen ">
       <Navbar />
@@ -15,4 +15,4 @@ const About = (): JSX.Element => {
   );
 };
 
-export default About;
+export default Contact;

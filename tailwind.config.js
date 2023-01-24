@@ -40,6 +40,9 @@ module.exports = {
       black: 900,
     },
     extend: {
+      aspectRatio: {
+        '4/3': '4 / 3',
+      },
       container: {
         center: true,
       },
@@ -77,4 +80,12 @@ module.exports = {
     require('tailwindcss-rtl'),
     require('@tailwindcss/forms'),
   ],
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ['@svgr/webpack'],
+    });
+
+    return config;
+  },
 };
