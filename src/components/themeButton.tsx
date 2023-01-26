@@ -1,7 +1,7 @@
 import { useTheme } from 'next-themes';
 import { useState, useEffect, useMemo } from 'react';
 
-const ThemeButton = () => {
+const ThemeButton = ({ incomingClassName }: { incomingClassName?: string }) => {
   const { systemTheme, theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -21,9 +21,9 @@ const ThemeButton = () => {
   };
   return (
     <button
-      className={`w-10 h-10 ${
+      className={`w-10 h-10 ${incomingClassName} ${
         currentTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-      }`}
+      } `}
       role="button"
       onClick={handleChangeColorTheme}
     >

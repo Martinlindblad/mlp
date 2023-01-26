@@ -51,14 +51,14 @@ export default function About() {
 
   if (!mounted) return null;
   return (
-    <main className="flex pt-32 lg:p-60 lg:justify-center w-full lg:container min-h-screen">
+    <main className="flex pt-32 lg:px-60  lg:justify-center w-full lg:container min-h-screen">
       {aboutData ? (
         <div className="min-w-full">
           <div className="flex justify-center min-w-full flex-col items-center">
             <h1
               style={{ fontWeight: '1000' }}
-              className=" text-start lg:text-7xl text-3xl font-weight:7rem uppercase pb-3 lg:pb-0
-             tracking-widest dark:shadow-emerald-900 dark:text-slate-200 text-left "
+              className=" text-start lg:text-8xl text-3xl  font-hairline  uppercase pb-3 lg:pb-5
+             tracking-wider  dark:text-slate-200 text-left "
             >
               <AnimatedContainer
                 containerVariant={container}

@@ -6,7 +6,6 @@ import Navbar from 'src/sections/navigation/navbar';
 const About = (): JSX.Element => {
   return (
     <Layout className="bg-gray-100 dark:bg-gray-900 min-h-screen relative">
-      <Navbar />
       <AnimatedFadeInContainer
         type="FadeInTop"
         className="flex-col flex w-full"
@@ -19,6 +18,7 @@ const About = (): JSX.Element => {
           the best version of myself.
         </p>
       </AnimatedFadeInContainer>
+      <Navbar />
     </Layout>
   );
 };
