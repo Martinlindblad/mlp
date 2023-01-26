@@ -16,7 +16,8 @@ const variants = {
   },
 };
 
-export const Navigation = () => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const Navigation = ({ isOpen }: { isOpen: boolean }) => {
   const Items: Item[] = useMemo(() => {
     return [
       {

@@ -15,7 +15,7 @@ interface NavMenuItemProps {
 
 const variants = {
   open: {
-    y: 0,
+    x: 0,
     opacity: 1,
     transition: {
       y: { stiffness: 1000, velocity: -100 },
@@ -23,11 +23,11 @@ const variants = {
     },
   },
   closed: {
-    y: 50,
+    x: 300,
     opacity: 0,
     transition: {
       y: { stiffness: 1000 },
-      default: { duration: 0.2 },
+      default: { duration: 0.4 },
     },
   },
 };
@@ -56,7 +56,7 @@ export const NavMenuItem: React.FC<NavMenuItemProps> = ({ id, text, path }) => {
   const style = { border: `3px solid ${colors[id]}` };
   return (
     <motion.li
-      className="items-end justify-end list-none mb-5 flex pr-14 cursor-pointer lg:w-3/6  lg:self-end"
+      className="items-end justify-end list-none mb-5 flex pr-14 cursor-pointer lg:w-3/6  lg:self-end "
       variants={variants}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}

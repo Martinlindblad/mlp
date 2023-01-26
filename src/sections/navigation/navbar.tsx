@@ -42,7 +42,9 @@ export default function Navbar() {
         className="absolute top-0 right-0 bottom-0 w-full rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-90"
         variants={sidebar}
       />
-      <Navigation />
+      <div className={`${isOpen ? '' : 'pointer-events-none'}`}>
+        <Navigation isOpen />
+      </div>
       <MenuToggle toggle={() => toggleOpen()} />
     </motion.nav>
   );
