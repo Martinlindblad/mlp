@@ -10,6 +10,7 @@ const AnimatedFadeInContainer: React.FC<Props> = ({
     case 'FadeInLeft':
       return (
         <motion.div
+          layout
           className={className}
           initial={{ x: -100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -26,6 +27,7 @@ const AnimatedFadeInContainer: React.FC<Props> = ({
     case 'FadeInRight':
       return (
         <motion.div
+          layout
           className={className}
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -42,6 +44,7 @@ const AnimatedFadeInContainer: React.FC<Props> = ({
     case 'FadeInTop':
       return (
         <motion.div
+          layout
           className={className}
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -58,6 +61,7 @@ const AnimatedFadeInContainer: React.FC<Props> = ({
     case 'FadeInBottom':
       return (
         <motion.div
+          layout
           className={className}
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -75,6 +79,7 @@ const AnimatedFadeInContainer: React.FC<Props> = ({
     default:
       return (
         <motion.div
+          layout
           className={className}
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}

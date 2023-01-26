@@ -1,12 +1,16 @@
 import React from 'react';
 import AnimatedFadeInContainer from 'src/components/Layouts/AnimatedFadeInContainer';
+import Layout from 'src/components/Layouts/layout';
 import Navbar from 'src/sections/navigation/navbar';
 
 const About = (): JSX.Element => {
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen ">
+    <Layout className="bg-gray-100 dark:bg-gray-900 min-h-screen relative">
       <Navbar />
-      <AnimatedFadeInContainer type="FadeInBottom">
+      <AnimatedFadeInContainer
+        type="FadeInTop"
+        className="flex-col flex w-full"
+      >
         <p className="text-lg font-normal lg:text-xl px-8  text-center lg:w-2/3 mx-auto flex pt-32 lg:pt-10 lg:items-center lg:justify-center w-full lg:container min-h-screen">
           {"I'm"} based in Stockholm, Sweden.
           <br /> With two years experience as a developer my passion lies in
@@ -15,7 +19,7 @@ const About = (): JSX.Element => {
           the best version of myself.
         </p>
       </AnimatedFadeInContainer>
-    </div>
+    </Layout>
   );
 };
 

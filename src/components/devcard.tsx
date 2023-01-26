@@ -33,23 +33,21 @@ const DevCard = ({
   return (
     <Link
       href={data.link}
-      className="hover:scale-110 hover:shadow-xl shadow-md dark:shadow-gray-100 shadow-gray-900  dark:hover:shadow-gray-100 hover:shadow-gray-100 transition duration-300 ease-in-out  md:flex-row md:w-1/3 h-48 "
+      className="hover:scale-105 cursor-pointer rounded-lg hover:shadow-lg shadow-md dark:shadow-red-400 shadow-gray-900  dark:hover:shadow-gray-100 hover:shadow-gray-100 transition duration-300 ease-in-out"
     >
       <AnimatedItem
-        className="relative rounded-lg border flex flex-col md:flex-row first-letter dark:bg-transparent bg-transparent dark:shadow-gray-100 shadow-gray-800 shadow overflow-hidden "
+        className="relative rounded-lg border h-full flex first-letter dark:bg-transparent  bg-transparent dark:shadow-gray-100 shadow-gray-800 shadow overflow-hidden "
         itemVariant={itemVariant}
       >
-        <div className="flex flex-col justify-between py-6 leading-normal s">
-          <h5 className="text-md font-extrabold px-3 text-center">
+        <div className="flex  flex-col justify-between py-6 leading-normal  ">
+          <h5 className="text-md font-extrabold px-3 text-center ">
             {data.title}
           </h5>
           <p className="text-sm font-normal px-5 lg:text-sm text-center  mx-auto py-3">
             {data.description}
           </p>
           <div className=" inline-flex items-center  py-2 text-sm font-medium text-center mx-auto  rounded-lg   ">
-            <span className=" hover:text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-yellow-400">
-              Read more
-            </span>
+            <span className="  ">Read more</span>
             <svg
               aria-hidden="true"
               className="w-4 h-4 ml-2 -mr-1"
