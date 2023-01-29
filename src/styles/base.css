@@ -9,7 +9,13 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
-    font-family: Comfortaa, Righteous;
+    font-family: Comfortaa, Righteous, Tinos;
+  }
+  h1 {
+    font-family: Montserrat, Righteous, Tinos;
+  }
+  h2 {
+    font-family: Righteous, Righteous, Comfortaa;
   }
 
   /* Make clicks pass-through */
@@ -61,28 +67,28 @@
     }
     25% {
       color: #080808;
-      text-shadow: 0 0 50px #f4f4f4;
+      text-shadow: 0 0 50px rgb(253 246 178);
       transform: scale(1.1);
     }
     50% {
-      color: #f4f4f4;
+      color: rgb(253 246 178);
       text-shadow: 0 0 50px #e3a008;
       transform: scale(1);
     }
     100% {
-      color: #f4f4f4;
+      color: rgb(253 246 178);
       text-shadow: 0 0 50px #080808;
       transform: scale(1);
     }
   }
   @keyframes lightColors {
     0% {
-      color: #f4f4f4;
-      text-shadow: 0 0 50px #f4f4f4;
+      color: rgb(253 246 178);
+      text-shadow: 0 0 50px rgb(253 246 178);
       transform: scale(0);
     }
     33% {
-      color: #f4f4f4;
+      color: rgb(253 246 178);
       text-shadow: 0 0 50px #080808;
       transform: scale(1.1);
     }
@@ -93,7 +99,7 @@
     }
     100% {
       color: #080808;
-      text-shadow: 0 0 50px #f4f4f4;
+      text-shadow: 0 0 50px rgb(253 246 178);
       transform: scale(1);
     }
   }

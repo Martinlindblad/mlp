@@ -39,6 +39,11 @@ module.exports = {
       'extra-bold': 800,
       black: 900,
     },
+    textShadow: {
+      // defaults to {}
+      default: '0 2px 5px rgba(0, 0, 0, 0.5)',
+      lg: '0 2px 10px rgba(0, 0, 0, 0.5)',
+    },
     extend: {
       aspectRatio: {
         '4/3': '4 / 3',

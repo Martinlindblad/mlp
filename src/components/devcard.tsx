@@ -33,13 +33,13 @@ const DevCard = ({
   return (
     <Link
       href={data.link}
-      className="hover:scale-105 cursor-pointer rounded-lg hover:shadow-lg shadow-md dark:shadow-red-400 shadow-gray-900  dark:hover:shadow-gray-100 hover:shadow-gray-100 transition duration-300 ease-in-out"
+      className=" cursor-pointer hover:scale-105  transition duration-300 ease-in-out  rounded-lg hover:shadow-lg shadow-md dark:shadow-red-400 shadow-gray-900  dark:hover:shadow-gray-100 hover:shadow-gray-100 "
     >
       <AnimatedItem
         className="relative rounded-lg border h-full flex first-letter dark:bg-transparent  bg-transparent dark:shadow-gray-100 shadow-gray-800 shadow overflow-hidden "
         itemVariant={itemVariant}
       >
-        <div className="flex flex-col justify-between w-full py-6 leading-normal  ">
+        <div className="flex flex-col justify-between w-full py-6 leading-normal backdrop-blur-xl ">
           <h5 className="text-md font-extrabold px-3 text-center ">
             {data.title}
           </h5>
@@ -59,7 +59,7 @@ const DevCard = ({
             </svg>
           </div>
         </div>
-        <motion.div className="w-full h-full -z-10 absolute rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-30" />
+        <motion.div className="w-full h-full -z-10 absolute rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-70" />
         <motion.div
           animate={{
             scale: [1.5, 2, 2, 1.7, 1.5],
