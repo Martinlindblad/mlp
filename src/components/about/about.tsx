@@ -7,6 +7,7 @@ import Skills from '../../sections/skills';
 import PageLoader from '../animatedComponents/PageLoader';
 import AnimatedContainer from '../Layouts/animatedContainer';
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
+import Stepper from '../Stepper';
 
 export default function About() {
   const { data: aboutData } = useIntroductionQuery();
@@ -50,7 +51,7 @@ export default function About() {
 
   if (!mounted) return null;
   return (
-    <main className="flex items-center lg:justify-center w-full lg:container min-h-screen">
+    <main className="flex items-center lg:justify-center lg:pt-32 w-full lg:container min-h-screen">
       {aboutData ? (
         <div className="w-full lg:w-3/4">
           <div className="flex justify-center min-w-full flex-col items-center ">
@@ -109,6 +110,7 @@ export default function About() {
               {aboutData?.info}
             </p>
           </AnimatedFadeInContainer>
+          <Stepper step={1} stepperTitle={'My Journey'} />
           <Skills />
         </div>
       ) : (
