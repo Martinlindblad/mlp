@@ -33,31 +33,19 @@ const DevCard = ({
   return (
     <Link
       href={data.link}
-      className=" cursor-pointer hover:scale-105  transition duration-300 ease-in-out  rounded-lg hover:shadow-lg shadow-md dark:shadow-red-400 shadow-gray-900  dark:hover:shadow-gray-100 hover:shadow-gray-100 "
+      className=" cursor-pointer hover:scale-105  transition duration-300 ease-in-out  rounded-lg hover:shadow-lg shadow-md hover:dark:shadow-red-400 shadow-gray-900   "
     >
       <AnimatedItem
-        className="relative rounded-lg border h-full flex first-letter dark:bg-transparent  bg-transparent dark:shadow-gray-100 shadow-gray-800 shadow overflow-hidden "
+        className="relative rounded-lg  h-full flex first-letter dark:bg-transparent  bg-transparent dark:shadow-gray-100 shadow-gray-800 shadow-md overflow-hidden "
         itemVariant={itemVariant}
       >
-        <div className="flex flex-col justify-between w-full py-6 leading-normal backdrop-blur-xl ">
-          <h5 className="text-md font-extrabold px-3 text-center ">
+        <div className="flex flex-col justify-center w-full py-6 leading-normal backdrop-blur-xl ">
+          <h5 className="text-lg font-extrabold px-3 text-center ">
             {data.title}
           </h5>
-          <p className="text-sm font-normal px-5 lg:text-sm text-center  mx-auto py-3">
+          <p className="text-sm font-normal px-5 lg:text-sm text-center  mx-auto py-3 text-gray-300">
             {data.description}
           </p>
-          <div className=" inline-flex items-center py-2 text-sm font-medium text-center mx-auto  rounded-lg   ">
-            <span className="  ">Read more</span>
-            <svg
-              aria-hidden="true"
-              className="w-4 h-4 ml-2 -mr-1"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" />
-            </svg>
-          </div>
         </div>
         <motion.div className="w-full h-full -z-10 absolute rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-70" />
         <motion.div

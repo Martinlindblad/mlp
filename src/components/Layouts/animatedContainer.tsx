@@ -1,8 +1,9 @@
-import { motion, Variants } from 'framer-motion';
+import { AnimatePresence, motion, useInView, Variants } from 'framer-motion';
 import { Props } from 'next/script';
+import { useRef } from 'react';
 
 type ContainerVariantProp = {
-  containerVariant: Variants | undefined;
+  containerVariant: Variants;
 };
 
 const AnimatedContainer: React.FC<Props & ContainerVariantProp> = ({
@@ -10,15 +11,21 @@ const AnimatedContainer: React.FC<Props & ContainerVariantProp> = ({
   className,
   containerVariant,
 }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const isInView = useInView(ref);
+
   return (
-    <motion.div
-      className={className}
-      variants={containerVariant}
-      initial="hidden"
-      animate="visible"
-    >
-      {children}
-    </motion.div>
+    <AnimatePresence>
+      <motion.div
+        ref={ref}
+        className={className}
+        variants={containerVariant}
+        initial="hidden"
+        animate={isInView ? 'visible' : 'hidden'}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   );
 };
 export default AnimatedContainer;
