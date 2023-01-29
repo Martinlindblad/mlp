@@ -59,13 +59,13 @@ const Stepper: React.FC<StepperProps> = ({ step, stepperTitle }) => {
           variants={StepperLineVariants}
           initial="hidden"
           animate={isInView ? 'visible' : 'hidden'}
-          className="h-24 w-1 bg-gradient-to-b to-sky-500 from-transparent rounded-full"
+          className="h-24 w-0.5 bg-gradient-to-b to-sky-500 from-transparent rounded-full"
         />
         <motion.div
           variants={StepperVariants}
           initial="hidden"
           animate={isInView ? 'visible' : 'hidden'}
-          className="h-12 w-12 bg-gradient-to-t to-sky-500 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-300"
+          className="h-12 w-12 bg-gradient-to-t to-sky-500 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-900"
         >
           <p>{step}</p>
         </motion.div>

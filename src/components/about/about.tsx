@@ -51,13 +51,13 @@ export default function About() {
 
   if (!mounted) return null;
   return (
-    <main className="flex items-center lg:justify-center lg:pt-32 w-full lg:container min-h-screen">
+    <main className="flex items-center lg:justify-center pt-32 lg:pt-32 w-full lg:container min-h-screen">
       {aboutData ? (
         <div className="w-full lg:w-3/4">
           <div className="flex justify-center min-w-full flex-col items-center ">
             <h1
               style={{ textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)' }}
-              className=" text-start lg:text-8xl font-black text-3xl  uppercase pb-3 lg:pb-0
+              className=" text-start xl:text-8xl lg:text-6xl font-black text-3xl md:text-4xl uppercase pb-3 lg:pb-0
              tracking-wider  dark:text-yellow-100 text-left "
             >
               <AnimatedContainer
@@ -97,7 +97,7 @@ export default function About() {
           >
             <h2
               style={{ textShadow: '0 2px 5px rgba(0, 0, 0, 0.2)' }}
-              className="text-2xl font-extrabold px-2 lg:text-6xl  text-center lg:mt-4"
+              className="text-2xl font-extrabold px-2 lg:text-6xl  text-center md:text-3xl lg:mt-4"
             >
               <span className="text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-yellow-400 ">
                 {aboutData?.title}
@@ -105,7 +105,7 @@ export default function About() {
             </h2>
             <p
               style={{ textShadow: '0 2px 10px rgba(255, 255, 255, 255.5)' }}
-              className="text-sm font-normal lg:text-2xl opacity-60 px-8 text-center lg:w-2/3 mx-auto lg:py-6 py-2"
+              className="text-sm font-normal lg:text-2xl opacity-60 px-8 text-center md:text-2xl lg:w-2/3 mx-auto lg:py-6 py-2"
             >
               {aboutData?.info}
             </p>
