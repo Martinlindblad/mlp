@@ -70,8 +70,8 @@ const Stepper: React.FC<StepperProps> = ({ step, stepperTitle }) => {
         >
           <p>{step}</p>
         </motion.div>
-        <AnimatedFadeInContainer>
-          <h2>{stepperTitle}</h2>
+        <AnimatedFadeInContainer className="py-3">
+          <h2 className="text-lg">{stepperTitle}</h2>
         </AnimatedFadeInContainer>
       </motion.div>
     </AnimatePresence>

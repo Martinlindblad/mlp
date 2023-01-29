@@ -16,7 +16,7 @@ export default function Navbar() {
       },
     }),
     closed: {
-      clipPath: `circle(30px at calc(100% - 4.25rem) 50px)`,
+      clipPath: `circle(0px at calc(100% - 4.25rem) 50px)`,
       transition: {
         delay: 0.5,
         type: 'spring',
@@ -29,23 +29,24 @@ export default function Navbar() {
 
   const [isOpen, toggleOpen] = useCycle(false, true);
   return (
-    <motion.nav
-      initial={false}
-      animate={isOpen ? 'open' : 'closed'}
-      className={`fixed top-0 right-0 bottom-0 w-full  ${
-        isOpen ? 'z-50' : 'z-0'
-      }`}
-    >
+    <>
+      <motion.nav
+        initial={false}
+        animate={isOpen ? 'open' : 'closed'}
+        className={`fixed top-0 right-0 bottom-0 w-full  ${
+          isOpen ? 'z-50' : '-z-10'
+        }`}
+      >
+        <motion.div
+          className="absolute top-0 right-0 bottom-0 w-full rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-90"
+          variants={sidebar}
+        />
+        <div className={`${isOpen ? '' : 'pointer-events-none'}`}>
+          <Navigation isOpen />
+        </div>
+      </motion.nav>
       <ThemeButton incomingClassName="absolute scale-100 top-6 z-50 p-2 left-12  justify-center items-center bottom-0 w-full " />
-
-      <motion.div
-        className="absolute top-0 right-0 bottom-0 w-full rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-90"
-        variants={sidebar}
-      />
-      <div className={`${isOpen ? '' : 'pointer-events-none'}`}>
-        <Navigation isOpen />
-      </div>
-      <MenuToggle toggle={() => toggleOpen()} />
-    </motion.nav>
+      <MenuToggle isOpen={isOpen} toggle={() => toggleOpen()} />
+    </>
   );
 }
