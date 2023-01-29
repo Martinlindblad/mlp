@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useInView } from 'framer-motion';
 import React, { useMemo, useRef } from 'react';
+import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 
 interface StepperProps {
   step: number;
@@ -69,7 +70,9 @@ const Stepper: React.FC<StepperProps> = ({ step, stepperTitle }) => {
         >
           <p>{step}</p>
         </motion.div>
-        <h2>{stepperTitle}</h2>
+        <AnimatedFadeInContainer>
+          <h2>{stepperTitle}</h2>
+        </AnimatedFadeInContainer>
       </motion.div>
     </AnimatePresence>
   );
