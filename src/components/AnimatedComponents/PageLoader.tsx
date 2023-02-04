@@ -30,7 +30,7 @@ const PageLoader = (): JSX.Element => {
   };
 
   return (
-    <div className="w-full h-full flex fixed z-50 justify-center items-center">
+    <div className="w-full h-full flex fixed z-50 justify-center items-center dark:bg-gray-900 bg-gray-200">
       <motion.div
         variants={loadingContainerVariants}
         initial="start"
