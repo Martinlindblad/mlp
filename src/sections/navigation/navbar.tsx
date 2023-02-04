@@ -1,4 +1,4 @@
-import { motion, useCycle } from 'framer-motion';
+import { AnimatePresence, motion, useCycle } from 'framer-motion';
 import ThemeButton from 'src/components/themeButton';
 import { Navigation } from './Nav';
 import { MenuToggle } from './Toggle';
@@ -29,15 +29,17 @@ export default function Navbar() {
 
   const [isOpen, toggleOpen] = useCycle(false, true);
   return (
-    <>
+    <AnimatePresence>
       <motion.nav
+        key="nav"
         initial={false}
         animate={isOpen ? 'open' : 'closed'}
-        className={`fixed top-0 right-0 bottom-0 w-full  ${
-          isOpen ? 'z-50' : '-z-10'
+        className={`fixed top-0 right-0 bottom-0 w-full z-50 ${
+          isOpen ? '' : 'pointer-events-none'
         }`}
       >
         <motion.div
+          key="sidebar"
           className="absolute top-0 right-0 bottom-0 w-full rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-90"
           variants={sidebar}
         />
@@ -45,8 +47,9 @@ export default function Navbar() {
           <Navigation isOpen />
         </div>
       </motion.nav>
+
       <ThemeButton incomingClassName="absolute scale-100 top-6 z-50 p-2 left-12  justify-center items-center bottom-0 w-full " />
       <MenuToggle isOpen={isOpen} toggle={() => toggleOpen()} />
-    </>
+    </AnimatePresence>
   );
 }
