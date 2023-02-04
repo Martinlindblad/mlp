@@ -30,28 +30,30 @@ const PageLoader = (): JSX.Element => {
   };
 
   return (
-    <motion.div
-      variants={loadingContainerVariants}
-      initial="start"
-      animate="end"
-      className="w-20 h-20 flex justify-around"
-    >
-      <motion.span
-        className="w-5 h-5 bg-gray-900 dark:bg-gray-100 rounded-full"
-        variants={loadingCircleVariants}
-        transition={loadingCircleTransition}
-      />
-      <motion.span
-        className="w-5 h-5 bg-gray-900 dark:bg-gray-100 rounded-full"
-        variants={loadingCircleVariants}
-        transition={loadingCircleTransition}
-      />
-      <motion.span
-        className="w-5 h-5 bg-gray-900 dark:bg-gray-100 rounded-full"
-        variants={loadingCircleVariants}
-        transition={loadingCircleTransition}
-      />
-    </motion.div>
+    <div className="w-full h-full flex fixed z-50 justify-center items-center">
+      <motion.div
+        variants={loadingContainerVariants}
+        initial="start"
+        animate="end"
+        className="w-20 h-20 flex justify-around"
+      >
+        <motion.span
+          className="w-5 h-5 bg-gray-900 dark:bg-gray-100 rounded-full"
+          variants={loadingCircleVariants}
+          transition={loadingCircleTransition}
+        />
+        <motion.span
+          className="w-5 h-5 bg-gray-900 dark:bg-gray-100 rounded-full"
+          variants={loadingCircleVariants}
+          transition={loadingCircleTransition}
+        />
+        <motion.span
+          className="w-5 h-5 bg-gray-900 dark:bg-gray-100 rounded-full"
+          variants={loadingCircleVariants}
+          transition={loadingCircleTransition}
+        />
+      </motion.div>
+    </div>
   );
 };
 export default PageLoader;
