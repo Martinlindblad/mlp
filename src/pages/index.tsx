@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import Layout from 'src/components/Layouts/layout';
+import Layout from 'src/components/Layouts/Layout';
 import Cases from 'src/sections/Cases/Cases';
 import Hero from 'src/sections/Hero/Hero';
 

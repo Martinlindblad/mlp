@@ -1,7 +1,7 @@
 import React from 'react';
 import AnimatedFadeInContainer from 'src/components/Layouts/AnimatedFadeInContainer';
-import Layout from 'src/components/Layouts/layout';
-import Navbar from 'src/sections/navigation/navbar';
+import Layout from 'src/components/Layouts/Layout';
+import Navbar from 'src/sections/Navigation/Navbar';
 
 const Contact = (): JSX.Element => {
   return (
