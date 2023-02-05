@@ -1,11 +1,10 @@
 import React from 'react';
 import AnimatedFadeInContainer from 'src/components/Layouts/AnimatedFadeInContainer';
 import Layout from 'src/components/Layouts/Layout';
-import Navbar from 'src/sections/Navigation/Navbar';
 
 const About = (): JSX.Element => {
   return (
-    <Layout className="bg-gray-100 dark:bg-gray-900 min-h-screen relative">
+    <Layout className="bg-blue-100 dark:bg-gray-900 min-h-screen relative">
       <AnimatedFadeInContainer
         type="FadeInTop"
         className="flex-col flex w-full"
@@ -18,7 +17,6 @@ const About = (): JSX.Element => {
           the best version of myself.
         </p>
       </AnimatedFadeInContainer>
-      <Navbar />
     </Layout>
   );
 };

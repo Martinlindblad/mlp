@@ -4,7 +4,7 @@ import About from 'src/components/About/About';
 export default function Hero() {
   return (
     <div className="realative overflow-hidden">
-      <div className="bg-[url('../../assets/background.png')] bg-cover bg-center aspect-4/3 fixed h-full  w-full opacity-30 -z-50" />
+      <div className="bg-[url('../../assets/background.png')] bg-cover bg-center aspect-4/3 fixed h-full  w-full opacity-20 -z-50" />
       <About />
     </div>
   );

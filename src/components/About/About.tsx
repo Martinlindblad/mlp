@@ -52,7 +52,7 @@ export default function About() {
   return isLoading || !mounted ? (
     <PageLoader />
   ) : (
-    <main className="flex items-center lg:justify-center pt-32 lg:pt-32 w-full lg:container min-h-screen">
+    <main className="flex items-center lg:justify-center pt-32 lg:pt-24 w-full lg:container min-h-screen pb-10 lg:pb-0">
       <div className="w-full lg:w-3/4">
         <div className="flex justify-center min-w-full flex-col items-center ">
           <h1

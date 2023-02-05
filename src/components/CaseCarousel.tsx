@@ -1,16 +1,19 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useMemo, useState } from 'react';
+import useWindowDimensions from 'src/hooks/useWindowDimensions';
 import CaseItem from './CaseItem';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 
 export default function CaseCarousel() {
   const [[page, direction], setPage] = useState([0, 0]);
 
+  const { width } = useWindowDimensions();
+
   const items = useMemo(() => {
     return [
       {
-        title: 'Project x',
-        description: 'A very cool project Ive been working on',
+        title: 'ImagineCare',
+        description: 'One of the most intresting projects Ive worked on',
       },
       {
         title: 'Project x',
@@ -23,7 +26,7 @@ export default function CaseCarousel() {
     ];
   }, []);
 
-  const swipeConfidenceThreshold = 10000;
+  const swipeConfidenceThreshold = width * items.length;
   const swipePower = (offset: number, velocity: number) => {
     return Math.abs(offset) * velocity;
   };
@@ -70,11 +73,11 @@ export default function CaseCarousel() {
   );
 
   return (
-    <AnimatedFadeInContainer>
-      <div className="relative container h-2/3 flex justify-center items-center">
+    <AnimatedFadeInContainer className="h-full w-full">
+      <div className="relative w-full h-full flex justify-center  items-center overflow-hidden  bg-gray-900">
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
-            className=" w-full h-full absolute "
+            className="w-full top-20 absolute h-96"
             key={page}
             custom={direction}
             variants={variants}
@@ -104,24 +107,61 @@ export default function CaseCarousel() {
             />
           </motion.div>
         </AnimatePresence>
-        <div className="absolute bottom-0 itmes-center justify-between w-2/5  pb-20 self-center  flex-row flex">
-          <div
-            className="bg-sky-900 rounded-full w-10 h-10 flex justify-center items-center select-none cursor-pointer font-black font-xl z-10  rotate-180"
-            onClick={() => handlePagination('prev')}
-          >
-            {'‣'}
-          </div>
-          <p className="leading-10 flex-1 hidden lg:visible lg:display-flex text-center">
-            Previous Case
-          </p>
-          <p className="leading-10 flex-1  hidden lg:visible text-center">
-            Next Case
-          </p>
-          <div
-            className=" bg-sky-900 rounded-full w-10 h-10 flex justify-center items-center select-none cursor-pointer font-black font-xl z-10  "
-            onClick={() => handlePagination('next')}
-          >
-            {'‣'}
+      </div>
+      <div className="absolute bottom-20 xl:bottom-10  w-full z-50 h-20 flex items-center justify-center ">
+        <div className="justify-between flex items-center ">
+          <div className="flex flex-col items-center">
+            <span className="text-sm text-gray-700 dark:text-gray-400">
+              Showing{' '}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {page + 1}
+              </span>{' '}
+              of{' '}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {items.length}
+              </span>{' '}
+              Cases/Projects
+            </span>
+            <div className="inline-flex mt-2 xs:mt-0">
+              <button
+                onClick={() => handlePagination('prev')}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-l hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                <svg
+                  aria-hidden="true"
+                  className="w-5 h-5 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z"
+                    clip-rule="evenodd"
+                  ></path>
+                </svg>
+                Prev
+              </button>
+              <button
+                onClick={() => handlePagination('next')}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-800 border-0 border-l border-gray-700 rounded-r hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                Next
+                <svg
+                  aria-hidden="true"
+                  className="w-5 h-5 ml-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z"
+                    clip-rule="evenodd"
+                  ></path>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>

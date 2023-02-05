@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { PageCardType } from 'src/../types/DBTypes';
 import AnimatedItem from './Layouts/AnimatedItem';
+import ContactIcon from './SVG/Contact';
+import ExperienceIcon from './SVG/Experience';
+import FrameworksIcon from './SVG/Frameworks';
 
 const DevCard = ({
   data,
@@ -30,24 +33,38 @@ const DevCard = ({
     };
   }, [index]);
 
+  const renderIcon = useCallback(() => {
+    switch (data.key) {
+      case 'experience':
+        return <ExperienceIcon width="35px" height="35px" fill={'white'} />;
+      case 'frameworks':
+        return <FrameworksIcon width="25px" height="25px" fill={'white'} />;
+      case 'contact':
+        return <ContactIcon width="25px" height="25px" fill={'white'} />;
+    }
+  }, [data.key]);
+
   return (
     <Link
       href={data.link}
-      className=" cursor-pointer hover:scale-105  transition duration-300 ease-in-out  rounded-lg hover:shadow-lg shadow-md hover:dark:shadow-red-400 shadow-gray-900   "
+      className=" cursor-pointer hover:scale-105 relative  transition duration-200 ease-in-out rounded-2xl p-1 h-64 w-96"
     >
+      <div className="custom-border shadow-sm shadow-gray-200 h-64 w-96 absolute rounded-2xl opcaity-20 top-0 left-0"></div>
+      <div className="custom-background  h-64 w-96 absolute rounded-2xl opcaity-20 top-0 left-0"></div>
       <AnimatedItem
-        className="relative rounded-lg  h-full flex first-letter dark:bg-transparent  bg-transparent dark:shadow-gray-100 shadow-gray-800 shadow-md overflow-hidden "
+        className=" relative rounded-2xl h-full w-full flex first-letter dark:bg-transparent  bg-transparent  overflow-hidden"
         itemVariant={itemVariant}
       >
-        <div className="flex flex-col justify-center w-full py-6 leading-normal backdrop-blur-xl ">
-          <h5 className="text-lg font-extrabold px-3 text-center ">
-            {data.title}
-          </h5>
-          <p className="text-sm font-normal px-5 lg:text-sm text-center  mx-auto py-3 text-gray-300">
+        <div className="flex flex-col  w-full py-6 leading-normal backdrop-blur-xl  px-8">
+          <div className="w-12 h-12  relative bg-gradient-to-tr mb-4 to-sky-500 from-transparent rounded-full opacity-50 shadow-sky-900 flex justify-center items-center">
+            {renderIcon()}
+            <div className="custom-border w-14 h-14 opacity-80  absolute rounded-full -top-1 -left-1" />
+          </div>
+          <h5 className="text-lg font-extrabold  text-left ">{data.title}</h5>
+          <p className="text-sm font-normal  lg:text-sm text-left  mx-auto py-3 text-gray-300">
             {data.description}
           </p>
         </div>
-        <motion.div className="w-full h-full -z-10 absolute rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-70" />
         <motion.div
           animate={{
             scale: [1.5, 2, 2, 1.7, 1.5],
@@ -61,7 +78,7 @@ const DevCard = ({
             repeat: Infinity,
             repeatDelay: 2,
           }}
-          className="w-40 h-full -z-10 absolute rounded-full rotate-12 bg-gradient-to-r dark:bg-gray-600 opacity-20"
+          className="w-60 h-full -z-10 absolute rounded-full rotate-12 bg-gradient-to-r dark:bg-gray-600 opacity-10"
         />
       </AnimatedItem>
     </Link>

@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Props } from 'next/script';
 import React from 'react';
+import Image from 'next/image';
+import imaginecare from '../../assets/Cases/imaginecare.webp';
 
 type CaseItemProp = {
   title: string;
@@ -14,9 +16,9 @@ export default function CaseItem({
   description,
 }: CaseItemProp & Props): JSX.Element {
   return (
-    <motion.div className="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12 ">
-      <div className="mr-auto place-self-center lg:col-span-7">
-        <h2 className="max-w-2xl mb-4 text-4xl font-extrabold tracking-tight leading-none md:text-5xl xl:text-6xl dark:text-white">
+    <motion.div className="flex justify-center items-center flex-col xl:flex-row md:flex-row w-4/6 mx-auto lg:py-0 h-full">
+      <div className="mr-auto place-self-center mt-20">
+        <h2 className="max-w-2xl mb-4 text-4xl font-extrabold tracking-tight leading-none md:text-5xl xl:text-6xl dark:text-white ">
           {title}
         </h2>
         <p className="max-w-2xl mb-6 font-light text-gray-500 lg:mb-8 md:text-lg lg:text-xl dark:text-gray-400">
@@ -42,9 +44,9 @@ export default function CaseItem({
         </Link>
         <Link
           href="#"
-          className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-center text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+          className="inline-flex my-3 items-center justify-center px-5 py-3 text-base font-medium text-center text-gray-900 border border-gray-300 rounded-lg hover:bg-blue-100 focus:ring-4 focus:ring-gray-100 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
         >
-          <span className="px-3">Go to github</span>
+          <span className="px-3">Visit my github</span>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="24"
@@ -56,10 +58,11 @@ export default function CaseItem({
           </svg>
         </Link>
       </div>
-      <div className="hidden lg:mt-0 lg:col-span-5 lg:flex">
-        <img
-          src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/hero/phone-mockup.png"
-          alt="mockup"
+      <div>
+        <Image
+          className="object-scale-down xl:max-w-2xl mt-10 md:max-w-sm "
+          src={imaginecare}
+          alt="Carl Martins Logo"
         />
       </div>
     </motion.div>

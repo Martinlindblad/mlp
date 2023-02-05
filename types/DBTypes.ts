@@ -31,6 +31,6 @@ export interface PageCardType {
   description: string;
   link: string;
   content: string;
-  key: 'experience' | 'frameworks';
+  key: 'experience' | 'frameworks' | 'contact';
   type: 'introdcution';
 }
