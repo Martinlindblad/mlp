@@ -15,6 +15,13 @@ const customColors = {
     800: '#212121',
     900: '#080808',
   },
+  nav: {
+    1: '#f582ae',
+    2: 'b8c1ec',
+    3: '#8b78e6',
+    4: '#6ab04c',
+    5: '#f7d794',
+  },
 };
 
 module.exports = {

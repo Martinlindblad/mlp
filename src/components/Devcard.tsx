@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import React, { useCallback, useMemo } from 'react';
 import { PageCardType } from 'src/../types/DBTypes';
+import BackgroundAndBorder from './BackgroundAndBorder';
 import AnimatedItem from './Layouts/AnimatedItem';
 import ContactIcon from './SVG/Contact';
 import ExperienceIcon from './SVG/Experience';
@@ -47,10 +48,9 @@ const DevCard = ({
   return (
     <Link
       href={data.link}
-      className=" cursor-pointer hover:scale-105 relative hover:bg-sky-400 transition duration-200 ease-in-out rounded-2xl p-1 2xl:h-64 2xl:w-96"
+      className={`cursor-pointer hover:scale-105 relative hover:bg-nav-${index} transition duration-200 ease-in-out rounded-2xl p-1 2xl:h-64 2xl:w-96`}
     >
-      <div className="custom-border shadow-sm shadow-gray-200  h-full w-full absolute rounded-2xl opcaity-20 top-0 left-0"></div>
-      <div className="custom-background h-full w-full absolute rounded-2xl opcaity-20 top-0 left-0"></div>
+      <BackgroundAndBorder customStyle=" rounded-2xl" />
       <AnimatedItem
         className=" relative rounded-2xl h-full w-full flex first-letter dark:bg-transparent  bg-transparent  overflow-hidden"
         itemVariant={itemVariant}
