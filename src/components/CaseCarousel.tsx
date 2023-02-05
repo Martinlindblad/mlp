@@ -26,7 +26,7 @@ export default function CaseCarousel() {
     ];
   }, []);
 
-  const swipeConfidenceThreshold = width * items.length;
+  const swipeConfidenceThreshold = width;
   const swipePower = (offset: number, velocity: number) => {
     return Math.abs(offset) * velocity;
   };
@@ -95,9 +95,9 @@ export default function CaseCarousel() {
               const swipe = swipePower(offset.x, velocity.x);
 
               if (swipe < -swipeConfidenceThreshold) {
-                paginate(1);
+                handlePagination('next');
               } else if (swipe > swipeConfidenceThreshold) {
-                paginate(-1);
+                handlePagination('prev');
               }
             }}
           >
