@@ -34,3 +34,8 @@ export interface PageCardType {
   key: 'experience' | 'frameworks' | 'contact';
   type: 'introdcution';
 }
+export interface SocailMediaLink {
+  _id: ObjectId;
+  name: 'Facebook' | 'Instagram' | 'LinkedIn' | 'Github';
+  link: string;
+}

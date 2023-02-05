@@ -48,7 +48,9 @@ const DevCard = ({
   return (
     <Link
       href={data.link}
-      className={`cursor-pointer hover:scale-105 relative hover:bg-nav-${index} transition duration-200 ease-in-out rounded-2xl p-1 2xl:h-64 2xl:w-96`}
+      className={`cursor-pointer hover:scale-105 relative ${`hover:bg-nav-${
+        index + 1
+      }`} transition duration-200 ease-in-out rounded-2xl p-1 2xl:h-64 2xl:w-96`}
     >
       <BackgroundAndBorder customStyle=" rounded-2xl" />
       <AnimatedItem
