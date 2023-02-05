@@ -47,10 +47,10 @@ const DevCard = ({
   return (
     <Link
       href={data.link}
-      className=" cursor-pointer hover:scale-105 relative  transition duration-200 ease-in-out rounded-2xl p-1 h-64 w-96"
+      className=" cursor-pointer hover:scale-105 relative  transition duration-200 ease-in-out rounded-2xl p-1 2xl:h-64 2xl:w-96"
     >
-      <div className="custom-border shadow-sm shadow-gray-200 h-64 w-96 absolute rounded-2xl opcaity-20 top-0 left-0"></div>
-      <div className="custom-background  h-64 w-96 absolute rounded-2xl opcaity-20 top-0 left-0"></div>
+      <div className="custom-border shadow-sm shadow-gray-200  h-full w-full absolute rounded-2xl opcaity-20 top-0 left-0"></div>
+      <div className="custom-background h-full w-full absolute rounded-2xl opcaity-20 top-0 left-0"></div>
       <AnimatedItem
         className=" relative rounded-2xl h-full w-full flex first-letter dark:bg-transparent  bg-transparent  overflow-hidden"
         itemVariant={itemVariant}
