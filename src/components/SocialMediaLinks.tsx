@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import React, { useMemo } from 'react';
 import { SocailMediaLink } from 'src/../types/DBTypes';
 import useSocialMediaLinksQuery from 'src/hooks/useSocialMediaLinksQuery';
@@ -26,18 +27,21 @@ const SocialMediaLinks = (): JSX.Element => {
     [],
   );
   return (
-    <AnimatedContainer
-      containerVariant={container}
-      className="h-52 absolute bottom-10  right-4  flex-col flex justify-between items-end"
-    >
-      {SocialMediaData?.map((item, index) => (
-        <SocialMediaLink
-          socialmedia={item}
-          key={`socialMediaLink-${item.name}`}
-          index={index}
-        />
-      ))}
-    </AnimatedContainer>
+    <AnimatePresence>
+      <AnimatedContainer
+        key={'socialmediaContainer'}
+        containerVariant={container}
+        className="h-52 absolute bottom-10  right-4  flex-col flex justify-between items-end"
+      >
+        {SocialMediaData?.map((item, index) => (
+          <SocialMediaLink
+            socialmedia={item}
+            key={`socialMediaLink-${item.name}`}
+            index={index}
+          />
+        ))}
+      </AnimatedContainer>
+    </AnimatePresence>
   );
 };
 

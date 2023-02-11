@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import React, { useMemo } from 'react';
 import DevCard from 'src/components/Devcard';
 import AnimatedContainer from 'src/components/Layouts/AnimatedContainer';
@@ -26,14 +27,17 @@ const Skills = (): JSX.Element => {
   );
 
   return (
-    <AnimatedContainer
-      containerVariant={container}
-      className="py-8  grid sm:px-0 px-4  grid-cols-1 sm:grid-cols-3 gap-12 "
-    >
-      {SkillData.map((item, index) => {
-        return <DevCard key={item.key} data={item} index={index} />;
-      })}
-    </AnimatedContainer>
+    <AnimatePresence>
+      <AnimatedContainer
+        key="skilldataContainer"
+        containerVariant={container}
+        className="py-8  grid sm:px-0 px-4  grid-cols-1 sm:grid-cols-3 gap-12 "
+      >
+        {SkillData.map((item, index) => {
+          return <DevCard key={item.key} data={item} index={index} />;
+        })}
+      </AnimatedContainer>
+    </AnimatePresence>
   );
 };
 
