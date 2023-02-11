@@ -1,7 +1,5 @@
-import { AnimatePresence } from 'framer-motion';
 import React from 'react';
 import About from 'src/components/About/About';
-import AnimatedFadeInContainer from 'src/components/Layouts/AnimatedFadeInContainer';
 
 export default function Hero() {
   return (
