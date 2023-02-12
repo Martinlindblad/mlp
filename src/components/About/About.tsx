@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -58,7 +58,7 @@ export default function About() {
     <main className="flex items-center lg:justify-center pt-32 lg:pt-24 w-full lg:container min-h-screen pb-10 lg:pb-0">
       <div className="w-full lg:w-10/12">
         <div className="flex justify-center min-w-full flex-col items-center pb-10">
-          <div className="grid grid-cols-12 w-full h-full gap-4">
+          <AnimatedFadeInContainer className="grid grid-cols-12 w-full h-full gap-4">
             <div className="relative w-full h-full lg:col-span-8 col-span-12">
               <div className="relative lg:p-14 p-8 pb-16 lg:rounded-sm lg:rounded-tl-[56px] flex flex-row   ">
                 <BackgroundAndBorder
@@ -69,38 +69,36 @@ export default function About() {
                     className=" text-start xl:text-4xl lg:text-xl font-extrabold text-lg md:text-lg uppercase pb-3 lg:pb-0
              tracking-wider  dark:text-gray-100 text-left "
                   >
-                    <AnimatePresence>
-                      <AnimatedContainer
-                        key={'IntroductionNameContainer'}
-                        containerVariant={container}
-                        className="flex-row flex w-full"
-                      >
-                        {CharacterString.map((character, index) => (
-                          <motion.span
-                            className={` ${
-                              theme === 'dark'
-                                ? 'animate-[darkColors_3s_ease-in-out]'
-                                : 'animate-[lightColors_3s_ease-in-out]'
-                            }`}
-                            variants={{
-                              hidden: {
-                                opacity: 0,
+                    <AnimatedContainer
+                      key={'IntroductionNameContainer'}
+                      containerVariant={container}
+                      className="flex-row flex w-full"
+                    >
+                      {CharacterString.map((character, index) => (
+                        <motion.span
+                          className={` ${
+                            theme === 'dark'
+                              ? 'animate-[darkColors_3s_ease-in-out]'
+                              : 'animate-[lightColors_3s_ease-in-out]'
+                          }`}
+                          variants={{
+                            hidden: {
+                              opacity: 0,
+                            },
+                            visible: {
+                              opacity: 1,
+                              transition: {
+                                delay: index * 0.1,
+                                duration: 0.7,
                               },
-                              visible: {
-                                opacity: 1,
-                                transition: {
-                                  delay: index * 0.1,
-                                  duration: 0.7,
-                                },
-                              },
-                            }}
-                            key={index}
-                          >
-                            {character === ' ' ? '\u00A0' : character}
-                          </motion.span>
-                        ))}
-                      </AnimatedContainer>
-                    </AnimatePresence>
+                            },
+                          }}
+                          key={index}
+                        >
+                          {character === ' ' ? '\u00A0' : character}
+                        </motion.span>
+                      ))}
+                    </AnimatedContainer>
                   </h1>
                   <h2 className="text-1xl font-extrabold  lg:text-2xl  md:text-xl lg:mt-4">
                     <span className="text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-yellow-400 ">
@@ -152,7 +150,7 @@ export default function About() {
                 <div></div>
               </div>
             </div>
-          </div>
+          </AnimatedFadeInContainer>
         </div>
 
         <Stepper step={1} stepperTitle={'My Journey'} />
