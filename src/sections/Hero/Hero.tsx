@@ -1,5 +1,6 @@
 import React from 'react';
 import About from 'src/components/About/About';
+import AnimatedFadeInContainer from 'src/components/Layouts/AnimatedFadeInContainer';
 
 export default function Hero() {
   return (
@@ -16,11 +17,9 @@ export default function Hero() {
         <source src="/assets/background2.webm" type="video/webm" />
       </video>
 
-      {/* <AnimatePresence>
-        <AnimatedFadeInContainer> */}
-      <About />
-      {/* </AnimatedFadeInContainer>
-      </AnimatePresence> */}
+      <AnimatedFadeInContainer>
+        <About />
+      </AnimatedFadeInContainer>
     </div>
   );
 }

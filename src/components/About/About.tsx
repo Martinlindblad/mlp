@@ -7,6 +7,7 @@ import Skills from '../../sections/Skills';
 import PageLoader from '../AnimatedComponents/PageLoader';
 import BackgroundAndBorder from '../BackgroundAndBorder';
 import AnimatedContainer from '../Layouts/AnimatedContainer';
+import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
 
 import SocialMediaLinks from '../SocialMediaLinks';
 import Stepper from '../Stepper';
@@ -58,10 +59,10 @@ export default function About() {
       <div className="w-full lg:w-10/12">
         <div className="flex justify-center min-w-full flex-col items-center pb-10">
           <div className="grid grid-cols-12 w-full h-full gap-4">
-            <div className="relative w-full h-full col-span-8">
-              <div className="relative p-14 rounded-sm rounded-tl-[56px] flex flex-row   ">
+            <div className="relative w-full h-full lg:col-span-8 col-span-12">
+              <div className="relative lg:p-14 p-8 pb-16 lg:rounded-sm lg:rounded-tl-[56px] flex flex-row   ">
                 <BackgroundAndBorder
-                  customStyle={'rounded-sm rounded-tl-[56px] opacity-40 '}
+                  customStyle={'lg:rounded-sm lg:rounded-tl-[56px] opacity-40 '}
                 />
                 <div className="flex-col flex w-full">
                   <h1
@@ -114,13 +115,15 @@ export default function About() {
               <SocialMediaLinks />
             </div>
 
-            <div className="relative p-14  rounded-sm rounded-tr-[56px]  col-span-4">
+            <div className="relative p-14  lg:rounded-sm lg:rounded-tr-[56px] lg:col-span-4  col-span-12">
               <BackgroundAndBorder
-                customStyle={'rounded-sm rounded-tr-[56px] -z-50  opacity-40'}
+                customStyle={
+                  'lg:rounded-sm lg:rounded-tr-[56px] -z-50  opacity-40'
+                }
               />
             </div>
 
-            <div className="relative col-span-4 h-72 rounded-bl-sm shadow-sm shadow-white  overflow-hidden">
+            <div className="relative lg:col-span-4 col-span-12 h-72 rounded-bl-sm shadow-sm shadow-white  overflow-hidden">
               <video
                 autoPlay
                 loop
@@ -138,7 +141,7 @@ export default function About() {
               <BackgroundAndBorder customStyle={'-z-10 opacity-40'} />
             </div>
 
-            <div className="relative p-14  rounded-sm col-span-8  opacity-40">
+            <div className="relative p-14  lg:rounded-sm lg:col-span-8 col-span-12  opacity-40">
               <BackgroundAndBorder customStyle={'rounded-sm'} />
             </div>
             <div className="relative p-14  rounded-b-[56px] col-span-12 ">
@@ -153,7 +156,9 @@ export default function About() {
         </div>
 
         <Stepper step={1} stepperTitle={'My Journey'} />
-        <Skills />
+        <AnimatedFadeInContainer>
+          <Skills />
+        </AnimatedFadeInContainer>
       </div>
     </main>
   );

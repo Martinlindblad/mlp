@@ -13,6 +13,7 @@ const SocialMediaLinks = (): JSX.Element => {
     if (!SocialMedia) return [];
     return SocialMedia?.filter((item: SocailMediaLink) => item != null);
   }, [SocialMedia]);
+
   const container = useMemo(
     () => ({
       hidden: {
@@ -31,15 +32,17 @@ const SocialMediaLinks = (): JSX.Element => {
       <AnimatedContainer
         key={'socialmediaContainer'}
         containerVariant={container}
-        className="h-52 absolute bottom-10  right-4  flex-col flex justify-between items-end"
+        className="lg:h-52 absolute lg:bottom-10 bottom-4 lg:right-5 left-8 w-52 lg:w-auto lg:flex-col flex justify-between items-end"
       >
-        {SocialMediaData?.map((item, index) => (
-          <SocialMediaLink
-            socialmedia={item}
-            key={`socialMediaLink-${item.name}`}
-            index={index}
-          />
-        ))}
+        {SocialMediaData.map((item, index) => {
+          return (
+            <SocialMediaLink
+              socialmedia={item}
+              key={`socialMediaLink-${item.name}`}
+              index={index}
+            />
+          );
+        })}
       </AnimatedContainer>
     </AnimatePresence>
   );
