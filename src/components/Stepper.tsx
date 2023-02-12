@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useInView } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import React, { useMemo, useRef } from 'react';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 
@@ -51,30 +51,25 @@ const Stepper: React.FC<StepperProps> = ({ step, stepperTitle }) => {
   const isInView = useInView(ref);
 
   return (
-    <AnimatePresence>
+    <div ref={ref} className="w-full flex justify-center flex-col items-center">
       <motion.div
-        ref={ref}
-        className="w-full flex justify-center flex-col items-center"
+        variants={StepperLineVariants}
+        initial="hidden"
+        animate={isInView ? 'visible' : 'hidden'}
+        className="h-24 w-0.5 bg-gradient-to-b to-sky-500 from-transparent rounded-full"
+      />
+      <motion.div
+        variants={StepperVariants}
+        initial="hidden"
+        animate={isInView ? 'visible' : 'hidden'}
+        className="h-12 w-12 bg-gradient-to-t to-sky-500 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-900"
       >
-        <motion.div
-          variants={StepperLineVariants}
-          initial="hidden"
-          animate={isInView ? 'visible' : 'hidden'}
-          className="h-24 w-0.5 bg-gradient-to-b to-sky-500 from-transparent rounded-full"
-        />
-        <motion.div
-          variants={StepperVariants}
-          initial="hidden"
-          animate={isInView ? 'visible' : 'hidden'}
-          className="h-12 w-12 bg-gradient-to-t to-sky-500 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-900"
-        >
-          <p>{step}</p>
-        </motion.div>
-        <AnimatedFadeInContainer className="py-3">
-          <h2 className="text-lg">{stepperTitle}</h2>
-        </AnimatedFadeInContainer>
+        <p>{step}</p>
       </motion.div>
-    </AnimatePresence>
+      <AnimatedFadeInContainer className="py-3">
+        <h2 className="text-lg">{stepperTitle}</h2>
+      </AnimatedFadeInContainer>
+    </div>
   );
 };
 
