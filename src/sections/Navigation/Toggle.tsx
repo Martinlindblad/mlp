@@ -26,8 +26,8 @@ export const MenuToggle = ({
       >
         <path
           d="M6 18L18 6M6 6l12 12"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         ></path>
       </svg>
       <svg
@@ -43,8 +43,8 @@ export const MenuToggle = ({
       >
         <path
           d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         ></path>
       </svg>
     </div>

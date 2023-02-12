@@ -90,6 +90,7 @@ export default function CaseCarousel() {
             }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
+            dragTransition={{ bounceStiffness: 300, bounceDamping: 14 }}
             dragElastic={1}
             onDragEnd={(e: any, { offset, velocity }: any) => {
               const swipe = swipePower(offset.x, velocity.x);

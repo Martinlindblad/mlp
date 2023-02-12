@@ -8,6 +8,7 @@ import PageLoader from '../AnimatedComponents/PageLoader';
 import BackgroundAndBorder from '../BackgroundAndBorder';
 import AnimatedContainer from '../Layouts/AnimatedContainer';
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
+import Avatar from '../Profile/Avatar';
 
 import SocialMediaLinks from '../SocialMediaLinks';
 import Stepper from '../Stepper';
@@ -55,18 +56,25 @@ export default function About() {
   return isLoading || !mounted ? (
     <PageLoader />
   ) : (
-    <main className="flex items-center lg:justify-center pt-32 lg:pt-24 w-full lg:container min-h-screen pb-10 lg:pb-0">
+    <main className="flex items-center lg:justify-center pt-32 lg:pt-20 w-full lg:container  min-h-screen pb-10 lg:pb-0">
       <div className="w-full lg:w-10/12">
         <div className="flex justify-center min-w-full flex-col items-center pb-10">
           <AnimatedFadeInContainer className="grid grid-cols-12 w-full h-full gap-4">
             <div className="relative w-full h-full lg:col-span-8 col-span-12">
-              <div className="relative lg:p-14 p-8 pb-16 lg:rounded-sm lg:rounded-tl-[56px] flex flex-row   ">
-                <BackgroundAndBorder
-                  customStyle={'lg:rounded-sm lg:rounded-tl-[56px] opacity-40 '}
-                />
+              <div
+                style={{ boxShadow: '0px 0px 2px #b8c1ec' }}
+                className="relative lg:p-14 p-8 pb-16 lg:rounded-sm lg:rounded-tl-[56px] flex flex-row   "
+              >
                 <div className="flex-col flex w-full">
+                  <div className="pb-10 flex flex-row justify-start items-start ">
+                    <Avatar />
+                    <h2 className="text-lg font-extrabold  lg:text-sm  md:text-xl pl-4">
+                      <p>Welcome, {"I'm a"}</p>
+                      <span className="opacity-30">{aboutData?.title}</span>
+                    </h2>
+                  </div>
                   <h1
-                    className=" text-start xl:text-4xl lg:text-xl font-extrabold text-lg md:text-lg uppercase pb-3 lg:pb-0
+                    className=" text-start xl:text-4xl lg:text-xl font-extrabold text-lg md:text-lg uppercase lg:pb-0
              tracking-wider  dark:text-gray-100 text-left "
                   >
                     <AnimatedContainer
@@ -100,23 +108,19 @@ export default function About() {
                       ))}
                     </AnimatedContainer>
                   </h1>
-                  <h2 className="text-1xl font-extrabold  lg:text-2xl  md:text-xl lg:mt-4">
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-yellow-400 ">
-                      {aboutData?.title}
-                    </span>
-                  </h2>
-                  <p className="text-sm font-normal lg:text-xl opacity-60  md:text-2xl  lg:py-6 py-2">
+
+                  <p className="text-sm lg:pr-32 font-normal lg:text-xl opacity-60  md:text-2xl  lg:py-6 py-2">
                     {aboutData?.info}
                   </p>
+                  <SocialMediaLinks />
                 </div>
               </div>
-              <SocialMediaLinks />
             </div>
 
             <div className="relative p-14  lg:rounded-sm lg:rounded-tr-[56px] lg:col-span-4  col-span-12">
               <BackgroundAndBorder
                 customStyle={
-                  'lg:rounded-sm lg:rounded-tr-[56px] -z-50  opacity-40'
+                  'lg:rounded-sm lg:rounded-tr-[56px] -z-50  opacity-100 '
                 }
               />
             </div>
