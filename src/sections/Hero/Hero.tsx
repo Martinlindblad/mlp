@@ -11,7 +11,7 @@ export default function Hero() {
         loop
         muted
         playsInline
-        className=" bg-cover blur-xl bg-center aspect-4/3 fixed  opacity-30 -z-50"
+        className=" bg-cover blur-md bg-center aspect-4/3 fixed  opacity-30 -z-50"
       >
         <source src="/assets/background2.webm" type="video/webm" />
       </video>

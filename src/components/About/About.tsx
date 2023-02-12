@@ -61,7 +61,7 @@ export default function About() {
             <div className="relative w-full h-full col-span-8">
               <div className="relative p-14 rounded-sm rounded-tl-[56px] flex flex-row   ">
                 <BackgroundAndBorder
-                  customStyle={'rounded-sm rounded-tl-[56px] '}
+                  customStyle={'rounded-sm rounded-tl-[56px] opacity-40 '}
                 />
                 <div className="flex-col flex w-full">
                   <h1
@@ -116,7 +116,7 @@ export default function About() {
 
             <div className="relative p-14  rounded-sm rounded-tr-[56px]  col-span-4">
               <BackgroundAndBorder
-                customStyle={'rounded-sm rounded-tr-[56px] -z-50 '}
+                customStyle={'rounded-sm rounded-tr-[56px] -z-50  opacity-40'}
               />
             </div>
 
@@ -135,14 +135,16 @@ export default function About() {
                 className="h-42  mx-auto md:h-full md:w-42 scale-125"
               />
               {/* <div className="bg-[url('/assets/pb.png')] h-40 w-40  rounded-3xl  " /> */}
-              <BackgroundAndBorder customStyle={'-z-10 opacity-30'} />
+              <BackgroundAndBorder customStyle={'-z-10 opacity-40'} />
             </div>
 
-            <div className="relative p-14  rounded-sm col-span-8">
+            <div className="relative p-14  rounded-sm col-span-8  opacity-40">
               <BackgroundAndBorder customStyle={'rounded-sm'} />
             </div>
             <div className="relative p-14  rounded-b-[56px] col-span-12 ">
-              <BackgroundAndBorder customStyle={'rounded-b-[56px]'} />
+              <BackgroundAndBorder
+                customStyle={'rounded-b-[56px]  opacity-40'}
+              />
               <div className="flex-col flex w-full">
                 <div></div>
               </div>

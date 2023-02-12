@@ -29,6 +29,15 @@ const SocialMediaLink = ({
     };
   }, [index]);
 
+  const whileHover = useMemo(() => {
+    return {
+      whileHover: {
+        scale: 1.05,
+        duration: 1.5,
+      },
+    };
+  }, []);
+
   const renderIcon = useCallback(() => {
     switch (socialmedia.name) {
       case 'Facebook':
@@ -38,8 +47,8 @@ const SocialMediaLink = ({
             shape-rendering="geometricPrecision"
             text-rendering="geometricPrecision"
             image-rendering="optimizeQuality"
-            fill-rule="evenodd"
-            clip-rule="evenodd"
+            fillRule="evenodd"
+            clipRule="evenodd"
             viewBox="0 0 640 640"
             fill="#fff"
             className="w-8 bg-sky-600 p-2 rounded-full "
@@ -66,8 +75,8 @@ const SocialMediaLink = ({
             shape-rendering="geometricPrecision"
             text-rendering="geometricPrecision"
             image-rendering="optimizeQuality"
-            fill-rule="evenodd"
-            clip-rule="evenodd"
+            fillRule="evenodd"
+            clipRule="evenodd"
             className="w-8 bg-sky-200 rounded-full "
           >
             <defs>
@@ -100,14 +109,14 @@ const SocialMediaLink = ({
             shape-rendering="geometricPrecision"
             text-rendering="geometricPrecision"
             image-rendering="optimizeQuality"
-            fill-rule="evenodd"
+            fillRule="evenodd"
             className="w-8   rounded-full "
-            clip-rule="evenodd"
+            clipRule="evenodd"
           >
             <path
               d="M166667 0c46023 0 87690 18655 117851 48816s48816 71828 48816 117851-18655 87690-48816 117851-71828 48816-117851 48816-87690-18655-117851-48816S0 212690 0 166667 18655 78977 48816 48816 120644 0 166667 0zm-18386 141742h26667v13671l386 1c3714-6663 12794-13671 26335-13671 28159-1 33367 17523 33367 40319v46437l-27811 1v-41165c0-9813-204-22446-14460-22446-14481 0-16699 10682-16699 21731v41880h-27786v-86757zm-19280-24100c0 7983-6478 14461-14461 14461-7982 0-14463-6478-14463-14461s6480-14460 14463-14460 14461 6478 14461 14460zm-28924 24100h28924v86757h-28924v-86757zm173218-81703c-27287-27287-64987-44165-106628-44165-41642 0-79341 16878-106628 44165s-44165 64987-44165 106628c0 41642 16878 79341 44165 106628s64987 44165 106628 44165c41642 0 79341-16878 106628-44165s44165-64987 44165-106628c0-41642-16878-79341-44165-106628z"
               fill="#0077b5"
-              fill-rule="nonzero"
+              fillRule="nonzero"
             ></path>
           </svg>
         );
@@ -117,14 +126,17 @@ const SocialMediaLink = ({
     }
   }, [socialmedia.name]);
   return (
-    <Link
-      className="hover:scale-105 ease-in-out transform duration-300 hover:animate-pulse bg-gray-700 p-2 rounded-md"
-      href={socialmedia.link}
+    <AnimatedItem
+      className="rounded-md cursor-pointer"
+      itemVariant={itemVariant}
+      containerProps={whileHover}
     >
-      <AnimatedItem className="overflow-hidden " itemVariant={itemVariant}>
-        {renderIcon()}
-      </AnimatedItem>
-    </Link>
+      <div className="w-10 h-10 bg-gradient-to-tr to-transparent from-sky-900 rounded-full  shadow-sky-900 flex justify-center items-center">
+        <Link className="overflow-hidden" href={socialmedia.link}>
+          {renderIcon()}
+        </Link>
+      </div>
+    </AnimatedItem>
   );
 };
 export default SocialMediaLink;
