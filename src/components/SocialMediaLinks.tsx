@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { SocailMediaLink } from 'src/../types/DBTypes';
-import useSocialMediaLinksQuery from 'src/hooks/useSocialMediaLinksQuery';
 
 import AnimatedContainer from './Layouts/AnimatedContainer';
 import SocialMediaLink from './SocialMediaLink';
+import { SocailMediaLink } from 'src/types/DBTypes';
+import useSocialMediaLinksQuery from '../hooks/useSocialMediaLinksQuery';
 
 const SocialMediaLinks = (): JSX.Element => {
   const { data: SocialMedia } = useSocialMediaLinksQuery();

@@ -1,13 +1,13 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import React, { useCallback, useMemo } from 'react';
-import { PageCardType } from 'src/../types/DBTypes';
-import Colors from 'src/sections/Navigation/Colors';
 import BackgroundAndBorder from './BackgroundAndBorder';
 import AnimatedItem from './Layouts/AnimatedItem';
 import ContactIcon from './SVG/Contact';
 import ExperienceIcon from './SVG/Experience';
 import FrameworksIcon from './SVG/Frameworks';
+import { PageCardType } from 'src/types/DBTypes';
+import Colors from '../sections/Navigation/Colors';
 
 const DevCard = ({
   data,

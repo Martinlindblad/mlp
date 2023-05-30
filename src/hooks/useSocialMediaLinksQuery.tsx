@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useQuery } from 'react-query';
-import { SocailMediaLink } from 'src/../types/DBTypes';
+import { SocailMediaLink } from 'src/types/DBTypes';
 
 const getSocialMediaLinks = () =>
   axios

@@ -1,6 +1,6 @@
 import React from 'react';
-import CaseCarousel from 'src/components/CaseCarousel';
-import Stepper from 'src/components/Stepper';
+import CaseCarousel from 'src/src/components/CaseCarousel';
+import Stepper from 'src/src/components/Stepper';
 
 export default function Cases() {
   return (

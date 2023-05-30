@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useQuery } from 'react-query';
-import { PageCardType } from 'src/../types/DBTypes';
+import { PageCardType } from 'src/types/DBTypes';
 
 const getPageCards = () =>
   axios

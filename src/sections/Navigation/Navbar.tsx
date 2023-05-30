@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useCycle } from 'framer-motion';
-import ThemeButton from 'src/components/ThemeButton';
 import { Navigation } from './Nav';
 import { MenuToggle } from './Toggle';
+import ThemeButton from 'src/src/components/ThemeButton';
 
 export default function Navbar() {
   const sidebar = {

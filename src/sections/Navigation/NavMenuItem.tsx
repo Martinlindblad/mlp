@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import ExperienceIcon from 'src/components/SVG/Experience';
-import HomeIcon from 'src/components/SVG/Home';
-import AboutIcon from 'src/components/SVG/About';
-import FrameworksIcon from 'src/components/SVG/Frameworks';
-import ContactIcon from 'src/components/SVG/Contact';
+import AboutIcon from 'src/src/components/SVG/About';
+import ContactIcon from 'src/src/components/SVG/Contact';
+import ExperienceIcon from 'src/src/components/SVG/Experience';
+import FrameworksIcon from 'src/src/components/SVG/Frameworks';
+import HomeIcon from 'src/src/components/SVG/Home';
 
 interface NavMenuItemProps {
   id: number;

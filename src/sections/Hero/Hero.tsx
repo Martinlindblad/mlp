@@ -1,5 +1,5 @@
 import React from 'react';
-import About from 'src/components/About/About';
+import About from 'src/src/pages/about';
 
 export default function Hero() {
   return (

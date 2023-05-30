@@ -1,7 +1,7 @@
 import Head from 'next/head';
-import Layout from 'src/components/Layouts/Layout';
-import Cases from 'src/sections/Cases/Cases';
-import Hero from 'src/sections/Hero/Hero';
+import Layout from '../components/Layouts/Layout';
+import Cases from '../sections/Cases/Cases';
+import Hero from '../sections/Hero/Hero';
 
 export default function Home() {
   return (

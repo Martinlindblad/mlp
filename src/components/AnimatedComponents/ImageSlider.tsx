@@ -8,7 +8,7 @@ import image3 from 'assets/cm.jpg';
 
 type CarouselItem = {
   position: number;
-  el: HTMLElement | null;
+  el: HTMLElement;
 };
 
 const ImageSlider = () => {
@@ -16,19 +16,19 @@ const ImageSlider = () => {
     const items: CarouselItem[] = [
       {
         position: 0,
-        el: document.getElementById('carousel-item-1'),
+        el: document.getElementById('carousel-item-1') as HTMLElement,
       },
       {
         position: 1,
-        el: document.getElementById('carousel-item-2'),
+        el: document.getElementById('carousel-item-2') as HTMLElement,
       },
       {
         position: 2,
-        el: document.getElementById('carousel-item-3'),
+        el: document.getElementById('carousel-item-3') as HTMLElement,
       },
       {
         position: 3,
-        el: document.getElementById('carousel-item-4'),
+        el: document.getElementById('carousel-item-4') as HTMLElement,
       },
     ].filter((item) => item.el !== null);
 

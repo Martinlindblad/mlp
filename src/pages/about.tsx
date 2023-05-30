@@ -1,6 +1,6 @@
 import React from 'react';
-import AnimatedFadeInContainer from 'src/components/Layouts/AnimatedFadeInContainer';
-import Layout from 'src/components/Layouts/Layout';
+import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
+import Layout from '../components/Layouts/Layout';
 
 const About = (): JSX.Element => {
   return (

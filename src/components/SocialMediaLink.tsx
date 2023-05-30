@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import React, { useCallback, useMemo } from 'react';
-import { SocailMediaLink } from 'src/../types/DBTypes';
 import AnimatedItem from './Layouts/AnimatedItem';
+import { SocailMediaLink } from 'src/types/DBTypes';
 
 const SocialMediaLink = ({
   socialmedia,

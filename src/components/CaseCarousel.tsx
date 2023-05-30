@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useMemo, useState } from 'react';
-import useWindowDimensions from 'src/hooks/useWindowDimensions';
 import CaseItem from './CaseItem';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
+import useWindowDimensions from '../hooks/useWindowDimensions';
 
 export default function CaseCarousel() {
   const [[page, direction], setPage] = useState([0, 0]);
