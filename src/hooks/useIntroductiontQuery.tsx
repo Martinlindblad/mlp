@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useQuery } from 'react-query';
-import { AboutType } from 'src/../types/DBTypes';
+import { AboutType } from 'src/types/DBTypes';
 
 const getAboutData = () =>
   axios
@@ -14,8 +14,8 @@ const getAboutData = () =>
     })
     .catch((err: unknown) => console.log(err));
 
-const useAboutQuery = () => {
+const useIntroductionQuery = () => {
   return useQuery(['getAboutData'], () => getAboutData());
 };
 
-export default useAboutQuery;
+export default useIntroductionQuery;

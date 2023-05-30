@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 
-import useIntroductionQuery from 'src/hooks/useAboutQuery';
 import Skills from '../../sections/Skills';
 import PageLoader from '../AnimatedComponents/PageLoader';
 import AnimatedContainer from '../Layouts/AnimatedContainer';
@@ -12,6 +11,7 @@ import Avatar from '../Profile/Avatar';
 import SocialMediaLinks from '../SocialMediaLinks';
 import Stepper from '../Stepper';
 import dynamic from 'next/dynamic';
+import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
 
 const DynamicImageSlider = dynamic(
   () => import('../AnimatedComponents/ImageSlider'),

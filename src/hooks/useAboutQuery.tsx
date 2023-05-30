@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useQuery } from 'react-query';
-import { AboutType } from 'src/../types/DBTypes';
+import { AboutType } from 'src/types/DBTypes';
 
 const getAboutData = () =>
   axios
