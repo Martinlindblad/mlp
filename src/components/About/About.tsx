@@ -122,7 +122,7 @@ export default function About() {
               </div>
             </div>
 
-            <div className="relative bg-white w-full h-full lg:col-span-4  col-span-4  ">
+            <div className="relative bg-transparent w-full h-full lg:col-span-4  col-span-4  ">
               <DynamicImageSlider />
             </div>
           </AnimatedFadeInContainer>

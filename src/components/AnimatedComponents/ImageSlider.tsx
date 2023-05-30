@@ -1,6 +1,6 @@
-import { Carousel } from 'flowbite';
+import { Carousel, CarouselOptions } from 'flowbite';
 import Image from 'next/image';
-import React, { useEffect } from 'react';
+import React, { useLayoutEffect, useMemo } from 'react';
 
 import image from 'assets/porche.jpg';
 import image2 from 'assets/beach.jpg';
@@ -12,7 +12,27 @@ type CarouselItem = {
 };
 
 const ImageSlider = () => {
-  useEffect(() => {
+  const imageSlides = useMemo(() => {
+    return [
+      {
+        src: image,
+        alt: 'porche',
+      },
+      {
+        src: image2,
+        alt: 'beach',
+      },
+      {
+        src: image3,
+        alt: 'cm',
+      },
+      {
+        src: image3,
+        alt: 'cm',
+      },
+    ];
+  }, []);
+  useLayoutEffect(() => {
     const items: CarouselItem[] = [
       {
         position: 0,
@@ -32,9 +52,9 @@ const ImageSlider = () => {
       },
     ].filter((item) => item.el !== null);
 
-    const options = {
+    const options: CarouselOptions = {
+      interval: 3000,
       defaultPosition: 1,
-      interval: 10000,
     };
     const carousel = new Carousel(items, options);
     carousel.cycle();
@@ -48,50 +68,25 @@ const ImageSlider = () => {
     >
       <div className="relative w-full">
         <div className="relative h-56 overflow-hidden rounded-lg sm:h-64 xl:h-80 2xl:h-96">
-          <div
-            id="carousel-item-1"
-            className="hidden duration-700 ease-in-out"
-            data-carousel-item
-          >
-            <Image
-              src={image}
-              className="absolute block w-full -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
-              alt="..."
-            />
-          </div>
-          <div
-            id="carousel-item-2"
-            className="hidden duration-700 ease-in-out"
-            data-carousel-item
-          >
-            <Image
-              src={image2}
-              className="absolute block w-full -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
-              alt="..."
-            />
-          </div>
-          <div
-            id="carousel-item-3"
-            className="hidden duration-700 ease-in-out"
-            data-carousel-item
-          >
-            <Image
-              src={image3}
-              className="absolute block w-full -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
-              alt="..."
-            />
-          </div>
-          <div
-            id="carousel-item-4"
-            className="hidden duration-700 ease-in-out"
-            data-carousel-item
-          >
-            <Image
-              src={image}
-              className="absolute block w-full -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
-              alt="..."
-            />
-          </div>
+          {imageSlides.map((item, index) => {
+            return (
+              <div
+                id={`carousel-item-${index + 1}`}
+                className="hidden duration-700 ease-in-out"
+                data-carousel-item
+                key={`carousel-item-${index}`}
+              >
+                <Image
+                  src={item.src}
+                  alt={item.alt}
+                  className="absolute block w-full -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
+                  layout="fill"
+                  objectFit="cover"
+                  objectPosition="center"
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
