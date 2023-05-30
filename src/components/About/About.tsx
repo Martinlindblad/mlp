@@ -11,7 +11,12 @@ import Avatar from '../Profile/Avatar';
 
 import SocialMediaLinks from '../SocialMediaLinks';
 import Stepper from '../Stepper';
-import ImageSlider from '../AnimatedComponents/ImageSlider';
+import dynamic from 'next/dynamic';
+
+const DynamicImageSlider = dynamic(
+  () => import('../AnimatedComponents/ImageSlider'),
+  { ssr: false },
+);
 
 export default function About() {
   const { data: aboutData, isLoading } = useIntroductionQuery();
@@ -118,7 +123,7 @@ export default function About() {
             </div>
 
             <div className="relative bg-white w-full h-full lg:col-span-4  col-span-4  ">
-              <ImageSlider />
+              <DynamicImageSlider />
             </div>
           </AnimatedFadeInContainer>
         </div>
