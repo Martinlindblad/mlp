@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import React from 'react';
 import Image from 'next/image';
-import image from '/images/profilepicture.webp';
 
 const AboutCard = (): JSX.Element => {
   return (
@@ -16,8 +15,10 @@ const AboutCard = (): JSX.Element => {
         <div className="mx-auto  rounded-full lg:w-28 lg:h-28 w-24 h-24 overflow-hidden relative ">
           <Image
             className="h-18 lg:w-32 lg:bottom-3 bottom-2 px-3  scale-125 absolute"
-            src={image}
+            src={'/images/profilepicture.webp'}
             alt="Carl Martins Logo"
+            width={20}
+            height={20}
           />
         </div>
       </Link>
