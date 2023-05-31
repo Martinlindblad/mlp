@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Props } from 'next/script';
 import React from 'react';
 import Image from 'next/image';
-import imaginecare from '/public/Cases/imaginecare.webp';
 
 type CaseItemProp = {
   title: string;
@@ -61,7 +60,9 @@ export default function CaseItem({
       <div className="pointer-events-none">
         <Image
           className="object-scale-down xl:max-w-2xl mt-10 md:max-w-sm "
-          src={imaginecare}
+          src={'/images/Cases/imaginecare.webp'}
+          width={500}
+          height={500}
           alt="Carl Martins Logo"
         />
       </div>

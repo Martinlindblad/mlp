@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import React from 'react';
 import Image from 'next/image';
-import image from '/public/Images/profilepicture.webp';
+import image from '/images/profilepicture.webp';
 
 const AboutCard = (): JSX.Element => {
   return (

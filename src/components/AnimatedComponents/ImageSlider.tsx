@@ -2,10 +2,6 @@ import { Carousel, CarouselOptions } from 'flowbite';
 import Image from 'next/image';
 import React, { useLayoutEffect, useMemo } from 'react';
 
-import image from '/public/Images/porche.webp';
-import image2 from '/public/Images/beach.webp';
-import image3 from '/public/Images/cm.webp';
-
 type CarouselItem = {
   position: number;
   el: HTMLElement;
@@ -15,19 +11,19 @@ const ImageSlider = () => {
   const imageSlides = useMemo(() => {
     return [
       {
-        src: image,
+        src: '/images/porche.webp',
         alt: 'porche',
       },
       {
-        src: image2,
+        src: '/images/beach.webp',
         alt: 'beach',
       },
       {
-        src: image3,
+        src: '/images/porche.webp',
         alt: 'cm',
       },
       {
-        src: image3,
+        src: '/images/beach.webp',
         alt: 'cm',
       },
     ];
@@ -80,6 +76,8 @@ const ImageSlider = () => {
                   className="object-scale-down xl:max-w-2xl mt-10 md:max-w-sm "
                   src={item.src}
                   alt={item.alt}
+                  height={144} // Desired size with correct aspect ratio
+                  width={144} //
                 />
               </div>
             );
