@@ -62,7 +62,7 @@ export default function About() {
     <PageLoader />
   ) : (
     <main className="container ">
-      <div className="w-full h-4/6 mb-42 py-32 flex-col ">
+      <div className="w-full h-4/6 mb-18 py-52 flex-col  ">
         <div
           style={{ boxShadow: '0px 0px 2px #b8c1ec' }}
           className="w-full rounded-2xl flex justify-center items-center relative"
@@ -72,7 +72,7 @@ export default function About() {
               <div className="flex-col flex w-full px-20 py-10 ">
                 {/* <BackgroundAndBorder customStyle="opacity-5 rounded-l-2xl  " /> */}
 
-                <div className="pb-10 flex flex-row justify-start items-start ">
+                <div className=" flex flex-row justify-start items-start ">
                   <Avatar />
                   <h2 className="text-lg font-extrabold  lg:text-sm  md:text-xl pl-4">
                     <p>Welcome, {"I'm a"}</p>

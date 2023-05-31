@@ -57,27 +57,22 @@ const ImageSlider = () => {
   }, []);
 
   return (
-    <div
-      id="controls-carousel"
-      className="relative w-full"
-      data-carousel="slide"
-    >
+    <div id="controls-carousel" className="w-full " data-carousel="slide">
       <div className="relative w-full">
-        <div className="relative h-56 overflow-hidden rounded-lg sm:h-64 xl:h-80 2xl:h-96">
+        <div className="relative h-96 overflow-hidden object-fill rounded-r-lg">
           {imageSlides.map((item, index) => {
             return (
               <div
                 id={`carousel-item-${index + 1}`}
-                className="hidden duration-700 ease-in-out"
+                className="hidden duration-700 ease-in-out "
                 data-carousel-item
                 key={`carousel-item-${index}`}
               >
                 <Image
-                  className="object-scale-down xl:max-w-2xl mt-10 md:max-w-sm "
+                  className=" w-full h-full object-cover "
                   src={item.src}
                   alt={item.alt}
-                  height={144} // Desired size with correct aspect ratio
-                  width={144} //
+                  fill={true}
                 />
               </div>
             );
