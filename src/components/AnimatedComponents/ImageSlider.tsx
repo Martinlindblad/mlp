@@ -2,9 +2,9 @@ import { Carousel, CarouselOptions } from 'flowbite';
 import Image from 'next/image';
 import React, { useLayoutEffect, useMemo } from 'react';
 
-import image from 'assets/porche.jpg';
-import image2 from 'assets/beach.jpg';
-import image3 from 'assets/cm.jpg';
+import image from 'public/porche.webp';
+import image2 from 'public/beach.webp';
+import image3 from 'public/cm.webp';
 
 type CarouselItem = {
   position: number;
