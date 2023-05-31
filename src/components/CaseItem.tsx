@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Props } from 'next/script';
 import React from 'react';
 import Image from 'next/image';
-import imaginecare from 'public/Cases/imaginecare.webp';
+import imaginecare from '/public/Cases/imaginecare.webp';
 
 type CaseItemProp = {
   title: string;

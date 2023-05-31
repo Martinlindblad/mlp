@@ -2,9 +2,9 @@ import { Carousel, CarouselOptions } from 'flowbite';
 import Image from 'next/image';
 import React, { useLayoutEffect, useMemo } from 'react';
 
-import image from 'public/porche.webp';
-import image2 from 'public/beach.webp';
-import image3 from 'public/cm.webp';
+import image from '/public/Images/porche.webp';
+import image2 from '/public/Images/beach.webp';
+import image3 from '/public/Images/cm.webp';
 
 type CarouselItem = {
   position: number;
@@ -77,12 +77,9 @@ const ImageSlider = () => {
                 key={`carousel-item-${index}`}
               >
                 <Image
+                  className="object-scale-down xl:max-w-2xl mt-10 md:max-w-sm "
                   src={item.src}
                   alt={item.alt}
-                  className="absolute block w-full -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
-                  layout="fill"
-                  objectFit="cover"
-                  objectPosition="center"
                 />
               </div>
             );

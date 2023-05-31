@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function Collection() {
   return (
-    <div className=" bg-[public/wallpaper.webp] bg-cover w-full relative">
+    <div className=" bg-[/public/Images/wallpaper.webp] bg-cover w-full relative">
       <div className="p-10 col-span-3">
         <div className="py-1 ">
           <p className="text-white fw-">About me</p>
