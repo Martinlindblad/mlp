@@ -13,18 +13,22 @@ const ImageSlider = () => {
       {
         src: '/images/porche.webp',
         alt: 'porche',
+        bannerTitle: 'Problem-solving mindset',
       },
       {
         src: '/images/beach.webp',
         alt: 'beach',
+        bannerTitle: 'Continuous learning journey',
       },
       {
         src: '/images/porche.webp',
         alt: 'cm',
+        bannerTitle: 'Learn, practice, master.',
       },
       {
         src: '/images/beach.webp',
         alt: 'cm',
+        bannerTitle: 'Eat, Sleep, Code, Repeat.',
       },
     ];
   }, []);
@@ -49,17 +53,17 @@ const ImageSlider = () => {
     ].filter((item) => item.el !== null);
 
     const options: CarouselOptions = {
-      interval: 3000,
-      defaultPosition: 1,
+      interval: 5000,
+      defaultPosition: 0,
     };
     const carousel = new Carousel(items, options);
-    carousel.cycle();
+    return carousel.cycle();
   }, []);
 
   return (
-    <div id="controls-carousel" className="w-full " data-carousel="slide">
-      <div className="relative w-full">
-        <div className="relative h-96 overflow-hidden object-fill rounded-r-lg">
+    <div id="controls-carousel" className="w-full h-full" data-carousel="slide">
+      <div className="relative w-full h-full">
+        <div className="relative h-full overflow-hidden object-fill">
           {imageSlides.map((item, index) => {
             return (
               <div
@@ -74,6 +78,13 @@ const ImageSlider = () => {
                   alt={item.alt}
                   fill={true}
                 />
+                <div className="items-center flex justify-center absolute h-20 right-0 left-0 bg-black ">
+                  <h2>
+                    <span className="text-4xl font-bold text-white">
+                      {item.bannerTitle}
+                    </span>
+                  </h2>
+                </div>
               </div>
             );
           })}

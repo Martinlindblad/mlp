@@ -1,12 +1,18 @@
 import { motion, useInView } from 'framer-motion';
-import { Props } from 'next/script';
 import { useMemo, useRef } from 'react';
+import { FadeInAnimationType } from 'src/types/Animations';
 
-const AnimatedFadeInContainer: React.FC<Props> = ({
+type ContainerType = {
+  children: React.ReactNode;
+  className?: string;
+  type?: FadeInAnimationType;
+};
+
+const AnimatedFadeInContainer = ({
   children,
   className,
   type,
-}) => {
+}: ContainerType) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const isInView = useInView(ref);
 

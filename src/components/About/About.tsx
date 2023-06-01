@@ -62,17 +62,20 @@ export default function About() {
     <PageLoader />
   ) : (
     <main className="container ">
-      <div className="w-full h-4/6 mb-18 py-52 flex-col  ">
+      <div className="w-full h-screen mb-18 py-52 flex-col  ">
         <div
-          style={{ boxShadow: '0px 0px 2px #b8c1ec' }}
-          className="w-full rounded-2xl flex justify-center items-center relative"
+          // style={{ boxShadow: '0px 0px 2px #b8c1ec' }}
+          className="w-full h-full rounded-2xl flex justify-center items-center relative"
         >
-          <AnimatedFadeInContainer className="grid grid-cols-12 w-full h-full ">
-            <div className="relative w-full h-full lg:col-span-8  col-span-12  ">
-              <div className="flex-col flex w-full px-20 py-10 ">
+          <AnimatedFadeInContainer
+            type="FadeInBottom"
+            className="grid grid-cols-12 w-full h-full "
+          >
+            <div className="relative w-full h-full lg:col-span-6  col-span-12  ">
+              <div className="flex-col flex w-full pl-20 py-10 justify-center align-center bg-slate-700 h-full">
                 {/* <BackgroundAndBorder customStyle="opacity-5 rounded-l-2xl  " /> */}
 
-                <div className=" flex flex-row justify-start items-start ">
+                <div className=" pb-2 flex flex-row justify-start items-start ">
                   <Avatar />
                   <h2 className="text-lg font-extrabold  lg:text-sm  md:text-xl pl-4">
                     <p>Welcome, {"I'm a"}</p>
@@ -122,16 +125,16 @@ export default function About() {
               </div>
             </div>
 
-            <div className="relative bg-transparent w-full h-full lg:col-span-4  col-span-4  ">
+            <div className="relative bg-transparent w-full h-full lg:col-span-6  col-span-4  ">
               <DynamicImageSlider />
             </div>
           </AnimatedFadeInContainer>
         </div>
       </div>
 
-      <div className="w-full">
+      <div className="w-full h-screen flex align-center justify-center flex-col">
         <Stepper step={1} stepperTitle={'My Journey'} />
-        <AnimatedFadeInContainer>
+        <AnimatedFadeInContainer className="pt-28">
           <Skills />
         </AnimatedFadeInContainer>
       </div>
