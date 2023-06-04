@@ -78,6 +78,7 @@ const ImageSlider = () => {
                   alt={item.alt}
                   fill={true}
                 />
+
                 <div className="items-center flex justify-center absolute h-20 right-0 left-0 bg-black ">
                   <h2>
                     <span className="text-4xl font-bold text-white">
