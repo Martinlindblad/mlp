@@ -129,7 +129,7 @@ export default function About() {
 
       <div className="w-full  flex align-center justify-center flex-col pt-64 sm:pt-16 ">
         <Stepper step={1} stepperTitle={'My Journey'} />
-        <AnimatedFadeInContainer className="">
+        <AnimatedFadeInContainer className="px-4">
           <Skills />
         </AnimatedFadeInContainer>
       </div>
