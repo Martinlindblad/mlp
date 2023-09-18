@@ -152,16 +152,16 @@
     }
     25% {
       color: #080808;
-      text-shadow: 0 0 50px rgb(253 246 178);
+      text-shadow: 0 0 50px 'white';
       transform: scale(1.1);
     }
     50% {
-      color: rgb(253 246 178);
+      color: 'white';
       text-shadow: 0 0 50px #e3a008;
       transform: scale(1);
     }
     100% {
-      color: rgb(253 246 178);
+      color: 'white';
       text-shadow: 0 0 50px #080808;
       transform: scale(1);
     }

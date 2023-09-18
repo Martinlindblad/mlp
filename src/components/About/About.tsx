@@ -73,7 +73,7 @@ export default function About() {
                 <div className=" pb-2 flex flex-row justify-start items-start ">
                   <Avatar />
                   <h2 className="text-lg font-extrabold  lg:text-sm  md:text-xl pl-4">
-                    <p>Welcome, {"I'm a"}</p>
+                    <p>Hi!, {"I'm a"}</p>
                     <span className="opacity-30">{aboutData?.title}</span>
                   </h2>
                 </div>
