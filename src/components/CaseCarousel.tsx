@@ -3,28 +3,21 @@ import React, { useCallback, useMemo, useState } from 'react';
 import CaseItem from './CaseItem';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 import useWindowDimensions from '../hooks/useWindowDimensions';
+import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
+import { ProjectsAndCases } from 'src/types/DBTypes';
+import PageLoader from './AnimatedComponents/PageLoader';
 
 export default function CaseCarousel() {
   const [[page, direction], setPage] = useState([0, 0]);
 
   const { width } = useWindowDimensions();
 
+  const { data, isLoading } = useProjectsAndCasesQuery();
+
   const items = useMemo(() => {
-    return [
-      {
-        title: 'ImagineCare',
-        description: 'One of the most intresting projects Ive worked on',
-      },
-      {
-        title: 'Project x',
-        description: 'A very cool project Ive been working on',
-      },
-      {
-        title: 'Project x',
-        description: 'A very cool project Ive been working on',
-      },
-    ];
-  }, []);
+    if (!data) return [];
+    return data?.filter((item: ProjectsAndCases) => item != null);
+  }, [data]);
 
   const swipeConfidenceThreshold = width;
   const swipePower = (offset: number, velocity: number) => {
@@ -72,9 +65,11 @@ export default function CaseCarousel() {
     [items.length, page, paginate],
   );
 
-  return (
+  return isLoading || !items ? (
+    <PageLoader />
+  ) : (
     <AnimatedFadeInContainer className="h-full align-center justify-center self-center flex">
-      <div className="relative w-full h-full flex justify-center  w-5/6 items-center overflow-hidden  bg-gray-900">
+      <div className="relative h-full flex justify-center  w-5/6 items-center overflow-hidden  bg-gray-900">
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
             className="w-full top-20 absolute"
@@ -105,11 +100,12 @@ export default function CaseCarousel() {
             <CaseItem
               title={items[page].title}
               description={items[page].description}
+              imageSource={items[page].imageSource}
             />
           </motion.div>
         </AnimatePresence>
       </div>
-      <div className="absolute bottom-20 xl:bottom-40  w-full z-50 flex items-center justify-center ">
+      <div className="absolute bottom-20 xl:bottom-20  w-full z-50 flex items-center justify-center ">
         <div className="justify-between flex items-center ">
           <div className="flex flex-col items-center">
             <span className="text-sm text-gray-700 dark:text-gray-400">

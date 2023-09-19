@@ -39,3 +39,9 @@ export interface SocailMediaLink {
   name: 'Facebook' | 'Instagram' | 'LinkedIn' | 'Github';
   link: string;
 }
+export interface ProjectsAndCases {
+  _id: ObjectId;
+  title: string;
+  description: string;
+  imageSource: string;
+}

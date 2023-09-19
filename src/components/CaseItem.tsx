@@ -8,11 +8,13 @@ import Image from 'next/image';
 type CaseItemProp = {
   title: string;
   description: string;
+  imageSource: string;
 };
 
 export default function CaseItem({
   title,
   description,
+  imageSource,
 }: CaseItemProp & Props): JSX.Element {
   return (
     <motion.div className="flex justify-center items-center flex-col xl:flex-row md:flex-row w-4/6 mx-auto lg:py-0 h-full">
@@ -59,8 +61,8 @@ export default function CaseItem({
       </div>
       <div className="pointer-events-none">
         <Image
-          className="object-scale-down xl:max-w-2xl mt-10 md:max-w-sm "
-          src={'/images/Cases/imaginecare.webp'}
+          className="object-scale-down xl:max-w-2xl mt-10 md:max-w-sm  aspect-4/3"
+          src={imageSource}
           width={500}
           height={500}
           alt="Carl Martins Logo"
