@@ -109,7 +109,7 @@ export default function CaseCarousel() {
           </motion.div>
         </AnimatePresence>
       </div>
-      <div className="absolute bottom-20 xl:bottom-80  w-full z-50 flex items-center justify-center ">
+      <div className="absolute bottom-20 xl:bottom-40  w-full z-50 flex items-center justify-center ">
         <div className="justify-between flex items-center ">
           <div className="flex flex-col items-center">
             <span className="text-sm text-gray-700 dark:text-gray-400">
