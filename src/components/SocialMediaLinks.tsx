@@ -30,7 +30,7 @@ const SocialMediaLinks = (): JSX.Element => {
     <AnimatedContainer
       key={'socialmediaContainer'}
       containerVariant={container}
-      className="flex items-end py-4 w-1/3 justify-between"
+      className="flex items-end py-4 justify-start"
     >
       {SocialMediaData.map((item, index) => {
         return (

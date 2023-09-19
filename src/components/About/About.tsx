@@ -61,12 +61,12 @@ export default function About() {
   return isLoading || !mounted ? (
     <PageLoader />
   ) : (
-    <main className="lg:container pt-32 lg:pt-0">
+    <main className="lg:container pt-32 lg:pt-0 ">
       <div className="w-full lg:h-screen mb-18 lg:py-52 flex-col">
         <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
           <AnimatedFadeInContainer
             type="FadeInBottom"
-            className="grid grid-cols-12 w-full h-full "
+            className="grid grid-cols-12 w-full h-4/6 "
           >
             <div className="relative w-full h-full lg:col-span-6 col-span-12  ">
               <div className="flex-col flex w-full pl-20 py-10 justify-center align-center bg-slate-700 h-full">
@@ -127,9 +127,9 @@ export default function About() {
         </div>
       </div>
 
-      <div className="w-full  flex align-center justify-center flex-col pt-64 sm:pt-16 ">
+      <div className="w-full flex align-center justify-center flex-col  sm:pt-16 ">
         <Stepper step={1} stepperTitle={'My Journey'} />
-        <AnimatedFadeInContainer className="px-4">
+        <AnimatedFadeInContainer className="px-4 pt-64">
           <Skills />
         </AnimatedFadeInContainer>
       </div>

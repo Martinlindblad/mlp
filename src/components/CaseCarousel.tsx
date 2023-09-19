@@ -73,11 +73,11 @@ export default function CaseCarousel() {
   );
 
   return (
-    <AnimatedFadeInContainer className="h-full w-full">
-      <div className="relative w-full h-full flex justify-center  items-center overflow-hidden  bg-gray-900">
+    <AnimatedFadeInContainer className="h-full align-center justify-center self-center flex">
+      <div className="relative w-full h-full flex justify-center  w-5/6 items-center overflow-hidden  bg-gray-900">
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
-            className="w-full top-20 absolute h-96"
+            className="w-full top-20 absolute"
             key={page}
             custom={direction}
             variants={variants}
@@ -109,7 +109,7 @@ export default function CaseCarousel() {
           </motion.div>
         </AnimatePresence>
       </div>
-      <div className="absolute bottom-20 xl:bottom-10  w-full z-50 h-20 flex items-center justify-center ">
+      <div className="absolute bottom-20 xl:bottom-80  w-full z-50 flex items-center justify-center ">
         <div className="justify-between flex items-center ">
           <div className="flex flex-col items-center">
             <span className="text-sm text-gray-700 dark:text-gray-400">

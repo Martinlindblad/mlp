@@ -14,8 +14,8 @@ const SocialMediaLink = ({
     return {
       hidden: {
         opacity: 0,
-        y: -40,
-        x: -30,
+        y: -10,
+        x: -2,
       },
       visible: {
         opacity: 1,
@@ -23,7 +23,7 @@ const SocialMediaLink = ({
         y: 0,
         transition: {
           delay: index * 0.4,
-          duration: 0.5,
+          duration: 0.3,
         },
       },
     };
@@ -87,7 +87,7 @@ const SocialMediaLink = ({
 
   return (
     <AnimatedItem
-      className="rounded-md realative cursor-pointer"
+      className="rounded-md realative cursor-pointer p-1"
       itemVariant={itemVariant}
       containerProps={whileHover}
     >
