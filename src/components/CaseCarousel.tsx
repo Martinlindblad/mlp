@@ -69,7 +69,7 @@ export default function CaseCarousel() {
     <PageLoader />
   ) : (
     <AnimatedFadeInContainer className="h-full align-center justify-center self-center flex">
-      <div className="relative h-full flex justify-center  w-5/6 items-center overflow-hidden  bg-gray-900">
+      <div className="relative h-full flex justify-center w-full md:w-5/6 items-center overflow-hidden  bg-gray-900">
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
             className="w-full top-20 absolute"
