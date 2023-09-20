@@ -69,7 +69,7 @@ export default function CaseCarousel() {
     <PageLoader />
   ) : (
     <AnimatedFadeInContainer className="h-full align-center justify-center self-center flex">
-      <div className="relative h-full flex justify-center w-full md:w-5/6 items-center overflow-hidden  bg-gray-900">
+      <div className="relative h-full flex justify-center w-full md:w-5/6 items-center overflow-hidden dark:bg-gray-900  bg-gray-200">
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
             className="w-full top-20 absolute"
@@ -86,7 +86,7 @@ export default function CaseCarousel() {
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragTransition={{ bounceStiffness: 300, bounceDamping: 14 }}
-            dragElastic={1}
+            dragElastic={0.6}
             onDragEnd={(e: any, { offset, velocity }: any) => {
               const swipe = swipePower(offset.x, velocity.x);
 
@@ -105,7 +105,7 @@ export default function CaseCarousel() {
           </motion.div>
         </AnimatePresence>
       </div>
-      <div className="absolute bottom-20 xl:bottom-20  w-full z-50 flex items-center justify-center ">
+      <div className="absolute bottom-10 xl:bottom-6  w-full z-50 flex items-center justify-center ">
         <div className="justify-between flex items-center ">
           <div className="flex flex-col items-center">
             <span className="text-sm text-gray-700 dark:text-gray-400">
@@ -122,7 +122,10 @@ export default function CaseCarousel() {
             <div className="inline-flex mt-2 xs:mt-0">
               <button
                 onClick={() => handlePagination('prev')}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-l hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                className={`
+                ${page === 0 && 'opacity-50 cursor-not-allowed'}
+                inline-flex items-center px-4 py-2 text-sm font-medium text-white
+                bg-gray-800 border-0 border-l border-gray-700 rounded-l hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white`}
               >
                 <svg
                   aria-hidden="true"
@@ -141,7 +144,10 @@ export default function CaseCarousel() {
               </button>
               <button
                 onClick={() => handlePagination('next')}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-800 border-0 border-l border-gray-700 rounded-r hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                className={`
+                ${page === items.length - 1 && 'opacity-50 cursor-not-allowed'}
+                inline-flex items-center px-4 py-2 text-sm font-medium text-white
+                bg-gray-800 border-0 border-l border-gray-700 rounded-r hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white`}
               >
                 Next
                 <svg

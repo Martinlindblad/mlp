@@ -213,9 +213,12 @@
   }
 
   .gradientContainer {
+    background: linear-gradient(-45deg, #243b55, #cbd5e1, #243b55);
+    background-size: 400% 400%;
+  }
+  .gradientContainerDarkMode {
     background: linear-gradient(-45deg, #b92b27, #243b55, #b92b27);
     background-size: 400% 400%;
-    height: 100vh;
   }
   @keyframes gradient {
     0% {

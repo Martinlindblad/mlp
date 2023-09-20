@@ -60,12 +60,12 @@ const DevCard = ({
       containerProps={whileHover}
       className={`cursor-pointer  relative  rounded-2xl p-1 2xl:h-64 2xl:w-96`}
     >
-      <BackgroundAndBorder customStyle=" rounded-2xl opacity-40" />
+      <BackgroundAndBorder customStyle="rounded-2xl opacity-40 dark:bg-transparent bg-slate-300" />
       <Link
         className="relative rounded-2xl h-full w-full flex first-letter dark:bg-transparent bg-transparent overflow-hidden"
         href={data.link}
       >
-        <div className="flex flex-col  w-full py-6 leading-normal backdrop-blur-xl  px-8">
+        <div className="flex flex-col  w-full py-6 leading-normal backdrop-blur-lg  px-8">
           <div
             style={{
               backgroundColor: Colors[(index + 3) as keyof typeof Colors],

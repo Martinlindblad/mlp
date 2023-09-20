@@ -69,7 +69,7 @@ export default function About() {
             className="grid grid-cols-12 w-full h-4/6 "
           >
             <div className="relative w-full h-full lg:col-span-6 col-span-12">
-              <div className="flex-col flex w-full pl-2 md:pl-20 py-10 justify-center align-center bg-slate-700 h-full">
+              <div className="flex-col flex w-full pl-4 md:pl-20 py-10 justify-center align-center dark:bg-slate-700 bg-slate-300 h-full">
                 <div className=" pb-2 flex flex-row justify-start items-start ">
                   <Avatar />
                   <h2 className="text-lg font-extrabold  lg:text-sm  md:text-xl pl-4">

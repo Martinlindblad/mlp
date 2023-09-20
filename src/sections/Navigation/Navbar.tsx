@@ -40,7 +40,7 @@ export default function Navbar() {
       >
         <motion.div
           key="sidebar"
-          className="absolute top-0 right-0 bottom-0 w-full rounded-sm gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-90"
+          className="absolute top-0 right-0 bottom-0 w-full rounded-sm dark:gradientContainerDarkMode gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-90"
           variants={sidebar}
         />
         <div className={`${isOpen ? '' : 'pointer-events-none'}`}>
@@ -48,7 +48,11 @@ export default function Navbar() {
         </div>
       </motion.nav>
 
-      <ThemeButton incomingClassName="absolute scale-100 top-6 z-50 p-2 left-12  justify-center items-center bottom-0 w-full " />
+      <div className="outline-none cursor-pointer fixed top-5 left-10 h-14  rounded-full bg-transparent z-50">
+        <div className="relative">
+          <ThemeButton incomingClassName="" />
+        </div>
+      </div>
       <MenuToggle isOpen={isOpen} toggle={() => toggleOpen()} />
     </AnimatePresence>
   );

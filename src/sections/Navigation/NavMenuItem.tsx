@@ -69,7 +69,7 @@ export const NavMenuItem: React.FC<NavMenuItemProps> = ({ id, text, path }) => {
       </div>
 
       <Link
-        className="p-3 flex-1  justify-center flex rounded-full"
+        className="p-3 flex-1  justify-center flex rounded-full "
         style={style}
         href={path}
       >

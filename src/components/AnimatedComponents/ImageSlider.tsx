@@ -79,7 +79,7 @@ const ImageSlider = () => {
                   fill={true}
                 />
 
-                <div className="items-center pl-2 flex justify-center absolute h-20 right-0 left-0 bg-black ">
+                <div className="items-center pl-4 flex justify-center absolute h-20 right-0 left-0 bg-black ">
                   <h2>
                     <span className="text-4xl font-bold text-white">
                       {item.bannerTitle}

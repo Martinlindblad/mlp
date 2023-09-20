@@ -30,7 +30,7 @@ const PageLoader = (): JSX.Element => {
   };
 
   return (
-    <div className="w-full h-full flex fixed z-50 justify-center items-center dark:bg-gray-900 bg-blue-200">
+    <div className="w-full h-full flex fixed z-50 justify-center items-center dark:bg-gray-900 bg-slate-100">
       <motion.div
         variants={loadingContainerVariants}
         initial="start"
@@ -38,17 +38,17 @@ const PageLoader = (): JSX.Element => {
         className="w-20 h-20 flex justify-around"
       >
         <motion.span
-          className="w-5 h-5 bg-gray-900 dark:bg-blue-100 rounded-full"
+          className="w-5 h-5 bg-gray-900 dark:bg-slate-100 rounded-full"
           variants={loadingCircleVariants}
           transition={loadingCircleTransition}
         />
         <motion.span
-          className="w-5 h-5 bg-gray-900 dark:bg-blue-100 rounded-full"
+          className="w-5 h-5 bg-gray-900 dark:bg-slate-100 rounded-full"
           variants={loadingCircleVariants}
           transition={loadingCircleTransition}
         />
         <motion.span
-          className="w-5 h-5 bg-gray-900 dark:bg-blue-100 rounded-full"
+          className="w-5 h-5 bg-gray-900 dark:bg-slate-100 rounded-full"
           variants={loadingCircleVariants}
           transition={loadingCircleTransition}
         />

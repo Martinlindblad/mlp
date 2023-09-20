@@ -10,7 +10,7 @@ export const MenuToggle = ({
   <button
     onClick={toggle}
     role="button"
-    className="outline-none cursor-pointer fixed top-5 right-10 h-14  rounded-full bg-transparent z-50  p-4 gradientContainer animate-[gradient_16s_ease-in-out_infinite]"
+    className="outline-none cursor-pointer fixed top-5 right-10 h-14  rounded-full bg-transparent z-50  p-4 dark:gradientContainerDarkMode gradientContainer animate-[gradient_16s_ease-in-out_infinite]"
   >
     <div className="relative">
       <svg
