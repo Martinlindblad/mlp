@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Layout from '../components/Layouts/Layout';
 import Cases from '../sections/Cases/Cases';
 import Hero from '../sections/Hero/Hero';
+import MainPageShortcuts from '../sections/MainPage/MainPageShortcuts';
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <Hero />
+      <MainPageShortcuts />
       <Cases />
     </Layout>
   );

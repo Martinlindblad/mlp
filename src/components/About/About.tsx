@@ -1,15 +1,13 @@
 import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import Skills from '../../sections/Skills';
 import PageLoader from '../AnimatedComponents/PageLoader';
 import AnimatedContainer from '../Layouts/AnimatedContainer';
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
 import Avatar from '../Profile/Avatar';
 
 import SocialMediaLinks from '../SocialMediaLinks';
-import Stepper from '../Stepper';
 import dynamic from 'next/dynamic';
 import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
 
@@ -18,13 +16,8 @@ const DynamicImageSlider = dynamic(
   { ssr: false },
 );
 
-export default function About() {
+export default function Biography() {
   const { data: aboutData, isLoading } = useIntroductionQuery();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const CharacterString = useMemo(() => {
     if (aboutData) {
@@ -58,11 +51,11 @@ export default function About() {
 
   const { theme } = useTheme();
 
-  return isLoading || !mounted ? (
+  return isLoading ? (
     <PageLoader />
   ) : (
-    <main className="lg:container pt-32 lg:pt-0 ">
-      <div className="w-full lg:h-screen mb-18 lg:py-52 flex-col">
+    <main className="lg:container pt-24 lg:pt-0 ">
+      <div className="w-full lg:py-24 flex-col">
         <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
           <AnimatedFadeInContainer
             type="FadeInBottom"
@@ -125,13 +118,6 @@ export default function About() {
             </div>
           </AnimatedFadeInContainer>
         </div>
-      </div>
-
-      <div className="w-full flex align-center justify-center flex-col pt-56 lg:pt-0 ">
-        <Stepper step={1} stepperTitle={'My Journey'} />
-        <AnimatedFadeInContainer className="px-4 py-56">
-          <Skills />
-        </AnimatedFadeInContainer>
       </div>
     </main>
   );

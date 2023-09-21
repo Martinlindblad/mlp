@@ -72,7 +72,7 @@ export default function CaseCarousel() {
       <div className="relative h-full flex justify-center w-full md:w-5/6 items-center overflow-hidden dark:bg-gray-900  bg-gray-200">
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
-            className="w-full top-20 absolute"
+            className="w-full lg:top-20 top-0 absolute"
             key={page}
             custom={direction}
             variants={variants}
@@ -105,7 +105,7 @@ export default function CaseCarousel() {
           </motion.div>
         </AnimatePresence>
       </div>
-      <div className="absolute bottom-10 xl:bottom-6  w-full z-50 flex items-center justify-center ">
+      <div className="absolute bottom-16 xl:bottom-24  w-full z-50 flex items-center justify-center ">
         <div className="justify-between flex items-center ">
           <div className="flex flex-col items-center">
             <span className="text-sm text-gray-700 dark:text-gray-400">
