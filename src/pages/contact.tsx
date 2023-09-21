@@ -22,9 +22,9 @@ const Contact = (): JSX.Element => {
               Contact Me
             </h2>
             <p className="mb-8 lg:mb-16 font-light text-center text-gray-500 dark:text-gray-400 sm:text-xl">
-              Interested in collaborating or have a project in mind? Feel free
+              {`Interested in collaborating or have a project in mind? Feel free
               to reach out and let's discuss how I can help you achieve your
-              goals.
+              goals.`}
             </p>
 
             <div className="bg-opacity-80 backdrop-blur-lg p-8 lg:p-12 rounded-lg relative bg-white dark:bg-gray-900">
