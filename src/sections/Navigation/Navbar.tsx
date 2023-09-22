@@ -29,7 +29,7 @@ export default function Navbar() {
 
   const [isOpen, toggleOpen] = useCycle(false, true);
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait" initial={false}>
       <motion.nav
         key="nav"
         initial={false}
