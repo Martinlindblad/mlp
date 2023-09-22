@@ -1,6 +1,7 @@
 import { motion, useInView } from 'framer-motion';
 import { useMemo, useRef } from 'react';
 import { FadeInAnimationType } from 'src/types/Animations';
+import AnimatedPreseceWrapper from './AnimatePresenceWrapper';
 
 type ContainerType = {
   children: React.ReactNode;
@@ -51,73 +52,76 @@ const AnimatedFadeInContainer = ({
     };
   }, [type]);
 
-  switch (type) {
-    case 'FadeInLeft':
-      return (
-        <motion.div
-          ref={ref}
-          layout
-          className={className}
-          initial="hidden"
-          variants={container}
-          animate={isInView ? 'visible' : 'hidden'}
-        >
-          {children}
-        </motion.div>
-      );
-    case 'FadeInRight':
-      return (
-        <motion.div
-          layout
-          ref={ref}
-          className={className}
-          initial="hidden"
-          variants={container}
-          animate={isInView ? 'visible' : 'hidden'}
-        >
-          {children}
-        </motion.div>
-      );
-    case 'FadeInTop':
-      return (
-        <motion.div
-          layout
-          variants={container}
-          animate={isInView ? 'visible' : 'hidden'}
-          ref={ref}
-          className={className}
-          initial="hidden"
-        >
-          {children}
-        </motion.div>
-      );
-    case 'FadeInBottom':
-      return (
-        <motion.div
-          layout
-          variants={container}
-          animate={isInView ? 'visible' : 'hidden'}
-          ref={ref}
-          className={className}
-          initial="hidden"
-        >
-          {children}
-        </motion.div>
-      );
+  const renderAnimation = () => {
+    switch (type) {
+      case 'FadeInLeft':
+        return (
+          <motion.div
+            ref={ref}
+            layout
+            className={className}
+            initial="hidden"
+            variants={container}
+            animate={isInView ? 'visible' : 'hidden'}
+          >
+            {children}
+          </motion.div>
+        );
+      case 'FadeInRight':
+        return (
+          <motion.div
+            layout
+            ref={ref}
+            className={className}
+            initial="hidden"
+            variants={container}
+            animate={isInView ? 'visible' : 'hidden'}
+          >
+            {children}
+          </motion.div>
+        );
+      case 'FadeInTop':
+        return (
+          <motion.div
+            layout
+            variants={container}
+            animate={isInView ? 'visible' : 'hidden'}
+            ref={ref}
+            className={className}
+            initial="hidden"
+          >
+            {children}
+          </motion.div>
+        );
+      case 'FadeInBottom':
+        return (
+          <motion.div
+            layout
+            variants={container}
+            animate={isInView ? 'visible' : 'hidden'}
+            ref={ref}
+            className={className}
+            initial="hidden"
+          >
+            {children}
+          </motion.div>
+        );
 
-    default:
-      return (
-        <motion.div
-          layout
-          variants={container}
-          animate={isInView ? 'visible' : 'hidden'}
-          ref={ref}
-          className={className}
-          initial="hidden"
-        >
-          {children}
-        </motion.div>
-      );
-  }
+      default:
+        return (
+          <motion.div
+            layout
+            variants={container}
+            animate={isInView ? 'visible' : 'hidden'}
+            ref={ref}
+            className={className}
+            initial="hidden"
+          >
+            {children}
+          </motion.div>
+        );
+    }
+  };
+  return <AnimatedPreseceWrapper>{renderAnimation()}</AnimatedPreseceWrapper>;
 };
 export default AnimatedFadeInContainer;

@@ -7,7 +7,7 @@ const AnimatedPreseceWrapper = ({
   children: React.ReactNode;
 }) => {
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence presenceAffectsLayout mode="wait" initial={false}>
       {children}
     </AnimatePresence>
   );

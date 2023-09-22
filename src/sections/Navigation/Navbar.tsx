@@ -1,7 +1,8 @@
-import { AnimatePresence, motion, useCycle } from 'framer-motion';
+import { motion, useCycle } from 'framer-motion';
 import { Navigation } from './Nav';
 import { MenuToggle } from './Toggle';
 import ThemeButton from 'src/src/components/ThemeButton';
+import AnimatedPreseceWrapper from 'src/src/components/Layouts/AnimatePresenceWrapper';
 
 export default function Navbar() {
   const sidebar = {
@@ -29,7 +30,7 @@ export default function Navbar() {
 
   const [isOpen, toggleOpen] = useCycle(false, true);
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatedPreseceWrapper>
       <motion.nav
         key="nav"
         initial={false}
@@ -54,6 +55,6 @@ export default function Navbar() {
         </div>
       </div>
       <MenuToggle isOpen={isOpen} toggle={() => toggleOpen()} />
-    </AnimatePresence>
+    </AnimatedPreseceWrapper>
   );
 }
