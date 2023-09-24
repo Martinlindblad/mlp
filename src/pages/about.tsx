@@ -5,7 +5,7 @@ import Layout from '../components/Layouts/Layout';
 const About = (): JSX.Element => {
   return (
     <Layout className="bg-slate-100 justify-center align-center flex-col dark:bg-gray-900 min-h-screen relative">
-      <div className="w-screen h-full">
+      <div className="realative overflow-hidden ">
         <AnimatedFadeInContainer
           type="FadeInTop"
           className="flex-col flex w-full"
