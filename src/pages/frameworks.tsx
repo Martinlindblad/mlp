@@ -5,18 +5,21 @@ import Layout from '../components/Layouts/Layout';
 const Frameworks = (): JSX.Element => {
   return (
     <Layout className="bg-slate-100 justify-center align-center flex-col dark:bg-gray-900 min-h-screen relative">
-      <div className="realative overflow-hidden ">
-        <main className="lg:container pt-24 lg:pt-0 ">
-          <div className="w-full lg:py-24 flex-col">
-            <div className="w-full h-full flex justify-center items-center relative">
-              <AnimatedFadeInContainer type="FadeInBottom">
-                <h1 className="text-lg font-normal lg:text-xl px-8  text-center lg:w-2/3 mx-auto flex pt-32 lg:pt-10 lg:items-center lg:justify-center w-full lg:container min-h-screen">
+      <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
+        <AnimatedFadeInContainer
+          type="FadeInBottom"
+          className="grid grid-cols-12 w-full h-4/6 "
+        >
+          <div className="relative w-full h-full  col-span-12">
+            <div className="flex-col flex w-full pl-4 md:pl-20 py-10 justify-center align-center dark:bg-slate-700 bg-slate-300 h-full">
+              <div className=" pb-2 flex flex-row justify-start items-start ">
+                <h1 className="text-lg font-extrabold  lg:text-sm  md:text-xl pl-4">
                   Frameworks
                 </h1>
-              </AnimatedFadeInContainer>
+              </div>
             </div>
           </div>
-        </main>
+        </AnimatedFadeInContainer>
       </div>
     </Layout>
   );
