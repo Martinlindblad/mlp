@@ -5,7 +5,6 @@ import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 import useWindowDimensions from '../hooks/useWindowDimensions';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import { ProjectsAndCases } from 'src/types/DBTypes';
-import PageLoader from './AnimatedComponents/PageLoader';
 
 export default function CaseCarousel() {
   const [[page, direction], setPage] = useState([0, 0]);
@@ -66,7 +65,7 @@ export default function CaseCarousel() {
   );
 
   return isLoading || !items ? (
-    <PageLoader />
+    <></>
   ) : (
     <AnimatedFadeInContainer className="h-full align-center justify-center self-center flex">
       <div className="relative h-full flex justify-center w-full md:w-5/6 items-center overflow-hidden dark:bg-gray-900  bg-gray-200">
