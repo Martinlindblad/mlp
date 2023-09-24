@@ -1,61 +1,61 @@
-import { motion } from 'framer-motion';
-import { useTheme } from 'next-themes';
-import { useMemo } from 'react';
+// import { motion } from 'framer-motion';
+// import { useTheme } from 'next-themes';
+// import { useMemo } from 'react';
 
 import PageLoader from '../AnimatedComponents/PageLoader';
-import AnimatedContainer from '../Layouts/AnimatedContainer';
+// import AnimatedContainer from '../Layouts/AnimatedContainer';
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
-import Avatar from '../Profile/Avatar';
+// import Avatar from '../Profile/Avatar';
 
-import SocialMediaLinks from '../SocialMediaLinks';
-import dynamic from 'next/dynamic';
+// import SocialMediaLinks from '../SocialMediaLinks';
+// import dynamic from 'next/dynamic';
 import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
 
-const DynamicImageSlider = dynamic(
-  () => import('../AnimatedComponents/ImageSlider'),
-  { ssr: false },
-);
+// const DynamicImageSlider = dynamic(
+//   () => import('../AnimatedComponents/ImageSlider'),
+//   { ssr: false },
+// );
 
 export default function Biography() {
-  const { data: aboutData, isLoading } = useIntroductionQuery();
+  const { isLoading } = useIntroductionQuery();
 
-  const CharacterString = useMemo(() => {
-    if (aboutData) {
-      const nameString = aboutData?.name + ' ' + aboutData?.surname;
-      const stringArr = Array.from(nameString);
-      return stringArr;
-    }
-    return [];
-  }, [aboutData]);
+  // const CharacterString = useMemo(() => {
+  //   if (aboutData) {
+  //     const nameString = aboutData?.name + ' ' + aboutData?.surname;
+  //     const stringArr = Array.from(nameString);
+  //     return stringArr;
+  //   }
+  //   return [];
+  // }, [aboutData]);
 
-  const container = useMemo(
-    () => ({
-      hidden: {
-        opacity: 0,
-        scale: 0,
-      },
-      visible: {
-        opacity: 1,
-        scale: 1,
-        visible: {
-          opacity: 1,
-          transition: {
-            delay: 0.4,
-            duration: 0.5,
-          },
-        },
-      },
-    }),
-    [],
-  );
+  // const container = useMemo(
+  //   () => ({
+  //     hidden: {
+  //       opacity: 0,
+  //       scale: 0,
+  //     },
+  //     visible: {
+  //       opacity: 1,
+  //       scale: 1,
+  //       visible: {
+  //         opacity: 1,
+  //         transition: {
+  //           delay: 0.4,
+  //           duration: 0.5,
+  //         },
+  //       },
+  //     },
+  //   }),
+  //   [],
+  // );
 
-  const { theme } = useTheme();
+  // const { theme } = useTheme();
 
   return isLoading ? (
     <PageLoader />
   ) : (
     <main className="lg:container pt-24 lg:pt-0 ">
-      <div className="w-full lg:py-24 flex-col">
+      {/* <div className="w-full lg:py-24 flex-col">
         <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
           <AnimatedFadeInContainer
             type="FadeInBottom"
@@ -118,7 +118,21 @@ export default function Biography() {
             </div>
           </AnimatedFadeInContainer>
         </div>
-      </div>
+      </div> */}
+      <AnimatedFadeInContainer
+        type="FadeInBottom"
+        className="grid grid-cols-12 w-full h-4/6 "
+      >
+        <div className="relative w-full h-full  col-span-12">
+          <div className="flex-col flex w-full pl-4 md:pl-20 py-10 justify-center align-center dark:bg-slate-700 bg-slate-300 h-full">
+            <div className=" pb-2 flex flex-row justify-start items-start ">
+              <h1 className="text-lg font-extrabold  lg:text-sm  md:text-xl pl-4">
+                Frameworks
+              </h1>
+            </div>
+          </div>
+        </div>
+      </AnimatedFadeInContainer>
     </main>
   );
 }

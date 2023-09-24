@@ -1,12 +1,10 @@
 import React from 'react';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import Layout from '../components/Layouts/Layout';
-import Hero from '../sections/Hero/Hero';
 
 const Experience = (): JSX.Element => {
   return (
     <Layout className="bg-slate-100 justify-center align-center flex-col dark:bg-gray-900 min-h-screen relative">
-      <Hero />
       <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
         <AnimatedFadeInContainer
           type="FadeInBottom"
