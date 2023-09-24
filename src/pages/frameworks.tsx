@@ -2,8 +2,6 @@ import React from 'react';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import Layout from '../components/Layouts/Layout';
 
-import Hero from '../sections/Hero/Hero';
-
 const Frameworks = (): JSX.Element => {
   return (
     <Layout className="bg-slate-100 justify-center align-center flex-col dark:bg-gray-900 min-h-screen relative">
