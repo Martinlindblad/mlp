@@ -70,13 +70,14 @@ const ImageSlider = () => {
                 id={`carousel-item-${index + 1}`}
                 className="hidden duration-700 ease-in-out "
                 data-carousel-item
-                key={`carousel-item-${index}`}
+                key={`carousel-item-${item.bannerTitle}`}
               >
                 <Image
                   className=" w-full h-full object-cover "
                   src={item.src}
                   alt={item.alt}
                   fill={true}
+                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
                 />
 
                 <div className="items-center pl-4 flex justify-center absolute h-20 right-0 left-0 bg-black ">

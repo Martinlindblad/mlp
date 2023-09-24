@@ -8,10 +8,10 @@ const BackgroundAndBorder = ({
   return (
     <>
       <div
-        className={`${customStyle} custom-border z-0 shadow-sm  shadow-gray-200  h-full w-full absolute opcaity-20 top-0 left-0`}
+        className={`${customStyle} custom-border z-0 shadow-sm  dark:shadow-gray-200 shadow-gray-800   h-full w-full absolute opcaity-20 top-0 left-0`}
       />
       <div
-        className={`${customStyle} custom-background z-0 h-full w-full absolute opcaity-20 top-0 left-0`}
+        className={`${customStyle} z-0 h-full w-full absolute opcaity-20 top-0 left-0`}
       />
     </>
   );

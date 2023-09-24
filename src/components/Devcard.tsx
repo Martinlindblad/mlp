@@ -58,25 +58,25 @@ const DevCard = ({
     <AnimatedItem
       itemVariant={itemVariant}
       containerProps={whileHover}
-      className={`cursor-pointer  relative  rounded-2xl p-1 2xl:h-64 2xl:w-96`}
+      className={`cursor-pointer relative  rounded-2xl p-1 2xl:h-64 2xl:w-96`}
     >
-      <BackgroundAndBorder customStyle="rounded-2xl opacity-40 dark:bg-transparent bg-slate-300" />
+      <BackgroundAndBorder customStyle="rounded-2xl opacity-40 " />
       <Link
-        className="relative rounded-2xl h-full w-full flex first-letter dark:bg-transparent bg-transparent overflow-hidden"
+        className="relative rounded-2xl h-full w-full flex first-letter bg-transparent overflow-hidden"
         href={data.link}
       >
-        <div className="flex flex-col  w-full py-6 leading-normal backdrop-blur-lg  px-8">
+        <div className="flex flex-col w-full py-6 leading-normal backdrop-blur-lg  px-8">
           <div
             style={{
               backgroundColor: Colors[(index + 3) as keyof typeof Colors],
             }}
-            className="w-12 h-12  relative bg-gradient-to-tr mb-4 to-transparent rounded-full opacity-80 shadow-sky-900 flex justify-center items-center"
+            className="w-12 h-12 relative bg-gradient-to-tr mb-4 to-transparent rounded-full opacity-80 shadow-sky-900 flex justify-center items-center"
           >
             {renderIcon()}
-            <div className="custom-border w-14 h-14 opacity-80  absolute rounded-full -top-1 -left-1" />
+            <div className="custom-border w-14 h-14 opacity-80 absolute rounded-full -top-1 -left-1" />
           </div>
           <h5 className="text-lg font-extrabold  text-left ">{data.title}</h5>
-          <p className="text-sm font-normal  lg:text-sm text-left  mx-auto py-3 text-gray-300">
+          <p className="text-sm font-normal  lg:text-sm text-left  mx-auto py-3 dark:text-gray-300 text-gray-700">
             {data.description}
           </p>
         </div>
@@ -93,7 +93,7 @@ const DevCard = ({
             repeat: Infinity,
             repeatDelay: 2,
           }}
-          className="w-60 h-full -z-10 absolute rounded-full rotate-12 bg-gradient-to-r dark:bg-gray-600 opacity-20"
+          className="w-60 h-full -z-10 absolute rounded-full rotate-12 bg-gradient-to-r dark:bg-gray-600 bg-gray-300 opacity-20"
         />
       </Link>
     </AnimatedItem>

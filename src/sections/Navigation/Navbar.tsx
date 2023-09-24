@@ -27,8 +27,8 @@ export default function Navbar() {
       },
     },
   };
-
   const [isOpen, toggleOpen] = useCycle(false, true);
+
   return (
     <AnimatedPreseceWrapper>
       <motion.nav
@@ -45,16 +45,23 @@ export default function Navbar() {
           variants={sidebar}
         />
         <div className={`${isOpen ? '' : 'pointer-events-none'}`}>
-          <Navigation isOpen />
+          <Navigation toggleIsOpen={() => toggleOpen()} />
         </div>
       </motion.nav>
 
-      <div className="outline-none cursor-pointer fixed top-5 left-10 h-14  rounded-full bg-transparent z-50">
+      <div
+        key={'theme-button-container'}
+        className="outline-none cursor-pointer fixed top-5 left-10 h-14  rounded-full bg-transparent z-50"
+      >
         <div className="relative">
           <ThemeButton incomingClassName="" />
         </div>
       </div>
-      <MenuToggle isOpen={isOpen} toggle={() => toggleOpen()} />
+      <MenuToggle
+        key={'menu-toggle-component'}
+        isOpen={isOpen}
+        toggle={() => toggleOpen()}
+      />
     </AnimatedPreseceWrapper>
   );
 }

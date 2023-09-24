@@ -72,7 +72,7 @@ export default function Biography() {
                 </div>
                 <h1
                   className=" text-start xl:text-4xl lg:text-xl font-extrabold text-lg md:text-lg uppercase lg:pb-0
-             tracking-wider  dark:text-gray-100 text-left "
+             tracking-wider dark:text-gray-100 text-left "
                 >
                   <AnimatedContainer
                     key={'IntroductionNameContainer'}
@@ -98,7 +98,7 @@ export default function Biography() {
                             },
                           },
                         }}
-                        key={index}
+                        key={`IntroductionName${index}_${character}`}
                       >
                         {character === ' ' ? '\u00A0' : character}
                       </motion.span>

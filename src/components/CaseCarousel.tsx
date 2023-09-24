@@ -70,7 +70,7 @@ export default function CaseCarousel() {
   ) : (
     <AnimatedFadeInContainer className="h-full align-center justify-center self-center flex">
       <div className="relative h-full flex justify-center w-full md:w-5/6 items-center overflow-hidden dark:bg-gray-900  bg-gray-200">
-        <AnimatePresence initial={false} custom={direction}>
+        <AnimatePresence custom={direction}>
           <motion.div
             className="w-full lg:top-20 top-0 absolute"
             key={page}
@@ -86,7 +86,8 @@ export default function CaseCarousel() {
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragTransition={{ bounceStiffness: 300, bounceDamping: 14 }}
-            dragElastic={0.6}
+            dragElastic={0.5}
+            dragDirectionLock
             onDragEnd={(e: any, { offset, velocity }: any) => {
               const swipe = swipePower(offset.x, velocity.x);
 

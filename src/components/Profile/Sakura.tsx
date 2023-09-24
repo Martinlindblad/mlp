@@ -21,10 +21,10 @@ const Sakura = () => {
 
   return (
     <section key={String(sakura)} className="sakura-container">
-      {numRand.map((xPos, key) => (
+      {numRand.map((xPos) => (
         <div
           style={{ right: `${xPos}%` }}
-          key={key}
+          key={`${xPos}%`}
           className="sakura-leaf"
         ></div>
       ))}

@@ -1,6 +1,7 @@
 import { motion, useInView } from 'framer-motion';
 import React, { useMemo, useRef } from 'react';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
+import AnimatedPreseceWrapper from './Layouts/AnimatePresenceWrapper';
 
 interface StepperProps {
   step: number;
@@ -52,20 +53,24 @@ const Stepper: React.FC<StepperProps> = ({ step, stepperTitle }) => {
 
   return (
     <div ref={ref} className="w-full flex justify-center flex-col items-center">
-      <motion.div
-        variants={StepperLineVariants}
-        initial="hidden"
-        animate={isInView ? 'visible' : 'hidden'}
-        className="h-24 w-0.5 bg-gradient-to-b to-slate-700 dark:to-slate-300 from-transparent rounded-full"
-      />
-      <motion.div
-        variants={StepperVariants}
-        initial="hidden"
-        animate={isInView ? 'visible' : 'hidden'}
-        className="h-12 w-12 bg-gradient-to-t to-slate-300 dark:to-slate-700 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-900"
-      >
-        <p>{step}</p>
-      </motion.div>
+      <AnimatedPreseceWrapper>
+        <motion.div
+          variants={StepperLineVariants}
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          className="h-24 w-0.5 bg-gradient-to-b to-slate-700 dark:to-slate-300 from-transparent rounded-full"
+          key={'stepper-line'}
+        />
+        <motion.div
+          variants={StepperVariants}
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          className="h-12 w-12 bg-gradient-to-t to-slate-400 dark:to-slate-700 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-900"
+          key={'stepper-rounded'}
+        >
+          <p>{step}</p>
+        </motion.div>
+      </AnimatedPreseceWrapper>
       <AnimatedFadeInContainer className="py-3">
         <h2 className="text-lg">{stepperTitle}</h2>
       </AnimatedFadeInContainer>

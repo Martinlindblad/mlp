@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { motion } from 'framer-motion';
 
-type IconProps = {
-  width: number | string;
-  height: number | string;
+interface IconProps {
+  width: string | number;
+  height: string | number;
   fill: string;
-};
+}
 
 const ExperienceIcon: React.FC<IconProps> = ({ width, height, fill }) => {
   const pathVariants = {
@@ -27,6 +27,7 @@ const ExperienceIcon: React.FC<IconProps> = ({ width, height, fill }) => {
       viewBox="0 0 100 100"
       whileHover="hover"
       whileTap="tap"
+      xmlns="http://www.w3.org/2000/svg"
     >
       <motion.path
         d="M50,20 C50,20 70,35 70,50 C70,65 50,80 50,80 C50,80 30,65 30,50 C30,35 50,20 50,20"

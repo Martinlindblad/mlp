@@ -17,7 +17,11 @@ const variants = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const Navigation = ({ isOpen }: { isOpen: boolean }) => {
+export const Navigation = ({
+  toggleIsOpen,
+}: {
+  toggleIsOpen: React.MouseEventHandler<HTMLButtonElement> | undefined;
+}) => {
   const Items: Item[] = useMemo(() => {
     return [
       {
@@ -54,7 +58,7 @@ export const Navigation = ({ isOpen }: { isOpen: boolean }) => {
       className="p-6 m-0 absolute top-24 right-0 w-full lg:w-3/4  sm:scale-75 lg:scale-100 sm:top-10 lg:top-24 justify-end flex-col flex "
     >
       {Items.map((item) => (
-        <NavMenuItem {...item} key={item.text} />
+        <NavMenuItem {...item} key={item.text} toggleIsOpen={toggleIsOpen} />
       ))}
     </motion.ul>
   );

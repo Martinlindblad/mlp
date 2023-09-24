@@ -18,6 +18,7 @@ const AnimatedContainer: React.FC<Props & ContainerVariantProp> = ({
   return (
     <AnimatedPreseceWrapper>
       <motion.div
+        key={'animatedContainer'}
         ref={ref}
         className={className}
         variants={containerVariant}

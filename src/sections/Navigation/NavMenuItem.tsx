@@ -11,6 +11,7 @@ interface NavMenuItemProps {
   id: number;
   text: string;
   path: string;
+  toggleIsOpen: React.MouseEventHandler<HTMLButtonElement> | undefined;
 }
 
 const variants = {
@@ -34,7 +35,12 @@ const variants = {
 
 const colors = ['#f582ae', '#b8c1ec', '#8b78e6', '#6ab04c', '#f7d794'];
 
-export const NavMenuItem: React.FC<NavMenuItemProps> = ({ id, text, path }) => {
+export const NavMenuItem: React.FC<NavMenuItemProps> = ({
+  id,
+  text,
+  path,
+  toggleIsOpen,
+}) => {
   const renderIcon = React.useCallback(() => {
     switch (text) {
       case 'Home':
@@ -68,13 +74,18 @@ export const NavMenuItem: React.FC<NavMenuItemProps> = ({ id, text, path }) => {
         {renderIcon()}
       </div>
 
-      <Link
-        className="p-3 flex-1  justify-center flex rounded-full "
-        style={style}
-        href={path}
+      <button
+        className="p-3 flex-1  justify-center flex rounded-full"
+        onClick={toggleIsOpen}
       >
-        <h2>{text}</h2>
-      </Link>
+        <Link
+          style={style}
+          href={path}
+          className="p-3 flex-1  justify-center flex rounded-full"
+        >
+          <h2>{text}</h2>
+        </Link>
+      </button>
     </motion.li>
   );
 };

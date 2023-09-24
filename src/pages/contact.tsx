@@ -1,20 +1,19 @@
 import React from 'react';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import Layout from '../components/Layouts/Layout';
+import Image from 'next/image'; // Import the Image component
 
 const Contact = (): JSX.Element => {
-  const backgroundImageStyle = {
-    backgroundImage: `url(/images/beach.webp)`,
-    backgroundPosition: 'center',
-    backgroundSize: 'cover',
-  };
-
   return (
     <Layout className="bg-slate-100 dark:bg-gray-900 min-h-screen relative">
-      <section
-        style={backgroundImageStyle}
-        className="relative w-screen py-16 lg:py-20 px-4 mx-auto justify-center align-center flex"
-      >
+      <section className="relative w-screen py-16 lg:py-20 px-4 mx-auto justify-center align-center flex">
+        <Image
+          src="/images/beach.webp"
+          alt="Beach"
+          fill
+          className="absolute inset-0 z-0"
+          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
+        />
         <div className="absolute inset-0 bg-black opacity-60"></div>
         <div className="max-w-screen-md relative">
           <AnimatedFadeInContainer type="FadeInBottom">
