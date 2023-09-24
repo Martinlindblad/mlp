@@ -5,7 +5,7 @@ import Image from 'next/image'; // Import the Image component
 
 const Contact = (): JSX.Element => {
   return (
-    <Layout className="bg-slate-100 dark:bg-gray-900 min-h-screen relative">
+    <Layout className="bg-slate-100 justify-center align-center flex-col dark:bg-gray-900 min-h-screen relative">
       <section className="relative w-screen py-16 lg:py-20 px-4 mx-auto justify-center align-center flex">
         <Image
           src="/images/beach.webp"
