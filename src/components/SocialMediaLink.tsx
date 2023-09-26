@@ -1,89 +1,68 @@
 import Link from 'next/link';
-import React, { useCallback, useMemo } from 'react';
+import { FC, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import AnimatedItem from './Layouts/AnimatedItem';
 import { SocailMediaLink } from 'src/types/DBTypes';
 
-const SocialMediaLink = ({
-  socialmedia,
-  index,
-}: {
+interface Props {
   index: number;
   socialmedia: SocailMediaLink;
-}): JSX.Element => {
-  const itemVariant = useMemo(() => {
-    return {
-      hidden: {
-        opacity: 0,
-        y: -10,
-        x: -2,
-      },
+}
+
+const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
+  const itemVariant = useMemo(
+    () => ({
+      hidden: { opacity: 0, y: -10, x: -2 },
       visible: {
         opacity: 1,
         x: 0,
         y: 0,
         transition: {
-          delay: index * 0.4,
+          delay: index * 0.3,
           duration: 0.3,
+          ease: 'easeInOut',
         },
       },
-    };
-  }, [index]);
+    }),
+    [index],
+  );
 
-  const whileHover = useMemo(() => {
-    return {
+  const whileHover = useMemo(
+    () => ({
       whileHover: {
         scale: 1.05,
-        duration: 1.5,
+        transition: {
+          duration: 0.2,
+          ease: 'easeInOut',
+        },
       },
-    };
-  }, []);
+    }),
+    [],
+  );
+
+  const getImageSrc = (platform: string) => {
+    return {
+      Facebook: '/images/facebook.png',
+      Github: '/images/github.png',
+      Instagram: '/images/instagram.png',
+      LinkedIn: '/images/linkedin.png',
+    }[platform];
+  };
 
   const renderImage = useCallback(() => {
-    switch (socialmedia.name) {
-      case 'Facebook':
-        return (
-          <div className="align-center justify-center flex p-1.5 bg-slate-50 rounded-full">
-            <img
-              src="/images/facebook.png"
-              alt="Facebook"
-              className="w-6 rounded-sm"
-            />
-          </div>
-        );
-      case 'Github':
-        return (
-          <div className="align-center justify-center flex p-1.5 bg-slate-50 rounded-full">
-            <img
-              src="/images/github.png"
-              alt="Github"
-              className="w-6 rounded-sm"
-            />
-          </div>
-        );
-      case 'Instagram':
-        return (
-          <div className="align-center justify-center flex p-1.5 bg-slate-50 rounded-full">
-            <img
-              src="/images/instagram.png"
-              alt="Instagram"
-              className="w-6 rounded-sm"
-            />
-          </div>
-        );
-      case 'LinkedIn':
-        return (
-          <div className="align-center justify-center flex p-1.5 bg-slate-50 rounded-full">
-            <img
-              src="/images/linkedin.png"
-              alt="LinkedIn"
-              className="w-6 rounded-sm"
-            />
-          </div>
-        );
-      default:
-        return null;
-    }
-  }, [socialmedia.name]);
+    const src = getImageSrc(name);
+    return src ? (
+      <div className="align-center justify-center flex p-1.5 bg-slate-50 rounded-full">
+        <Image
+          src={src}
+          alt={name}
+          width={24}
+          height={24}
+          className="rounded-sm"
+        />
+      </div>
+    ) : null;
+  }, [name]);
 
   return (
     <AnimatedItem
@@ -91,8 +70,8 @@ const SocialMediaLink = ({
       itemVariant={itemVariant}
       containerProps={whileHover}
     >
-      <div className=" bg-gradient-to-tr to-transparent rounded-full flex justify-center items-center">
-        <Link href={socialmedia.link}>{renderImage()}</Link>
+      <div className="bg-gradient-to-tr to-transparent rounded-full flex justify-center items-center">
+        <Link href={link}>{renderImage()}</Link>
       </div>
     </AnimatedItem>
   );

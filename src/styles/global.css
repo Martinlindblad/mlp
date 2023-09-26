@@ -4,6 +4,4 @@
 @import 'utilities';
 @import 'base';
 
-@import url('https://fonts.googleapis.com/css2?family=Comfortaa&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Righteous&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa&family=Righteous&family=Montserrat:wght@400;600;800;900&display=swap');

@@ -17,7 +17,7 @@ const customColors = {
   },
   nav: {
     1: '#f582ae',
-    2: 'b8c1ec',
+    2: '#b8c1ec', // Added missing '#' prefix
     3: '#8b78e6',
     4: '#6ab04c',
     5: '#f7d794',
@@ -25,13 +25,13 @@ const customColors = {
 };
 
 module.exports = {
-  content: [
+  mode: 'jit', // Added JIT mode
+  purge: [
+    // Moved from 'content' to 'purge'
     path.join(__dirname, 'src', 'components', '**', '*.{js,ts,jsx,tsx}'),
     path.join(__dirname, 'src', 'pages', '**', '*.{js,ts,jsx,tsx}'),
     path.join(__dirname, 'src', 'sections', '**', '*.{js,ts,jsx,tsx}'),
-    path.join(__dirname, 'node_modules', 'flowbite', '**', '*.{js,ts,jsx,tsx}'),
   ],
-
   theme: {
     fontWeight: {
       hairline: 100,
@@ -47,7 +47,6 @@ module.exports = {
       black: 900,
     },
     textShadow: {
-      // defaults to {}
       default: '0 2px 5px rgba(0, 0, 0, 0.5)',
       lg: '0 2px 10px rgba(0, 0, 0, 0.5)',
     },
