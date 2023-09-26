@@ -9,13 +9,13 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
-    font-family: Comfortaa, Righteous, Tinos;
+    font-family: Comfortaa;
   }
   h1 {
-    font-family: Montserrat, Righteous, Tinos;
+    font-family: Montserrat;
   }
   h2 {
-    font-family: Righteous, Righteous, Comfortaa;
+    font-family: Righteous;
   }
   .custom-border {
     background-image: linear-gradient(
