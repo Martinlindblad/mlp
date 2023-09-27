@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useMemo } from 'react';
 
-import PageLoader from '../AnimatedComponents/PageLoader';
 import AnimatedContainer from '../Layouts/AnimatedContainer';
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
 import Avatar from '../Profile/Avatar';
@@ -52,7 +51,7 @@ export default function Biography() {
   const { theme } = useTheme();
 
   return isLoading ? (
-    <PageLoader />
+    <></>
   ) : (
     <main className="lg:container pt-24 lg:pt-0 ">
       <div className="w-full lg:py-24 flex-col">

@@ -4,9 +4,12 @@ import { ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import Navbar from '../sections/Navigation/Navbar';
 import { useEffect } from 'react';
+import { useLoading, LoadingProvider } from '../contexts/LoadingContext';
+import PageLoader from '../components/AnimatedComponents/PageLoader';
 
 function MyApp({ Component, pageProps, router }: AppProps) {
   const queryClient = new QueryClient();
+  const loading = useLoading();
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -29,8 +32,11 @@ function MyApp({ Component, pageProps, router }: AppProps) {
   return (
     <ThemeProvider enableSystem={true} attribute="class">
       <QueryClientProvider client={queryClient}>
-        <Component {...pageProps} key={router.asPath} />
-        <Navbar />
+        <LoadingProvider>
+          {loading ? <PageLoader /> : null}
+          <Component {...pageProps} key={router.asPath} />
+          <Navbar />
+        </LoadingProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
