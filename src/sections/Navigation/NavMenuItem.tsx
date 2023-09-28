@@ -1,5 +1,5 @@
-import * as React from 'react';
-import { motion } from 'framer-motion';
+import React, { useCallback } from 'react';
+import { Cycle, motion } from 'framer-motion';
 import Link from 'next/link';
 import AboutIcon from 'src/src/components/SVG/About';
 import ContactIcon from 'src/src/components/SVG/Contact';
@@ -11,7 +11,7 @@ interface NavMenuItemProps {
   id: number;
   text: string;
   path: string;
-  toggleIsOpen: React.MouseEventHandler<HTMLButtonElement> | undefined;
+  toggleIsOpen: Cycle;
 }
 
 const variants = {
@@ -35,13 +35,13 @@ const variants = {
 
 const colors = ['#f582ae', '#b8c1ec', '#8b78e6', '#6ab04c', '#f7d794'];
 
-export const NavMenuItem: React.FC<NavMenuItemProps> = ({
+const NavMenuItem: React.FC<NavMenuItemProps> = ({
   id,
   text,
   path,
   toggleIsOpen,
 }) => {
-  const renderIcon = React.useCallback(() => {
+  const renderIcon = useCallback(() => {
     switch (text) {
       case 'Home':
         return <HomeIcon width="25px" height="25px" fill={colors[id]} />;
@@ -53,39 +53,41 @@ export const NavMenuItem: React.FC<NavMenuItemProps> = ({
         return <ExperienceIcon width="25px" height="25px" fill={colors[id]} />;
       case 'Contact':
         return <ContactIcon width="25px" height="25px" fill={colors[id]} />;
-
       default:
         return null;
     }
   }, [id, text]);
 
   const style = { border: `3px solid ${colors[id]}` };
+
   return (
     <motion.li
-      className="items-end justify-end list-none mb-5 flex pr-14 cursor-pointer lg:w-3/6  lg:self-end "
+      className="items-center justify-center w-full list-none mb-5 flex pr-14 cursor-pointer lg:w-3/6  lg:self-end "
       variants={variants}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
     >
       <div
-        className="w-12 h-12 rounded-3xl flex items-center justify-center mr-6 "
+        className="w-12 h-12 rounded-3xl flex items-center justify-center mr-6"
         style={style}
       >
         {renderIcon()}
       </div>
-
       <button
-        className="p-3 flex-1  justify-center flex rounded-full"
-        onClick={toggleIsOpen}
+        className="p-3 justify-center rounded-full"
+        onClick={toggleIsOpen as any}
       >
-        <Link
-          style={style}
-          href={path}
-          className="p-3 flex-1  justify-center flex rounded-full"
-        >
-          <h2>{text}</h2>
+        <Link href={path}>
+          <h2
+            style={style}
+            className="p-3 flex-1 lg:w-60 w-40 justify-center flex rounded-full"
+          >
+            {text}
+          </h2>
         </Link>
       </button>
     </motion.li>
   );
 };
+
+export default NavMenuItem;

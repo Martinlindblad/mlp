@@ -1,16 +1,16 @@
-import * as React from 'react';
+import { Cycle } from 'framer-motion';
+import React from 'react';
 
-export const MenuToggle = ({
-  toggle,
-  isOpen,
-}: {
-  toggle: React.MouseEventHandler<HTMLButtonElement> | undefined;
+interface MenuToggleProps {
+  toggle: Cycle;
   isOpen: boolean;
-}) => (
+}
+
+const MenuToggle: React.FC<MenuToggleProps> = ({ toggle, isOpen }) => (
   <button
-    onClick={toggle}
+    onClick={toggle as any}
     role="button"
-    className="outline-none cursor-pointer fixed top-5 right-10 h-14  rounded-full bg-transparent z-50  p-4 dark:gradientContainerDarkMode gradientContainer animate-[gradient_16s_ease-in-out_infinite]"
+    className="outline-none cursor-pointer fixed top-5 right-10 h-14 rounded-full bg-transparent z-50 p-4 dark:gradientContainerDarkMode gradientContainer animate-[gradient_16s_ease-in-out_infinite]"
   >
     <div className="relative">
       <svg
@@ -33,7 +33,7 @@ export const MenuToggle = ({
       <svg
         className={`${
           isOpen ? 'scale-0' : 'scale-100'
-        } w-6 h-6 ease-in-out duration-500 `}
+        } w-6 h-6 ease-in-out duration-500`}
         aria-hidden="true"
         fill="none"
         stroke="currentColor"
@@ -50,3 +50,5 @@ export const MenuToggle = ({
     </div>
   </button>
 );
+
+export default MenuToggle;

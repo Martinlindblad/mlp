@@ -1,12 +1,20 @@
-import * as React from 'react';
-import { motion } from 'framer-motion';
-import { NavMenuItem } from './NavMenuItem';
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { Cycle, motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+// Dynamic import
+const NavMenuItem = dynamic(() => import('./NavMenuItem'));
+
 interface Item {
   id: number;
   text: string;
   path: string;
 }
+
+interface NavigationProps {
+  toggleIsOpen: Cycle;
+}
+
 const variants = {
   open: {
     transition: { staggerChildren: 0.07, delayChildren: 0.2 },
@@ -16,42 +24,17 @@ const variants = {
   },
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const Navigation = ({
-  toggleIsOpen,
-}: {
-  toggleIsOpen: React.MouseEventHandler<HTMLButtonElement> | undefined;
-}) => {
+const Navigation: React.FC<NavigationProps> = ({ toggleIsOpen }) => {
   const Items: Item[] = useMemo(() => {
     return [
-      {
-        id: 0,
-        text: 'Home',
-        path: '/',
-      },
-      {
-        id: 1,
-        text: 'About',
-        path: '/about',
-      },
-      {
-        id: 2,
-        text: 'Frameworks',
-        path: '/frameworks',
-      },
-      {
-        id: 3,
-        text: 'Experience',
-        path: '/experience',
-      },
-
-      {
-        id: 4,
-        text: 'Contact',
-        path: '/contact',
-      },
+      { id: 0, text: 'Home', path: '/' },
+      { id: 1, text: 'About', path: '/about' },
+      { id: 2, text: 'Frameworks', path: '/frameworks' },
+      { id: 3, text: 'Experience', path: '/experience' },
+      { id: 4, text: 'Contact', path: '/contact' },
     ];
   }, []);
+
   return (
     <motion.ul
       variants={variants}
@@ -63,3 +46,5 @@ export const Navigation = ({
     </motion.ul>
   );
 };
+
+export default Navigation;

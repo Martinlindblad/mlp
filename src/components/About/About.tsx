@@ -62,9 +62,9 @@ export default function Biography() {
           >
             <div className="relative w-full h-full lg:col-span-6 col-span-12">
               <div className="flex-col flex w-full pl-4 md:pl-20 py-10 justify-center align-center dark:bg-slate-700 bg-slate-300 h-full">
-                <div className=" pb-2 flex flex-row justify-start items-start ">
+                <div className=" pb-6 flex flex-row justify-start items-start ">
                   <Avatar />
-                  <h2 className="text-lg font-extrabold  lg:text-sm  md:text-xl pl-4">
+                  <h2 className="text-lg pt-1 font-extrabold lg:text-sm md:text-xl pl-4">
                     <p>Hi!, {"I'm a"}</p>
                     <span className="opacity-30">{aboutData?.title}</span>
                   </h2>
@@ -105,7 +105,7 @@ export default function Biography() {
                   </AnimatedContainer>
                 </h1>
 
-                <p className="text-sm lg:pr-32 font-normal lg:text-xl opacity-60  md:text-2xl  md:py-6 py-2">
+                <p className="text-sm lg:pr-32 font-normal lg:text-xl opacity-60  md:text-2xl md:py-6 py-2">
                   {aboutData?.info}
                 </p>
                 <SocialMediaLinks />
