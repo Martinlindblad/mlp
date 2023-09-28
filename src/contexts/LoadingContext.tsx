@@ -20,7 +20,7 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({
 }) => {
   const [loading, setLoading] = useState<LoadingContextType>(false);
   const isFetching = useIsFetching();
-
+  console.log('isFetching', isFetching);
   useEffect(() => {
     setLoading(isFetching > 0);
   }, [isFetching]);
