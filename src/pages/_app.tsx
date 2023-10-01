@@ -33,9 +33,14 @@ function MyApp({ Component, pageProps, router }: AppProps) {
     <ThemeProvider enableSystem={true} attribute="class">
       <QueryClientProvider client={queryClient}>
         <LoadingProvider>
-          {loading ? <PageLoader /> : null}
-          <Component {...pageProps} key={router.asPath} />
-          <Navbar />
+          {loading ? (
+            <PageLoader />
+          ) : (
+            <>
+              <Component {...pageProps} key={router.asPath} />
+              <Navbar />
+            </>
+          )}
         </LoadingProvider>
       </QueryClientProvider>
     </ThemeProvider>
