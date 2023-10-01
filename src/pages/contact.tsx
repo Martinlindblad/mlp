@@ -5,7 +5,7 @@ import Image from 'next/image';
 
 const Contact = (): JSX.Element => {
   return (
-    <Layout className="bg-slate-100 justify-center align-center flex-col dark:bg-gray-900 min-h-screen relative">
+    <Layout className="bg-gray-100 justify-center align-center flex-col dark:bg-gray-900 min-h-screen relative">
       <div className="absolute inset-0 bg-black opacity-60"></div>
       <div className="max-w-screen-md relative"></div>
       <Image

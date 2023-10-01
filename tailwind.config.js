@@ -5,7 +5,7 @@ const colors = require('tailwindcss/colors');
 const customColors = {
   gray: {
     50: '#fafafa',
-    100: '#FFFFFF',
+    100: '#fafafa',
     200: '#F4F4F4',
     300: '#A1A1A1',
     400: '#878787',
@@ -17,7 +17,7 @@ const customColors = {
   },
   nav: {
     1: '#f582ae',
-    2: '#b8c1ec', // Added missing '#' prefix
+    2: '#b8c1ec',
     3: '#8b78e6',
     4: '#6ab04c',
     5: '#f7d794',
@@ -25,17 +25,14 @@ const customColors = {
 };
 
 module.exports = {
-  mode: 'jit', // Added JIT mode
+  mode: 'jit',
   purge: [
-    // Moved from 'content' to 'purge'
     path.join(__dirname, 'src', 'components', '**', '*.{js,ts,jsx,tsx}'),
     path.join(__dirname, 'src', 'pages', '**', '*.{js,ts,jsx,tsx}'),
     path.join(__dirname, 'src', 'sections', '**', '*.{js,ts,jsx,tsx}'),
   ],
   theme: {
     fontWeight: {
-      hairline: 100,
-      'extra-light': 100,
       thin: 200,
       light: 300,
       normal: 400,
@@ -43,7 +40,6 @@ module.exports = {
       semibold: 600,
       bold: 700,
       extrabold: 800,
-      'extra-bold': 800,
       black: 900,
     },
     textShadow: {
@@ -90,9 +86,7 @@ module.exports = {
       },
     },
   },
-  variants: {
-    extend: {},
-  },
+  variants: {},
   plugins: [
     require('flowbite/plugin'),
     require('tailwindcss-rtl'),

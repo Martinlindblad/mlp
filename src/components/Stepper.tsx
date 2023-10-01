@@ -58,14 +58,14 @@ const Stepper: React.FC<StepperProps> = ({ step, stepperTitle }) => {
           variants={StepperLineVariants}
           initial="hidden"
           animate={isInView ? 'visible' : 'hidden'}
-          className="h-24 w-0.5 bg-gradient-to-b to-slate-700 dark:to-slate-300 from-transparent rounded-full"
+          className="h-24 w-0.5 bg-gradient-to-b to-sky-500 from-transparent rounded-full"
           key={'stepper-line'}
         />
         <motion.div
           variants={StepperVariants}
           initial="hidden"
           animate={isInView ? 'visible' : 'hidden'}
-          className="h-8 w-8 bg-gradient-to-t to-slate-400 dark:to-slate-700 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-900"
+          className="h-8 w-8 bg-gradient-to-t to-sky-500  from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-sky-500"
           key={'stepper-rounded'}
         >
           <p className="text-xs">{step}</p>

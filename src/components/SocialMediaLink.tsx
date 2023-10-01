@@ -18,8 +18,8 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
         x: 0,
         y: 0,
         transition: {
-          delay: index * 0.3,
-          duration: 0.3,
+          delay: index * 0.5,
+          duration: 0.5,
           ease: 'easeInOut',
         },
       },
@@ -52,12 +52,12 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
   const renderImage = useCallback(() => {
     const src = getImageSrc(name);
     return src ? (
-      <div className="align-center justify-center flex p-1 border border-slate-400 rounded-full">
+      <div className="align-center justify-center flex p-1 border border-sky-500 rounded-full">
         <Image
           src={src}
           alt={name}
-          width={16}
-          height={16}
+          width={12}
+          height={12}
           className="rounded-sm"
         />
       </div>
@@ -66,7 +66,7 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
 
   return (
     <AnimatedItem
-      className="rounded-md realative cursor-pointer p-1"
+      className="rounded-md realative cursor-pointer p-1 mx-1"
       itemVariant={itemVariant}
       containerProps={whileHover}
     >
