@@ -49,7 +49,7 @@ export default function Biography() {
     <></>
   ) : (
     <main className="lg:container lg:pt-0 pb-20  ">
-      <div className="md:pl-20 pt-6 pb-20 ">
+      <div className="md:pl-20 pt-20 lg:pt-6 pb-20 ">
         <h1
           className="xl:text-3xl lg:text-lg  text-lg md:text-lg lg:pb-0
              tracking-wider dark:text-gray-100"
