@@ -1,5 +1,7 @@
+/* eslint-disable no-var */
 import { MongoClient } from 'mongodb';
 
 declare global {
-  const mongoClientPromise: Promise<MongoClient>;
+  // eslint-disable-next-line @typescript-eslint/naming-convention, no-underscore-dangle
+  var _mongoClient: MongoClient | undefined;
 }

@@ -13,6 +13,6 @@
       ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "types/**/*.d.ts", "lib/mongodb.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "types/**/*.d.ts","./types/**/*.d.ts", "lib/mongodb.ts"],
   "exclude": ["node_modules"]
 }
