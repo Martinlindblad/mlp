@@ -1,25 +1,12 @@
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
-import Image from 'next/image';
 
 const ContactForm = () => {
   return (
     <div className="lg:container pt-24 lg:pt-0">
-      <AnimatedFadeInContainer
-        type="FadeInBottom"
-        className="grid grid-cols-12 w-full h-4/6 "
-      >
-        <section className="relative w-screen py-16 lg:py-20 px-4 mx-auto justify-center align-center flex">
-          <Image
-            src="/images/beach.webp"
-            alt="Beach"
-            fill
-            className="absolute inset-0 z-0"
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
-          />
-          <div className="absolute inset-0 bg-black opacity-60"></div>
-          <div className="max-w-screen-md relative"></div>{' '}
+      <AnimatedFadeInContainer type="FadeInBottom">
+        <section className="relative w-full py-16 lg:py-20 px-4 mx-auto justify-center align-center flex">
           <div className="relative w-full h-full lg:col-span-6 col-span-12">
-            <div className="flex-col flex w-full pl-4 md:pl-20 py-10 justify-center align-center dark:bg-slate-700 bg-slate-300 h-full">
+            <div className="flex-col flex w-full  md:pl-20 py-10 justify-center align-center  h-full">
               <h2 className="mb-4 text-4xl tracking-tight font-extrabold text-center text-gray-900 dark:text-white">
                 Contact Me
               </h2>

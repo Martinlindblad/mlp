@@ -47,8 +47,8 @@ export default function Biography() {
   return isLoading ? (
     <></>
   ) : (
-    <main className="lg:container pt-24 lg:pt-0 ">
-      <div className="pt-20">
+    <main className="lg:container lg:pt-0 ">
+      <div className="md:pl-20 pt-6">
         <h1
           className=" text-start xl:text-4xl lg:text-xl font-extrabold text-lg md:text-lg uppercase lg:pb-0
              tracking-wider dark:text-gray-100 text-left "
@@ -108,7 +108,7 @@ export default function Biography() {
               </div>
             </div>
 
-            <div className="relative dark:bg-slate-700 bg-slate-400 h-56 sm:h-96 bg-transparent w-full lg:h-full lg:col-span-6  col-span-12  ">
+            <div className="relative dark:bg-slate-700 bg-slate-300 h-56 sm:h-96 bg-transparent w-full lg:h-full lg:col-span-6  col-span-12  ">
               {/* <DynamicImageSlider /> */}
             </div>
           </AnimatedFadeInContainer>

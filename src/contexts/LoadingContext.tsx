@@ -18,7 +18,7 @@ interface LoadingProviderProps {
 export const LoadingProvider: React.FC<LoadingProviderProps> = ({
   children,
 }) => {
-  const [loading, setLoading] = useState<LoadingContextType>(false);
+  const [loading, setLoading] = useState<LoadingContextType>(true);
   const isFetching = useIsFetching();
   useEffect(() => {
     setLoading(isFetching > 0);

@@ -19,11 +19,6 @@ export default function Home() {
           content="Martin Lindblad's personal website showcasing his work and projects."
         />
         <link rel="manifest" href="/manifest.json" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
