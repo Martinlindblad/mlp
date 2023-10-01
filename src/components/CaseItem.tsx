@@ -61,11 +61,12 @@ export default function CaseItem({
       </div>
       <div className="pointer-events-none">
         <Image
-          className="object-scale-down xl:max-w-2xl mt-10 md:max-w-sm  aspect-4/3"
+          className="object-scale-down xl:max-w-10 mt-10  aspect-4/3 "
           src={imageSource}
           width={500}
           height={500}
-          alt="Carl Martins Logo"
+          sizes={imageSource}
+          alt="Picture of the author"
         />
       </div>
     </motion.div>

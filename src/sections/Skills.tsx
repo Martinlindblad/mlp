@@ -29,7 +29,7 @@ const Skills = (): JSX.Element => {
     <AnimatedContainer
       key="skilldataContainer"
       containerVariant={container}
-      className="grid md:grid-cols-3 gap-4 justify-items-center py-12"
+      className="flex flex-row flex-wrap justify-between w-full py-12"
     >
       {SkillData.map((item, index) => {
         return <DevCard key={item.key} data={item} index={index} />;

@@ -4,7 +4,7 @@ import Layout from '../components/Layouts/Layout';
 
 const Experience = (): JSX.Element => {
   return (
-    <Layout className="bg-slate-100 justify-center align-center flex-col dark:bg-gray-900 min-h-screen relative">
+    <Layout className="w-full lg:py-24 flex-col">
       <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
         <AnimatedFadeInContainer
           type="FadeInBottom"

@@ -10,6 +10,7 @@
     scroll-behavior: smooth;
     overflow-x: hidden;
     font-family: Comfortaa;
+    height: 100%;
   }
   h1 {
     font-family: Montserrat;

@@ -65,10 +65,10 @@ const Stepper: React.FC<StepperProps> = ({ step, stepperTitle }) => {
           variants={StepperVariants}
           initial="hidden"
           animate={isInView ? 'visible' : 'hidden'}
-          className="h-12 w-12 bg-gradient-to-t to-slate-400 dark:to-slate-700 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-900"
+          className="h-8 w-8 bg-gradient-to-t to-slate-400 dark:to-slate-700 from-transparent flex justify-center items-center rounded-full shadow-2xl shadow-slate-900"
           key={'stepper-rounded'}
         >
-          <p>{step}</p>
+          <p className="text-xs">{step}</p>
         </motion.div>
       </AnimatedPreseceWrapper>
       <AnimatedFadeInContainer className="py-3">

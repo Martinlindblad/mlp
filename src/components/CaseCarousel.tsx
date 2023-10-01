@@ -1,114 +1,79 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import CaseItem from './CaseItem';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
-import useWindowDimensions from '../hooks/useWindowDimensions';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
-import { ProjectsAndCases } from 'src/types/DBTypes';
+import { Swiper, SwiperRef, SwiperSlide } from 'swiper/react';
+import 'swiper/css';
+import 'swiper/css/effect-coverflow';
+import { motion } from 'framer-motion';
 
 export default function CaseCarousel() {
-  const [[page, direction], setPage] = useState([0, 0]);
-
-  const { width } = useWindowDimensions();
-
+  const [page, setPage] = useState(0);
   const { data, isLoading } = useProjectsAndCasesQuery();
-
   const items = useMemo(() => {
     if (!data) return [];
-    return data?.filter((item: ProjectsAndCases) => item != null);
+    return data?.filter((item) => item != null);
   }, [data]);
 
-  const swipeConfidenceThreshold = width * 0.85;
-
-  const swipePower = (offset: number, velocity: number) => {
-    return (Math.abs(offset) * velocity) / 100;
+  const handleSlideChange = (swiper: {
+    activeIndex: React.SetStateAction<number>;
+  }) => {
+    setPage(swiper.activeIndex);
   };
+  const swiperRef = useRef<SwiperRef | null>(null);
 
-  const paginate = useCallback(
-    (newDirection: number) => {
-      setPage([page + newDirection, newDirection]);
+  const fadeRotateVariants = {
+    hidden: {
+      opacity: 0,
+      scale: 0.75,
     },
-    [page],
-  );
-
-  const variants = {
-    enter: (dir: number) => {
-      return {
-        x: dir > 0 ? 2000 : -2000,
-        opacity: 0,
-      };
-    },
-    center: {
-      zIndex: 1,
-      x: 0,
+    visible: {
       opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+      },
     },
-    exit: (dir: number) => {
-      return {
-        zIndex: 0,
-        x: dir < 0 ? 2000 : -2000,
-        opacity: 0,
-      };
+    exit: {
+      scale: 0.75,
+      opacity: 0,
     },
   };
-
-  const handlePagination = useCallback(
-    (type: string) => {
-      if (type === 'prev' && page !== 0) {
-        return paginate(-1);
-      }
-
-      if (type === 'next' && page !== items.length - 1) {
-        return paginate(1);
-      }
-    },
-    [items.length, page, paginate],
-  );
 
   return isLoading || !items ? (
     <></>
   ) : (
-    <AnimatedFadeInContainer className="h-full align-center justify-center self-center flex">
-      <div className="relative h-full flex justify-center w-full md:w-5/6 items-center overflow-hidden dark:bg-gray-900  bg-gray-200">
-        <AnimatePresence custom={direction}>
-          <motion.div
-            className="w-full lg:top-20 top-0 absolute"
-            key={page}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              x: { type: 'spring', stiffness: 300, damping: 40 },
-              opacity: { duration: 1.5 },
-            }}
-            drag="x" // this should only allow horizontal drag
-            dragConstraints={{ left: 0, right: 0 }}
-            dragTransition={{ bounceStiffness: 300, bounceDamping: 14 }}
-            dragDirectionLock
-            dragElastic={0.1}
-            onDragEnd={(e: any, { offset, velocity }: any) => {
-              const swipe = swipePower(offset.x, velocity.x);
+    <AnimatedFadeInContainer className="h-full">
+      <Swiper
+        className="w-full h-3/5 "
+        onSlideChange={(swiper) => handleSlideChange(swiper)}
+        speed={1200}
+        centeredSlides={true}
+        onSwiper={(swiperInstance) => {
+          swiperRef.current = { swiper: swiperInstance };
+        }}
+        ref={swiperRef}
+      >
+        {items.map((item, index) => (
+          <SwiperSlide key={index} className="lg:w-1/5 w-4/5 ">
+            <motion.div
+              className="w-full h-full"
+              variants={fadeRotateVariants}
+              initial="hidden"
+              animate={page === index ? 'visible' : 'hidden'}
+              exit="exit"
+            >
+              <CaseItem
+                title={item.title}
+                description={item.description}
+                imageSource={item.imageSource}
+              />
+            </motion.div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
 
-              if (swipe < -swipeConfidenceThreshold * 1.5) {
-                // Increased the threshold
-                handlePagination('next');
-              } else if (swipe > swipeConfidenceThreshold * 1.5) {
-                // Increased the threshold
-                handlePagination('prev');
-              }
-            }}
-          >
-            <CaseItem
-              title={items[page].title}
-              description={items[page].description}
-              imageSource={items[page].imageSource}
-            />
-          </motion.div>
-        </AnimatePresence>
-      </div>
-      <div className="absolute bottom-16 xl:bottom-24  w-full z-50 flex items-center justify-center ">
+      <div className="absolute bottom-16 xl:bottom-24 w-full z-50 flex items-center justify-center ">
         <div className="justify-between flex items-center ">
           <div className="flex flex-col items-center">
             <span className="text-sm text-gray-700 dark:text-gray-400">
@@ -124,7 +89,7 @@ export default function CaseCarousel() {
             </span>
             <div className="inline-flex mt-2 xs:mt-0">
               <button
-                onClick={() => handlePagination('prev')}
+                onClick={() => swiperRef.current?.swiper?.slidePrev()}
                 className={`
                 ${page === 0 && 'opacity-50 cursor-not-allowed'}
                 inline-flex items-center px-4 py-2 text-sm font-medium text-white
@@ -146,7 +111,7 @@ export default function CaseCarousel() {
                 Prev
               </button>
               <button
-                onClick={() => handlePagination('next')}
+                onClick={() => swiperRef.current?.swiper?.slideNext()}
                 className={`
                 ${page === items.length - 1 && 'opacity-50 cursor-not-allowed'}
                 inline-flex items-center px-4 py-2 text-sm font-medium text-white

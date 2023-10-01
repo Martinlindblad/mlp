@@ -52,12 +52,12 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
   const renderImage = useCallback(() => {
     const src = getImageSrc(name);
     return src ? (
-      <div className="align-center justify-center flex p-1.5 bg-slate-50 rounded-full">
+      <div className="align-center justify-center flex p-1 border border-slate-400 rounded-full">
         <Image
           src={src}
           alt={name}
-          width={24}
-          height={24}
+          width={16}
+          height={16}
           className="rounded-sm"
         />
       </div>

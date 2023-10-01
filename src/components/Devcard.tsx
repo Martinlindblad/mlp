@@ -58,9 +58,9 @@ const DevCard = ({
     <AnimatedItem
       itemVariant={itemVariant}
       containerProps={whileHover}
-      className={`cursor-pointer relative  rounded-2xl p-1 2xl:h-64 2xl:w-96`}
+      className={`cursor-pointer relative rounded-2xl p-1 2xl:h-64 2xl:w-96 my-3 lg:my-0`}
     >
-      <BackgroundAndBorder customStyle="rounded-2xl opacity-40 " />
+      <BackgroundAndBorder customStyle="rounded-2xl opacity-40" />
       <Link
         className="relative rounded-2xl h-full w-full flex first-letter bg-transparent overflow-hidden"
         href={data.link}
@@ -93,7 +93,6 @@ const DevCard = ({
             repeat: Infinity,
             repeatDelay: 2,
           }}
-          className="w-60 h-full -z-10 absolute rounded-full rotate-12 bg-gradient-to-r dark:bg-gray-600 bg-gray-300 opacity-20"
         />
       </Link>
     </AnimatedItem>

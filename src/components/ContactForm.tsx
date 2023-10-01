@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 const ContactForm = () => {
   return (
-    <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
+    <div className="lg:container pt-24 lg:pt-0">
       <AnimatedFadeInContainer
         type="FadeInBottom"
         className="grid grid-cols-12 w-full h-4/6 "
