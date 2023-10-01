@@ -126,12 +126,7 @@
 // }
 import React, { useMemo } from 'react';
 import { useState, useRef } from 'react';
-import {
-  motion,
-  AnimatePresence,
-  AnimateSharedLayout,
-  LayoutGroup,
-} from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { wrap } from '@popmotion/popcorn';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 import { ProjectsAndCases } from 'src/types/DBTypes';
