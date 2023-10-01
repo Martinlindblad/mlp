@@ -57,7 +57,7 @@ export default function Biography() {
           <AnimatedContainer
             key={'IntroductionNameContainer'}
             containerVariant={container}
-            className="flex-row flex w-full "
+            className="flex-row flex w-full flex-wrap "
           >
             {CharacterString.map((character, index) => (
               <motion.span
