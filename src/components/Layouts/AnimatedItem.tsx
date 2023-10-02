@@ -1,25 +1,27 @@
 import { HTMLMotionProps, motion, Variants } from 'framer-motion';
-import { Props } from 'next/script';
 
-type ItemVariantProp = {
-  itemVariant: Variants | undefined;
-  containerProps?: HTMLMotionProps<'div'>;
+type AnimatedStaggerItemProps = {
+  itemVariant?: Variants;
+  whileHover?: HTMLMotionProps<'div'>['whileHover'];
+  className?: string;
+  children: React.ReactNode;
 };
 
-const AnimatedStaggerItem: React.FC<Props & ItemVariantProp> = ({
+const AnimatedStaggerItem: React.FC<AnimatedStaggerItemProps> = ({
   children,
   className,
   itemVariant,
-  containerProps,
+  whileHover,
 }) => {
   return (
     <motion.div
       className={className}
       variants={itemVariant}
-      {...containerProps}
+      whileHover={whileHover}
     >
       {children}
     </motion.div>
   );
 };
+
 export default AnimatedStaggerItem;

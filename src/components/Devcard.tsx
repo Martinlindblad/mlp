@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import React, { useCallback, useMemo } from 'react';
 import BackgroundAndBorder from './BackgroundAndBorder';
@@ -34,14 +33,14 @@ const DevCard = ({
       },
     };
   }, [index]);
-  const whileHover = useMemo(() => {
-    return {
-      whileHover: {
-        scale: 1.05,
-        backgroundColor: Colors[(index + 3) as keyof typeof Colors],
-      },
-    };
-  }, [index]);
+  const whileHover = useMemo(
+    () => ({
+      scale: 1.05,
+      backgroundColor: Colors[(index + 3) as keyof typeof Colors],
+      transition: { duration: 0.2 },
+    }),
+    [index],
+  );
 
   const renderIcon = useCallback(() => {
     switch (data.key) {
@@ -57,7 +56,7 @@ const DevCard = ({
   return (
     <AnimatedItem
       itemVariant={itemVariant}
-      containerProps={whileHover}
+      whileHover={whileHover}
       className={`cursor-pointer relative rounded-2xl p-1 2xl:h-64 2xl:w-96 my-3 lg:my-0`}
     >
       <BackgroundAndBorder customStyle="rounded-2xl opacity-40" />
@@ -80,20 +79,6 @@ const DevCard = ({
             {data.description}
           </p>
         </div>
-        <motion.div
-          animate={{
-            scale: [1.5, 2, 2, 1.7, 1.5],
-            rotate: [40, 90, 180, 180, 40],
-            borderRadius: ['40%', '20%', '100%', '60%', '40%'],
-          }}
-          transition={{
-            duration: 16,
-            ease: 'easeInOut',
-            times: [0, 0.2, 0.5, 0.8, 1],
-            repeat: Infinity,
-            repeatDelay: 2,
-          }}
-        />
       </Link>
     </AnimatedItem>
   );

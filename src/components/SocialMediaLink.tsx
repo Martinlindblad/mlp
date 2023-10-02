@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { FC, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import AnimatedItem from './Layouts/AnimatedItem';
 import { SocailMediaLink } from 'src/types/DBTypes';
+import AnimatedStaggerItem from './Layouts/AnimatedItem';
+import { useTheme } from 'next-themes';
 
 interface Props {
   index: number;
@@ -12,32 +13,25 @@ interface Props {
 const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
   const itemVariant = useMemo(
     () => ({
-      hidden: { opacity: 0, y: -10, x: -2 },
+      hidden: {
+        opacity: 0,
+        scale: 0.75,
+      },
       visible: {
         opacity: 1,
-        x: 0,
-        y: 0,
+        scale: 1,
         transition: {
-          delay: index * 0.5,
-          duration: 0.5,
+          delay: index * 0.4,
+          duration: 0.4,
           ease: 'easeInOut',
         },
+      },
+      exit: {
+        scale: 0.75,
+        opacity: 0,
       },
     }),
     [index],
-  );
-
-  const whileHover = useMemo(
-    () => ({
-      whileHover: {
-        scale: 1.05,
-        transition: {
-          duration: 0.2,
-          ease: 'easeInOut',
-        },
-      },
-    }),
-    [],
   );
 
   const getImageSrc = (platform: string) => {
@@ -49,6 +43,8 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
     }[platform];
   };
 
+  const { theme } = useTheme();
+
   const renderImage = useCallback(() => {
     const src = getImageSrc(name);
     return src ? (
@@ -56,8 +52,8 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
         <Image
           src={src}
           alt={name}
-          width={12}
-          height={12}
+          width={18}
+          height={18}
           className="rounded-sm"
         />
       </div>
@@ -65,15 +61,23 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
   }, [name]);
 
   return (
-    <AnimatedItem
-      className="rounded-md realative cursor-pointer p-1 mx-1"
+    <AnimatedStaggerItem
+      className="rounded-md relative cursor-pointer p-1 mr-1"
       itemVariant={itemVariant}
-      containerProps={whileHover}
+      whileHover={{
+        transition: { duration: 0.3 },
+        // Add glow effect with box-shadow and blur
+        boxShadow:
+          theme === 'dark'
+            ? '0 0 0 1px rgba(255, 255, 255, 0.7)'
+            : '0 0 0 1px rgba(0, 0, 0, 0.7)',
+        borderRadius: '100%',
+      }}
     >
       <div className="bg-gradient-to-tr to-transparent rounded-full flex justify-center items-center">
         <Link href={link}>{renderImage()}</Link>
       </div>
-    </AnimatedItem>
+    </AnimatedStaggerItem>
   );
 };
 

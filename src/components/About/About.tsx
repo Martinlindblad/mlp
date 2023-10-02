@@ -4,11 +4,10 @@ import { useMemo } from 'react';
 
 import AnimatedContainer from '../Layouts/AnimatedContainer';
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
-import Avatar from '../Profile/Avatar';
 
 import SocialMediaLinks from '../SocialMediaLinks';
 import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
-import ImageSlider from '../AnimatedComponents/ImageSlider';
+import MultiSwiper from '../MultiSwiper';
 
 export default function Biography() {
   const { data: aboutData, isLoading } = useIntroductionQuery();
@@ -46,13 +45,13 @@ export default function Biography() {
   const { theme } = useTheme();
 
   return isLoading ? (
-    <></>
+    <p>Loading content...</p>
   ) : (
-    <main className="lg:container lg:pt-0 pb-20  ">
-      <div className="md:pl-20 pt-20 lg:pt-6 pb-20 ">
+    <main className="lg:container lg:pt-0 ">
+      <div className="md:pl-20 pt-24 pl-4 lg:pt-6 pb-10 flex-row flex w-full flex-wrap justify-between">
         <h1
-          className="xl:text-3xl lg:text-lg  text-lg md:text-lg lg:pb-0
-             tracking-wider dark:text-gray-100"
+          className="xl:text-3xl lg:text-lg  pb-4 lg:pb-0 text-lg md:text-lg
+             tracking-wider dark:text-gray-100 "
         >
           <AnimatedContainer
             key={'IntroductionNameContainer'}
@@ -87,9 +86,9 @@ export default function Biography() {
                 {character === ' ' ? '\u00A0' : character}
               </motion.span>
             ))}
-            <SocialMediaLinks />
           </AnimatedContainer>
         </h1>
+        <SocialMediaLinks />
       </div>
       <div className="w-full lg:py-24 flex-col ">
         <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
@@ -98,12 +97,21 @@ export default function Biography() {
             className="grid grid-cols-12 w-full h-4/6 "
           >
             <div className="relative w-full h-full lg:col-span-6 col-span-12">
-              <div className="flex-col flex w-full pl-4 md:pl-20 py-10 justify-center h-80 align-center dark:bg-slate-700 bg-gray-300 ">
+              <div className="flex-col flex w-full pl-4 md:pl-20 py-10 justify-center h-80 align-center ">
                 <div className=" flex flex-row justify-start items-start ">
-                  <Avatar />
+                  {/* <Avatar />
                   <h2 className="text-lg pt-1 font-extrabold lg:text-sm md:text-xl pl-4">
                     <p>Hi!, {"I'm a"}</p>
                     <span className="opacity-30">{aboutData?.title}</span>
+                  </h2> */}
+                  <h2 className="text-lg pt-1 font-extrabold lg:text-sm md:text-xl pr-6">
+                    <span className="text-4xl font-bold ">
+                      Front-end Developer
+                    </span>
+                    <br />
+                    <span className="text-4xl font-bold ">
+                      Design Meets Functionality
+                    </span>
                   </h2>
                 </div>
 
@@ -112,9 +120,8 @@ export default function Biography() {
                 </p>
               </div>
             </div>
-
-            <div className="relative dark:bg-gray-700 bg-gray-300 h-56 sm:h-96  w-full lg:h-full lg:col-span-6  col-span-12  ">
-              <ImageSlider />
+            <div className="relative h-56 sm:h-96 w-full lg:h-full lg:col-span-6 col-span-12 flex justify-center backdrop-blur-sm contrast-125 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out">
+              <MultiSwiper />
             </div>
           </AnimatedFadeInContainer>
         </div>

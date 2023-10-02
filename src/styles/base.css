@@ -169,23 +169,23 @@
   }
   @keyframes lightColors {
     0% {
-      color: rgb(253 246 178);
-      text-shadow: 0 0 50px rgb(253 246 178);
+      color: rgb(253, 246, 178);
+      text-shadow: 0 0 50px rgb(253, 246, 178);
       transform: scale(0);
     }
-    33% {
-      color: rgb(253 246 178);
+    25% {
+      color: rgb(253, 246, 178);
       text-shadow: 0 0 50px #080808;
       transform: scale(1.1);
     }
-    66% {
+    50% {
       color: #080808;
-      text-shadow: 0 0 50px #080808;
-      transform: scale(0.8);
+      text-shadow: 0 0 50px rgb(253, 246, 178);
+      transform: scale(1);
     }
     100% {
       color: #080808;
-      text-shadow: 0 0 50px rgb(253 246 178);
+      text-shadow: 0 0 50px rgb(253, 246, 178);
       transform: scale(1);
     }
   }
@@ -279,5 +279,19 @@
     box-shadow: 0 0 20px #fff, 0 0 30px #ffb7c5;
     top: 100%;
     transform: translateX(-400px) rotate(180deg);
+  }
+}
+.slider-track {
+  /* Adjust this according to the number of images you have */
+  width: calc(200%); /* since we're duplicating images for looping */
+}
+
+@keyframes Slide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    /* Translate by half since we've doubled the images */
+    transform: translateX(-50%);
   }
 }

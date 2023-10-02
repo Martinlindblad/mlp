@@ -18,9 +18,6 @@ const SocialMediaLinks = (): JSX.Element => {
       hidden: {
         opacity: 0,
         scale: 0,
-        transition: {
-          delay: 1,
-        },
       },
       visible: {
         opacity: 1,
@@ -34,7 +31,7 @@ const SocialMediaLinks = (): JSX.Element => {
     <AnimatedContainer
       key={'socialmediaContainer'}
       containerVariant={container}
-      className="flex items-end px-4 justify-start"
+      className="flex items-end  justify-start"
     >
       {SocialMediaData.map((item, index) => {
         return (
