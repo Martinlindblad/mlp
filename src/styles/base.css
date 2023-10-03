@@ -291,7 +291,8 @@
     transform: translateX(0);
   }
   100% {
-    /* Translate by half since we've doubled the images */
-    transform: translateX(-50%);
+    transform: translateX(
+      -50%
+    ); /* Scroll half the content which is essentially one set of images. */
   }
 }

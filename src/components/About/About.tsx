@@ -48,7 +48,7 @@ export default function Biography() {
     <p>Loading content...</p>
   ) : (
     <main className="lg:container lg:pt-0 ">
-      <div className="md:pl-20 pt-24 pl-4 lg:pt-6 pb-10 flex-row flex w-full flex-wrap justify-between">
+      <div className="md:pl-20 pt-24 pl-4 lg:pt-6 md:pb-10 flex-row flex w-full flex-wrap justify-between">
         <h1
           className="xl:text-3xl lg:text-lg  pb-4 lg:pb-0 text-lg md:text-lg
              tracking-wider dark:text-gray-100 "
@@ -120,7 +120,7 @@ export default function Biography() {
                 </p>
               </div>
             </div>
-            <div className="relative h-56 sm:h-96 w-full lg:h-full lg:col-span-6 col-span-12 flex justify-center backdrop-blur-sm contrast-125 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out">
+            <div className="relative h-56 sm:h-96 w-full lg:h-full lg:col-span-6 col-span-10 col-start-2 md:col-start-1 flex justify-center backdrop-blur-sm contrast-125 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out ">
               <MultiSwiper />
             </div>
           </AnimatedFadeInContainer>
