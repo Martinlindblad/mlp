@@ -94,8 +94,8 @@ export default function HeroIntroduction() {
           <SocialMediaLinks />
         </div>
       </div>
-      <div className="w-full lg:py-24 flex-col col-span-12 h-full">
-        <div className="w-full h-full rounded-2xl flex justify-center items-center relative">
+      <div className="w-full lg:py-24 flex-col col-span-12 ">
+        <div className="w-full lg:h-full rounded-2xl flex justify-center items-center relative">
           <AnimatedFadeInContainer
             type="FadeInBottom"
             className="grid grid-cols-12 w-full h-4/6 "
