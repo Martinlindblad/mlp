@@ -120,7 +120,7 @@ export default function Biography() {
                 </p>
               </div>
             </div>
-            <div className="relative h-56 sm:h-96 w-full lg:h-full lg:col-span-6 col-span-10 col-start-2 md:col-start-1 flex justify-center backdrop-blur-sm contrast-125 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out ">
+            <div className="relative h-56 sm:h-96 w-full lg:h-full lg:col-span-6 col-span-10 col-start-2 md:col-start-1 flex justify-center backdrop-blur-sm contrast-125 bg-gradient-to-r from-[#0ea5e9] to-purple-500 rounded-xl shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out ">
               <MultiSwiper />
             </div>
           </AnimatedFadeInContainer>

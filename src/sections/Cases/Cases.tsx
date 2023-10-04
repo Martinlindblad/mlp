@@ -4,7 +4,7 @@ import Stepper from 'src/src/components/Stepper';
 
 export default function Cases() {
   return (
-    <section className="bg-gray-100 dark:bg-gray-900  w-full  xl:h-screen h-[1000px] md:h-[900px] overflow-hidden">
+    <section className="bg-gray-100 dark:bg-gray-900  w-full overflow-hidden">
       <Stepper step={2} stepperTitle="Projects and cases" />
       <CaseCarousel />
     </section>

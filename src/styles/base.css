@@ -282,8 +282,7 @@
   }
 }
 .slider-track {
-  /* Adjust this according to the number of images you have */
-  width: calc(200%); /* since we're duplicating images for looping */
+  width: calc((9rem - 6rem) * 19);
 }
 
 @keyframes Slide {
@@ -291,8 +290,6 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(
-      -50%
-    ); /* Scroll half the content which is essentially one set of images. */
+    transform: translateX(calc((-9rem - 6rem) * 19));
   }
 }

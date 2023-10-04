@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
-import DevCard from '../components/Devcard';
+import PageLinkCard from '../components/PageLinkCard';
 import AnimatedContainer from '../components/Layouts/AnimatedContainer';
 import usePageCardsQuery from '../hooks/usePageCardsQuery';
+import ContentLoader from '../components/AnimatedComponents/ContentLoader';
 
-const Skills = (): JSX.Element => {
-  const { data: pageCards } = usePageCardsQuery();
+const CentralContentPageLinks = (): JSX.Element => {
+  const { data: pageCards, isLoading: isLoadingPageCards } =
+    usePageCardsQuery();
 
   const SkillData = useMemo(() => {
     if (!pageCards) return [];
@@ -27,15 +29,19 @@ const Skills = (): JSX.Element => {
 
   return (
     <AnimatedContainer
-      key="skilldataContainer"
+      key="CentralContentPageLinksContainer"
       containerVariant={container}
-      className="flex flex-row flex-wrap justify-between w-full py-12"
+      className="flex flex-row flex-wrap justify-between w-full py-20"
     >
-      {SkillData.map((item, index) => {
-        return <DevCard key={item.key} data={item} index={index} />;
-      })}
+      {isLoadingPageCards ? (
+        <ContentLoader />
+      ) : (
+        SkillData.map((item, index) => {
+          return <PageLinkCard key={item.key} data={item} index={index} />;
+        })
+      )}
     </AnimatedContainer>
   );
 };
 
-export default Skills;
+export default CentralContentPageLinks;

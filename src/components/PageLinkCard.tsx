@@ -8,7 +8,7 @@ import FrameworksIcon from './SVG/Frameworks';
 import { PageCardType } from 'src/types/DBTypes';
 import Colors from '../sections/Navigation/Colors';
 
-const DevCard = ({
+const PageLinkCard = ({
   data,
   index,
 }: {
@@ -57,7 +57,7 @@ const DevCard = ({
     <AnimatedItem
       itemVariant={itemVariant}
       whileHover={whileHover}
-      className={`cursor-pointer relative rounded-2xl p-1 2xl:h-64 2xl:w-96 my-3 lg:my-0`}
+      className={`cursor-pointer relative rounded-2xl p-1 2xl:h-64 2xl:w-96 my-3 mx-3 lg:my-0 flex-1 `}
     >
       <BackgroundAndBorder customStyle="rounded-2xl opacity-40" />
       <Link
@@ -83,4 +83,4 @@ const DevCard = ({
     </AnimatedItem>
   );
 };
-export default DevCard;
+export default PageLinkCard;

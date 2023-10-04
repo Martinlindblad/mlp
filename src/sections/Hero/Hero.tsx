@@ -1,10 +1,6 @@
 import React from 'react';
-import Biography from 'src/src/components/About/About';
+import HeroIntroduction from 'src/src/components/About/HeroIntroduction';
 
 export default function Hero() {
-  return (
-    <div className="realative overflow-hidden ">
-      <Biography />
-    </div>
-  );
+  return <HeroIntroduction />;
 }
