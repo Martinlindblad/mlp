@@ -36,14 +36,16 @@ const Navigation: React.FC<NavigationProps> = ({ toggleIsOpen }) => {
   }, []);
 
   return (
-    <motion.ul
-      variants={variants}
-      className="p-6 m-0 absolute top-24 right-0 w-full lg:w-3/4  sm:scale-75 lg:scale-100 sm:top-10 lg:top-24 justify-end flex-col flex "
-    >
-      {Items.map((item) => (
-        <NavMenuItem {...item} key={item.text} toggleIsOpen={toggleIsOpen} />
-      ))}
-    </motion.ul>
+    <div className="relative h-screen w-full overflow-y-auto">
+      <motion.ul
+        variants={variants}
+        className="p-6 m-0 top-2/4 right-0 w-full lg:w-3/4 sm:top-0 md:top-1/4 lg:top-24 justify-end flex-col flex "
+      >
+        {Items.map((item) => (
+          <NavMenuItem {...item} key={item.text} toggleIsOpen={toggleIsOpen} />
+        ))}
+      </motion.ul>
+    </div>
   );
 };
 

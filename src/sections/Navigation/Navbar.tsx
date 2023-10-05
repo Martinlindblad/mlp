@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { motion, useCycle } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import AnimatedPreseceWrapper from 'src/src/components/Layouts/AnimatePresenceWrapper';
+import useDimensions from 'src/src/hooks/useDimensions';
 
 // Dynamic imports with Next.js
 const Navigation = dynamic(() => import('./Nav'));
@@ -33,14 +34,15 @@ const sidebarVariants = {
 
 export default function Navbar() {
   const [isOpen, toggleOpen] = useCycle(false, true);
-
+  const containerRef = useRef(null);
+  const { height } = useDimensions(containerRef as any);
   return (
     <AnimatedPreseceWrapper>
-      <motion.nav
+      {/* <motion.nav
         key="nav"
         initial={false}
         animate={isOpen ? 'open' : 'closed'}
-        className={`fixed top-0 right-0 bottom-0 w-full z-50 ${
+        className={`fixed top-0 right-0 bottom-0 left-3/4 w-full z-50 ${
           isOpen ? '' : 'pointer-events-none'
         }`}
       >
@@ -65,7 +67,32 @@ export default function Navbar() {
         key={'menu-toggle-component'}
         isOpen={isOpen}
         toggle={toggleOpen}
-      />
+      /> */}
+
+      <motion.nav
+        initial={false}
+        animate={isOpen ? 'open' : 'closed'}
+        custom={height}
+        ref={containerRef}
+        className=" fixed top-0 right-0 bottom-0 w-full md:w-2/6"
+      >
+        <MenuToggle
+          key={'menu-toggle-component'}
+          isOpen={isOpen}
+          toggle={toggleOpen}
+        />
+        <motion.div
+          className="absolute top-0 right-0 bottom-0 w-full rounded-sm dark:gradientContainerDarkMode gradientContainer animate-[gradient_16s_ease-in-out_infinite] opacity-90"
+          variants={sidebarVariants}
+        />
+        <div
+          key={'theme-button-container'}
+          className="outline-none cursor-pointer fixed top-5 left-10 h-14 rounded-full bg-transparent z-50"
+        >
+          <ThemeButton incomingClassName="" />
+        </div>
+        <Navigation toggleIsOpen={toggleOpen} />
+      </motion.nav>
     </AnimatedPreseceWrapper>
   );
 }

@@ -11,7 +11,7 @@ const MenuToggle: React.FC<MenuToggleProps> = ({ toggle, isOpen }) => {
   const { theme } = useTheme();
   return (
     <motion.button
-      onClick={toggle as any}
+      onClick={() => toggle()}
       whileHover={{
         transition: { duration: 0.2 },
         // Add glow effect with box-shadow and blur
