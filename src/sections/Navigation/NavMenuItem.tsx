@@ -58,19 +58,15 @@ const NavMenuItem: React.FC<NavMenuItemProps> = ({
     }
   }, [id, text]);
 
-  const style = { border: `3px solid ${colors[id]}` };
-
   return (
     <motion.li
-      className="items-center justify-center w-full list-none mb-5 flex pr-14 cursor-pointer lg:w-3/6  lg:self-end "
+      className={` items-center justify-center w-full list-none flex
+       cursor-pointer lg:self-end shadow-xl hover:shadow-xl transition-shadow duration-300  `}
       variants={variants}
-      whileHover={{ scale: 1.1 }}
+      whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
     >
-      <div
-        className="w-12 h-12 rounded-3xl flex items-center justify-center mr-6"
-        style={style}
-      >
+      <div className="w-12 h-12 rounded-3xl flex items-center justify-center mr-6 shadow-md">
         {renderIcon()}
       </div>
       <button
@@ -78,10 +74,7 @@ const NavMenuItem: React.FC<NavMenuItemProps> = ({
         onClick={toggleIsOpen as any}
       >
         <Link href={path}>
-          <h2
-            style={style}
-            className="p-3 flex-1 lg:w-60 w-40 justify-center flex rounded-full"
-          >
+          <h2 className="p-3 flex-1 lg:w-60 w-40 justify-center flex rounded-full text-white hover:text-gray-200 transition-colors duration-300">
             {text}
           </h2>
         </Link>
