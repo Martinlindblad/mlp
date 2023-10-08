@@ -22,13 +22,13 @@ const MenuToggle: React.FC<MenuToggleProps> = ({ toggle, isOpen }) => {
         borderRadius: '100%',
       }}
       role="button"
-      className="outline-none cursor-pointer fixed top-5 right-10 h-14 rounded-full bg-transparent z-50 p-4 dark:gradientContainerDarkMode gradientContainer animate-[gradient_16s_ease-in-out_infinite]"
+      className="outline-none cursor-pointer fixed top-5 right-10 h-12 w-12 rounded-full bg-transparent z-50 p-3.5 dark:gradientContainerDarkMode gradientContainer animate-[gradient_16s_ease-in-out_infinite]"
     >
       <div className="relative">
         <svg
           className={`${
             isOpen ? 'scale-100' : 'scale-0'
-          } w-6 h-6 ease-in-out duration-100 absolute`}
+          } w-5 h-5 ease-in-out duration-100 absolute`}
           aria-hidden="true"
           fill="none"
           stroke="currentColor"
@@ -45,7 +45,7 @@ const MenuToggle: React.FC<MenuToggleProps> = ({ toggle, isOpen }) => {
         <svg
           className={`${
             isOpen ? 'scale-0' : 'scale-100'
-          } w-6 h-6 ease-in-out duration-500`}
+          } w-5 h-5 ease-in-out duration-500`}
           aria-hidden="true"
           fill="none"
           stroke="currentColor"
