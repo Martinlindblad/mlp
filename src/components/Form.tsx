@@ -2,7 +2,7 @@ import React from 'react';
 
 const Form = () => {
   return (
-    <div className="p-8 lg:p-12  relative dark:bg-white bg-gray-950">
+    <div className="p-8 lg:p-12 relative dark:bg-white bg-gray-950 rounded-3xl shadow-xl">
       <form action="#" className="space-y-8">
         <div>
           <label

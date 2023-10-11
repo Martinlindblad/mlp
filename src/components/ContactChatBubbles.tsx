@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 
-const ChatBubble = ({ text }) => {
+const ChatBubble = ({ text, index }: { text: string; index: number }) => {
   const controls = useAnimation();
 
   useEffect(() => {
@@ -11,36 +11,61 @@ const ChatBubble = ({ text }) => {
         y: {
           repeat: Infinity,
           duration: 2,
+          delay: index * 0.2,
           ease: 'easeInOut',
         },
       },
     });
-  }, [controls]);
+  }, [controls, index]);
+
+  const itemVariant = useMemo(
+    () => ({
+      hidden: {
+        opacity: 0,
+        scale: 0.75,
+      },
+      visible: {
+        opacity: 1,
+        scale: 1,
+        transition: {
+          delay: index * 0.4,
+          duration: 0.4,
+          ease: 'easeInOut',
+        },
+      },
+      exit: {
+        scale: 0.75,
+        opacity: 0,
+      },
+    }),
+    [index],
+  );
 
   return (
-    <div className="relative group">
+    <motion.div className="relative group" variants={itemVariant}>
       <motion.div
         animate={controls}
-        className="max-w-lg px-6 py-3 m-4 bg-white text-black text-xl rounded-full shadow-md"
+        className="py-4 m-4 w-full flex justify-center items-center bg-white text-black text-xl rounded-full shadow-md"
       >
-        {text}
+        <p className="py-2 px-6 text-center whitespace-nowrap">{text}</p>
       </motion.div>
-      <div className="absolute left-1/2 h-2 w-1/6 bg-black mt-2 transform -translate-x-1/2 group-hover:scale-x-110 transition-transform"></div>
-    </div>
+    </motion.div>
   );
 };
 
 const ChatBubbles = () => {
   return (
-    <div className="flex flex-row rounded-lg items-center space-x-4 absolute top-0">
-      <ChatBubble text="Hello there!" />
-      <div style={{ animationDelay: '0.5s' }}>
-        <ChatBubble text="How's it going?" />
+    <motion.div className="flex flex-row rounded-lg items-center space-x-4 absolute top-32 left-72 ">
+      <div className="absolute top-12 ">
+        <ChatBubble text="Hey there! 🌟" index={0} />
       </div>
-      <div style={{ animationDelay: '1s' }}>
-        <ChatBubble text="Just trying out some animations!" />
+      <div className="absolute left-48 top-44 ">
+        <ChatBubble text="Isn't it a lovely day? ☀️" index={1} />
       </div>
-    </div>
+      <div className="absolute -left-32 top-72 mt-6">
+        <ChatBubble text="Animations make it even better! 🚀" index={2} />
+      </div>
+    </motion.div>
   );
 };
 
