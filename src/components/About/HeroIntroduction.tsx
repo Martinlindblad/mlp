@@ -10,6 +10,7 @@ import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
 import HeroRollingBanner from '../HeroRollingBanner';
 import ContentLoader from '../AnimatedComponents/ContentLoader';
 import Link from 'next/link';
+import Logo from '../SVG/Logo';
 
 export default function HeroIntroduction() {
   const { data: aboutData, isLoading } = useIntroductionQuery();
@@ -61,6 +62,7 @@ export default function HeroIntroduction() {
               containerVariant={container}
               className="flex-row flex w-full flex-wrap "
             >
+              <Logo containerStyle="w-10 h-10 mr-4" />
               {CharacterString.map((character, index) => (
                 <motion.span
                   className={` ${
@@ -91,6 +93,7 @@ export default function HeroIntroduction() {
               ))}
             </AnimatedContainer>
           </h1>
+
           <SocialMediaLinks />
         </div>
       </div>
@@ -105,8 +108,8 @@ export default function HeroIntroduction() {
                 <div className=" flex flex-row justify-start items-start ">
                   {/* <Avatar />
                   <h2 className="text-lg pt-1 font-extrabold lg:text-sm md:text-xl pl-4">
-                    <p>Hi!, {"I'm a"}</p>
-                    <span className="opacity-30">{aboutData?.title}</span>
+                  <p>Hi!, {"I'm a"}</p>
+                  <span className="opacity-30">{aboutData?.title}</span>
                   </h2> */}
                   <h2 className="text-lg pt-1 font-extrabold lg:text-sm md:text-xl pr-6">
                     <span className="lg:text-4xl md:text-3xl text-2xl font-bold ">
