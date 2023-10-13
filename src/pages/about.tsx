@@ -2,6 +2,7 @@ import React from 'react';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import Layout from '../components/Layouts/Layout';
 import Logo from '../components/SVG/Logo';
+import Sakura from '../components/Profile/Sakura';
 
 const About = (): JSX.Element => {
   return (
@@ -23,6 +24,7 @@ const About = (): JSX.Element => {
             </div>
           </div>
         </AnimatedFadeInContainer>
+        <Sakura />
       </div>
     </Layout>
   );
