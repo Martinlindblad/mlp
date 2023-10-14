@@ -214,11 +214,11 @@
   }
 
   .gradientContainer {
-    background: linear-gradient(-45deg, #243b55, #cbd5e1, #243b55);
+    background: linear-gradient(-45deg, #cbd5e1, #243b55, #cbd5e1);
     background-size: 400% 400%;
   }
   .gradientContainerDarkMode {
-    background: linear-gradient(-45deg, #b92b27, #243b55, #b92b27);
+    background: linear-gradient(-45deg, #090202, #243b55, #090202);
     background-size: 400% 400%;
   }
   @keyframes gradient {
@@ -231,124 +231,5 @@
     100% {
       background-position: 0% 50%;
     }
-  }
-}
-
-.sakuraContainer {
-  width: 100%;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -5%;
-  bottom: 0;
-  z-index: -1;
-}
-
-@for $i from 1 through 60 {
-  .sakuraLeaf:nth-of-type(#{$i}) {
-    background: #ffb7c5;
-    position: absolute;
-    top: 0;
-    width: 8px;
-    height: 10px;
-    border-radius: 10px 0;
-    margin: 1%;
-    opacity: 0;
-    z-index: -1;
-    animation: glow 12s ease-in;
-    animation-delay: $i * 0.45s;
-    transform: translateX($i + 100px) rotate($i * 3 + 100px);
-  }
-}
-
-.sakuraLeaf:nth-child(4n-7) {
-  filter: blur(1px);
-}
-
-.sakuraLeaf:nth-child(3n-7) {
-  background: rgb(212, 152, 163);
-}
-
-@keyframes glow {
-  from {
-    box-shadow: 0 0 10px #fff, 0 0 20px #ffb7c5;
-    top: 0;
-    opacity: 1;
-  }
-  to {
-    box-shadow: 0 0 20px #fff, 0 0 30px #ffb7c5;
-    top: 100%;
-    transform: translateX(-400px) rotate(180deg);
-  }
-}
-.slider-track {
-  width: calc((9rem - 6rem) * 19);
-}
-
-@keyframes Slide {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(calc((-9rem - 6rem) * 19));
-  }
-}
-.sakuraContainer {
-  width: 100%;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -5%;
-  bottom: 0;
-  z-index: -1;
-
-  @for $i from 1 through 60 {
-    .sakuraLeaf:nth-of-type(#{$i}) {
-      background: #ffb7c5;
-      position: absolute;
-      top: 0;
-      width: 8px;
-      height: 10px;
-      border-radius: 10px 0;
-      margin: 1%;
-      opacity: 0;
-      z-index: -1;
-      -webkit-animation: glow 12s ease-in;
-      -moz-animation: glow 12s ease-in;
-      animation: glow 12s ease-in;
-      animation-delay: $i * 0.45s;
-      transform: translateX($i + 100px) rotate($i * 3 + 100px);
-    }
-  }
-  .sakuraLeaf:nth-child(4n-7) {
-    filter: blur(1px);
-  }
-  .sakuraLeaf:nth-child(3n-7) {
-    background: rgb(212, 152, 163);
-  }
-}
-
-@-webkit-keyframes glow {
-  from {
-    box-shadow: 0 0 10px #fff, 0 0 20px #ffb7c5;
-    top: 0;
-    opacity: 1;
-  }
-  to {
-    box-shadow: 0 0 20px #fff, 0 0 30px #ffb7c5;
-    top: 100%;
-    transform: translateX(-400px) rotate(180deg);
-  }
-}
-@keyframes glow {
-  from {
-    box-shadow: 0 0 10px #fff, 0 0 20px #ffb7c5;
-    top: 0;
-    opacity: 1;
-  }
-  to {
-    box-shadow: 0 0 20px #fff, 0 0 30px #ffb7c5;
-    top: 100%;
-    transform: translateX(-400px) rotate(180deg);
   }
 }
