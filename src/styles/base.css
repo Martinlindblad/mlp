@@ -233,3 +233,15 @@
     }
   }
 }
+.slider-track {
+  width: calc((9rem - 6rem) * 19);
+}
+
+@keyframes Slide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(calc((-9rem - 6rem) * 19));
+  }
+}

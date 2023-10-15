@@ -88,6 +88,7 @@ module.exports = {
         primary: {
           DEFAULT: customColors.gray[500],
           ...customColors.gray,
+          ...customColors.blue,
         },
         onPrimary: {
           DEFAULT: colors.gray[100],

@@ -12,7 +12,7 @@ import ContentLoader from '../AnimatedComponents/ContentLoader';
 import Link from 'next/link';
 import Logo from '../SVG/Logo';
 
-export default function HeroIntroduction() {
+export default function Hero() {
   const { data: aboutData, isLoading } = useIntroductionQuery();
 
   const CharacterString = useMemo(() => {
@@ -71,7 +71,7 @@ export default function HeroIntroduction() {
                       : 'animate-[lightColors_3s_ease-in-out]'
                   } ${
                     index > 6
-                      ? 'text-3xl text-[#0ea5e9] font-thin'
+                      ? 'text-3xl text-blue-500 font-thin'
                       : 'text-3xl font-extrabold'
                   } `}
                   variants={{
@@ -98,12 +98,12 @@ export default function HeroIntroduction() {
         </div>
       </div>
       <div className="w-full lg:py-24 flex-col col-span-12 ">
-        <div className="w-full lg:h-full rounded-2xl flex justify-center items-center relative">
-          <AnimatedFadeInContainer
-            type="FadeInBottom"
-            className="grid grid-cols-12 w-full h-4/6 "
-          >
-            <div className="relative w-full h-full col-span-10 col-start-2 lg:col-span-5 lg:col-start-2 ">
+        <div className="w-full lg:h-full rounded-2xl flex flex-row justify-center items-center relative">
+          <div className="grid grid-cols-12 w-full h-4/6 ">
+            <AnimatedFadeInContainer
+              type="FadeInBottom"
+              className="relative w-full h-full col-span-10 col-start-2 lg:col-span-5 lg:col-start-2 "
+            >
               <div className="flex-col flex w-full py-10 justify-center align-center ">
                 <div className=" flex flex-row justify-start items-start ">
                   {/* <Avatar />
@@ -125,19 +125,24 @@ export default function HeroIntroduction() {
                   {aboutData?.info}
                 </p>
               </div>
-            </div>
-            <Link
-              href={'/frameworks'}
-              className="relative hover:cursor-pointer h-56
-                w-full lg:h-full  col-span-10 col-start-2 lg:col-span-6
-                flex justify-center backdrop-blur-sm contrast-125
-                bg-gradient-to-r from-[#0ea5e9] to-purple-500 rounded-xl
-                shadow-lg hover:scale-105 transition-transform duration-300
-                ease-in-out"
+            </AnimatedFadeInContainer>
+            <AnimatedFadeInContainer
+              type="FadeInBottom"
+              className="col-span-10 col-start-2 lg:col-span-6"
             >
-              <HeroRollingBanner />
-            </Link>
-          </AnimatedFadeInContainer>
+              <Link
+                href={'/frameworks'}
+                className="relative hover:cursor-pointer h-56
+            w-full lg:h-full
+            flex justify-center backdrop-blur-sm contrast-125
+            bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl
+            shadow-lg hover:scale-105 transition-transform duration-300
+            ease-in-out"
+              >
+                <HeroRollingBanner />
+              </Link>
+            </AnimatedFadeInContainer>
+          </div>
         </div>
       </div>
     </main>

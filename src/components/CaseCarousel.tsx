@@ -44,8 +44,8 @@ export default function CaseCarousel() {
   return isLoading || !items ? (
     <ContentLoader />
   ) : (
-    <div className="h-full">
-      <AnimatedFadeInContainer className="h-full w-full pb-44 pt-12 ">
+    <AnimatedFadeInContainer type="FadeInBottom" className="h-full">
+      <div className="h-full w-full pb-44 pt-12 ">
         <Swiper
           className="w-full h-3/4 lg:h-4/5 "
           onSlideChange={(swiper) => handleSlideChange(swiper)}
@@ -141,7 +141,7 @@ export default function CaseCarousel() {
             </div>
           </div>
         </div>
-      </AnimatedFadeInContainer>
-    </div>
+      </div>
+    </AnimatedFadeInContainer>
   );
 }

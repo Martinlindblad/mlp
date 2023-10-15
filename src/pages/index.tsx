@@ -2,8 +2,8 @@ import Head from 'next/head';
 import Layout from '../components/Layouts/Layout';
 import dynamic from 'next/dynamic';
 
-import Hero from '../sections/Hero/Hero';
 import MainPageShortcuts from '../sections/MainPage/MainPageShortcuts';
+import Hero from '../components/About/HeroIntroduction';
 
 const Cases = dynamic(() => import('../sections/Cases/Cases'));
 

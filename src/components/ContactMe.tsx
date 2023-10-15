@@ -38,8 +38,8 @@ const ContactMe = () => {
         <h1
           className={
             index !== 1
-              ? `hover:text-[#0ea5e9] font-black hover:scale-105 text-4xl sm:text-6xl md:text-7xl lg:text-9xl transition-all duration-300 ease-in-out transform`
-              : `font-black hover:scale-105 text-4xl sm:text-6xl md:text-7xl lg:text-9xl transition-all duration-300 ease-in-out transform text-[#0ea5e9] hover:text-[#e94e77]`
+              ? `hover:text-blue-500 font-black hover:scale-105 text-4xl sm:text-6xl md:text-7xl lg:text-9xl transition-all duration-300 ease-in-out transform`
+              : `font-black hover:scale-105 text-4xl sm:text-6xl md:text-7xl lg:text-9xl transition-all duration-300 ease-in-out transform text-blue-500 hover:text-[#e94e77]`
           }
         >
           {text}
