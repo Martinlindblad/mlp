@@ -4,7 +4,7 @@ import Link from 'next/link';
 import AboutIcon from 'src/src/components/SVG/About';
 import ContactIcon from 'src/src/components/SVG/Contact';
 import ExperienceIcon from 'src/src/components/SVG/Experience';
-import FrameworksIcon from 'src/src/components/SVG/Frameworks';
+
 import HomeIcon from 'src/src/components/SVG/Home';
 
 interface NavMenuItemProps {
@@ -47,8 +47,7 @@ const NavMenuItem: React.FC<NavMenuItemProps> = ({
         return <HomeIcon width="25px" height="25px" fill={colors[id]} />;
       case 'About':
         return <AboutIcon width="25px" height="25px" fill={colors[id]} />;
-      case 'Frameworks':
-        return <FrameworksIcon width="25px" height="25px" fill={colors[id]} />;
+
       case 'Experience':
         return <ExperienceIcon width="25px" height="25px" fill={colors[id]} />;
       case 'Contact':

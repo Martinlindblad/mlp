@@ -45,7 +45,7 @@ export default function CaseCarousel() {
     <ContentLoader />
   ) : (
     <AnimatedFadeInContainer type="FadeInBottom" className="h-full">
-      <div className="h-full w-full pb-44 pt-12 ">
+      <div className="h-full w-full   ">
         <Swiper
           className="w-full h-3/4 lg:h-4/5 "
           onSlideChange={(swiper) => handleSlideChange(swiper)}
@@ -78,7 +78,7 @@ export default function CaseCarousel() {
           ))}
         </Swiper>
 
-        <div className="absolute bottom-16 xl:bottom-10 w-full z-50 flex items-center justify-center ">
+        <div className="pt-20 xl:bottom-10 w-full z-50 flex items-center justify-center ">
           <div className="justify-between flex items-center ">
             <div className="flex flex-col items-center">
               <span className="text-sm text-gray-700 dark:text-gray-400">

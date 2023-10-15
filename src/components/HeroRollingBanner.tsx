@@ -1,5 +1,7 @@
 import React from 'react';
 import { Icon } from '@iconify/react';
+import Link from 'next/link';
+import useWindowDimensions from '../hooks/useWindowDimensions';
 
 const images = [
   'logos:javascript',
@@ -24,19 +26,32 @@ const images = [
 ];
 
 const HeroRollingBanner = () => {
+  const width = useWindowDimensions().width;
+
   return (
-    <div className="grid h-full w-full place-items-center overflow-hidden relative">
-      <div className="slide-track flex absolute animate-[Slide_57s_linear_infinite]">
-        {[...images, ...images].map((img, index) => (
-          <div
-            className="w-36 mx-12 h-full flex items-center justify-center"
-            key={img + index}
-          >
-            <Icon icon={img} className="h-28 w-full" />
+    <Link
+      href={'/experience'}
+      className="absolute hover:cursor-pointer h-20 left-0 bottom-0 w-full flex justify-center contrast-125 bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out inset-shadow"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-black to-transparent opacity-50"></div>
+      <div className="grid h-full w-full place-items-center overflow-hidden relative">
+        <div className="slide-track flex absolute left-0 animate-[Slide_57s_linear_infinite]">
+          <div className="slide-track flex absolute h-full">
+            {[...images, ...images].map((img, index) => (
+              <div
+                style={{
+                  width: `calc(${width / 19}px + 96px)`,
+                }}
+                className={`h-full flex items-center justify-center`}
+                key={img + index}
+              >
+                <Icon icon={img} className="h-8 w-full mx-12" />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
-    </div>
+    </Link>
   );
 };
 

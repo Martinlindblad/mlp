@@ -4,9 +4,10 @@ import BackgroundAndBorder from './BackgroundAndBorder';
 import AnimatedItem from './Layouts/AnimatedItem';
 import ContactIcon from './SVG/Contact';
 import ExperienceIcon from './SVG/Experience';
-import FrameworksIcon from './SVG/Frameworks';
+
 import { PageCardType } from 'src/types/DBTypes';
 import Colors from '../sections/Navigation/Colors';
+import AboutIcon from './SVG/About';
 
 const PageLinkCard = ({
   data,
@@ -46,8 +47,8 @@ const PageLinkCard = ({
     switch (data.key) {
       case 'experience':
         return <ExperienceIcon width="35px" height="35px" fill={'white'} />;
-      case 'frameworks':
-        return <FrameworksIcon width="25px" height="25px" fill={'white'} />;
+      case 'about':
+        return <AboutIcon width="25px" height="25px" fill={'white'} />;
       case 'contact':
         return <ContactIcon width="25px" height="25px" fill={'white'} />;
     }

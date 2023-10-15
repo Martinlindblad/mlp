@@ -7,10 +7,11 @@ import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
 
 import SocialMediaLinks from '../SocialMediaLinks';
 import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
-import HeroRollingBanner from '../HeroRollingBanner';
+
 import ContentLoader from '../AnimatedComponents/ContentLoader';
-import Link from 'next/link';
+
 import Logo from '../SVG/Logo';
+import Link from 'next/link';
 
 export default function Hero() {
   const { data: aboutData, isLoading } = useIntroductionQuery();
@@ -50,9 +51,15 @@ export default function Hero() {
   return isLoading ? (
     <ContentLoader />
   ) : (
-    <main className="lg:container grid grid-cols-12 h-full pb-12">
+    <main className="lg:container grid grid-cols-12  pb-12 lg:pb-0 h-screen ">
+      <img
+        alt="content"
+        className="object-cover absolute z-10 object-left h-full opacity-60 right-0 grayscale contrast-200 shadow-lg"
+        src="/images/profilepicture.webp"
+      />
+
       <div className="col-span-10 col-start-2 lg:col-span-12">
-        <div className="pt-24 lg:pt-6 lg:pb-10 lg:flex-row flex-col flex w-full flex-wrap justify-between relative ">
+        <div className="pt-24 lg:pt-6 lg:pb-0 lg:flex-row flex-col flex flex-wrap justify-center relative ">
           <h1
             className="xl:text-3xl lg:text-lg pb-4 lg:pb-0 text-lg md:text-lg
              tracking-wider dark:text-gray-100 "
@@ -93,18 +100,16 @@ export default function Hero() {
               ))}
             </AnimatedContainer>
           </h1>
-
-          <SocialMediaLinks />
         </div>
       </div>
-      <div className="w-full lg:py-24 flex-col col-span-12 ">
-        <div className="w-full lg:h-full rounded-2xl flex flex-row justify-center items-center relative">
-          <div className="grid grid-cols-12 w-full h-4/6 ">
+      <div className="flex-col col-span-12  ">
+        <div className=" rounded-2xl flex flex-row justify-center items-center relative">
+          <div className="grid grid-cols-12 items-center justify-center">
             <AnimatedFadeInContainer
               type="FadeInBottom"
-              className="relative w-full h-full col-span-10 col-start-2 lg:col-span-5 lg:col-start-2 "
+              className="relative col-span-10 col-start-2 lg:col-span-5 lg:col-start-2 "
             >
-              <div className="flex-col flex w-full py-10 justify-center align-center ">
+              <div className="flex flex-col py-10 justify-center items-start">
                 <div className=" flex flex-row justify-start items-start ">
                   {/* <Avatar />
                   <h2 className="text-lg pt-1 font-extrabold lg:text-sm md:text-xl pl-4">
@@ -124,24 +129,28 @@ export default function Hero() {
                 <p className="text-sm  font-normal lg:text-xl opacity-60 md:text-xl md:py-6 py-2 pr-4 md:pr-24 lg:pr-12">
                   {aboutData?.info}
                 </p>
+                <Link
+                  href="/about"
+                  className="flex items-center bg-transparent border border-white text-white hover:bg-opacity-10 px-10 py-3 transition duration-300 ease-in-out"
+                >
+                  <span className="text-sm uppercase"> About Me</span>
+                </Link>
               </div>
+              <SocialMediaLinks />
             </AnimatedFadeInContainer>
-            <AnimatedFadeInContainer
+            {/* <AnimatedFadeInContainer
               type="FadeInBottom"
-              className="col-span-10 col-start-2 lg:col-span-6"
+              className="col-span-10 col-start-4 lg:col-start-9 lg:col-span-3"
             >
-              <Link
-                href={'/frameworks'}
-                className="relative hover:cursor-pointer h-56
-            w-full lg:h-full
-            flex justify-center backdrop-blur-sm contrast-125
-            bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl
-            shadow-lg hover:scale-105 transition-transform duration-300
-            ease-in-out"
-              >
-                <HeroRollingBanner />
-              </Link>
-            </AnimatedFadeInContainer>
+              <div className="w-full inline-flex items-center justify-center relative overflow-hidden rounded-full">
+                <img
+                  alt="content"
+                  className="object-cover relative z-10 object-left "
+                  src="/images/profilepicture.webp"
+                />
+
+              </div>
+            </AnimatedFadeInContainer> */}
           </div>
         </div>
       </div>

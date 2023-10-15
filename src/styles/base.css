@@ -234,7 +234,7 @@
   }
 }
 .slider-track {
-  width: calc((9rem - 6rem) * 19);
+  width: calc((100vw / 19 + 96px) * 38);
 }
 
 @keyframes Slide {
@@ -242,6 +242,10 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(calc((-9rem - 6rem) * 19));
+    transform: translateX(calc(-1 * (100vw / 19 + 96px) * 19));
   }
+}
+
+.inset-shadow {
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 1);
 }

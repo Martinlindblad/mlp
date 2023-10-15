@@ -31,7 +31,7 @@ export interface PageCardType {
   description: string;
   link: string;
   content: string;
-  key: 'experience' | 'frameworks' | 'contact';
+  key: 'experience' | 'about' | 'contact';
   type: 'introdcution';
 }
 export interface SocailMediaLink {

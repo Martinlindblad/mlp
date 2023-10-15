@@ -5,8 +5,8 @@ const WorkShowcase = (): JSX.Element => {
   return (
     <section className="text-gray-600 body-font overflow-hidden container lg:min-h-screen">
       <div className="container px-5 py-24 mx-auto">
-        <AnimatedFadeInContainer type="FadeInBottom">
-          <div className="-my-8 divide-y-2 divide-gray-100">
+        <div className="-my-8 divide-y-2 divide-gray-100">
+          <AnimatedFadeInContainer type="FadeInBottom">
             <div className="py-8 flex flex-wrap md:flex-nowrap">
               <div className="md:w-64 md:mb-0 mb-6 flex-shrink-0 flex flex-col">
                 <span className="font-semibold title-font text-gray-700 dark:text-gray-300">
@@ -30,7 +30,9 @@ const WorkShowcase = (): JSX.Element => {
                 </p>
               </div>
             </div>
+          </AnimatedFadeInContainer>
 
+          <AnimatedFadeInContainer type="FadeInBottom">
             <div className="py-8 flex flex-wrap md:flex-nowrap">
               <div className="md:w-64 md:mb-0 mb-6 flex-shrink-0 flex flex-col">
                 <span className="font-semibold title-font text-gray-700 dark:text-gray-300">
@@ -54,7 +56,9 @@ const WorkShowcase = (): JSX.Element => {
                 </p>
               </div>
             </div>
+          </AnimatedFadeInContainer>
 
+          <AnimatedFadeInContainer type="FadeInBottom">
             <div className="py-8 flex flex-wrap md:flex-nowrap">
               <div className="md:w-64 md:mb-0 mb-6 flex-shrink-0 flex flex-col">
                 <span className="font-semibold title-font text-gray-700 dark:text-gray-300">
@@ -77,8 +81,8 @@ const WorkShowcase = (): JSX.Element => {
                 </p>
               </div>
             </div>
-          </div>
-        </AnimatedFadeInContainer>
+          </AnimatedFadeInContainer>
+        </div>
       </div>
     </section>
   );
