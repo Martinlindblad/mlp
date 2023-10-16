@@ -10,6 +10,52 @@ const WorkShowcase = (): JSX.Element => {
             <div className="py-8 flex flex-wrap md:flex-nowrap">
               <div className="md:w-64 md:mb-0 mb-6 flex-shrink-0 flex flex-col">
                 <span className="font-semibold title-font text-gray-700 dark:text-gray-300">
+                  PiJa Media & Management AB
+                </span>
+                <span className="mt-1 text-gray-600 dark:text-gray-300 text-sm">
+                  April 2021 - June 2021
+                </span>
+              </div>
+              <div className="md:flex-grow">
+                <h2 className="text-2xl font-medium text-gray-900 dark:text-gray-100 title-font mb-2">
+                  Front-end Developer (Intern)
+                </h2>
+                <p className="leading-relaxed text-gray-700 dark:text-gray-300">
+                  Undertook an internship with the intent of transitioning to
+                  full-time employment.
+                </p>
+              </div>
+            </div>
+          </AnimatedFadeInContainer>
+
+          <AnimatedFadeInContainer type="FadeInBottom">
+            <div className="py-8 flex flex-wrap md:flex-nowrap">
+              <div className="md:w-64 md:mb-0 mb-6 flex-shrink-0 flex flex-col">
+                <span className="font-semibold title-font text-gray-700 dark:text-gray-300">
+                  Nackademin, Solna– Graduated
+                </span>
+                <span className="mt-1 text-gray-600 dark:text-gray-300 text-sm">
+                  August 2018 - May 2020
+                </span>
+              </div>
+              <div className="md:flex-grow">
+                <h2 className="text-2xl font-medium text-gray-900 dark:text-gray-100 title-font mb-2">
+                  Newly Graduated Front-end Student
+                </h2>
+                <p className="leading-relaxed text-gray-700 dark:text-gray-300">
+                  The education provided a wide range of everything one should
+                  know within front-end. It gave me solid foundational knowledge
+                  and the chance to try being a Front-end developer through an
+                  internship.
+                </p>
+              </div>
+            </div>
+          </AnimatedFadeInContainer>
+
+          <AnimatedFadeInContainer type="FadeInBottom">
+            <div className="py-8 flex flex-wrap md:flex-nowrap">
+              <div className="md:w-64 md:mb-0 mb-6 flex-shrink-0 flex flex-col">
+                <span className="font-semibold title-font text-gray-700 dark:text-gray-300">
                   Sphinxly
                 </span>
                 <span className="mt-1 text-gray-600 dark:text-gray-300 text-sm">

@@ -51,7 +51,7 @@ export default function Hero() {
   return isLoading ? (
     <ContentLoader />
   ) : (
-    <main className="lg:container grid grid-cols-12  pb-12 lg:pb-0 h-screen ">
+    <main className="lg:container grid grid-cols-12  pb-12  lg:pb-0 h-screen ">
       <img
         alt="content"
         className="object-cover absolute z-10 object-left h-full opacity-60 right-0 grayscale contrast-200 shadow-lg"
@@ -60,6 +60,8 @@ export default function Hero() {
 
       <div className="col-span-10 col-start-2 lg:col-span-12">
         <div className="pt-24 lg:pt-6 lg:pb-0 lg:flex-row flex-col flex flex-wrap justify-center relative ">
+          <Logo containerStyle="w-10 h-10 mr-4" />
+
           <h1
             className="xl:text-3xl lg:text-lg pb-4 lg:pb-0 text-lg md:text-lg
              tracking-wider dark:text-gray-100 "
@@ -69,7 +71,6 @@ export default function Hero() {
               containerVariant={container}
               className="flex-row flex w-full flex-wrap "
             >
-              <Logo containerStyle="w-10 h-10 mr-4" />
               {CharacterString.map((character, index) => (
                 <motion.span
                   className={` ${

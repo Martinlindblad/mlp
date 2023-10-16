@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import Layout from '../components/Layouts/Layout';
 import Link from 'next/link';
 import WorkShowcase from '../components/WorkShowcase';
+import { motion } from 'framer-motion';
 
 const AboutPage = (): JSX.Element => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleContent = () => {
+    setIsOpen(!isOpen);
+  };
+
   return (
     <Layout className="w-full flex-col ">
       <section className="text-gray-400 lg:h-screen  dark:text-gray-100 body-font ">
@@ -62,8 +69,24 @@ const AboutPage = (): JSX.Element => {
           </AnimatedFadeInContainer>
         </div>
       </section>
-      <WorkShowcase />
-      {/* <Sakura /> */}
+
+      <motion.button
+        onClick={toggleContent}
+        className="bg-blue-500 text-white py-2 px-4 rounded-md focus:outline-none"
+        whileHover={{
+          scale: 1.05,
+          boxShadow: '0px 0px 8px rgba(0, 0, 255, 0.6)',
+        }}
+        transition={{ duration: 0.3 }}
+      >
+        {isOpen ? 'Hide work' : 'See more about me'}
+      </motion.button>
+
+      {isOpen && (
+        <motion.div animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+          <WorkShowcase />
+        </motion.div>
+      )}
     </Layout>
   );
 };
