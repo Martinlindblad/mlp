@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import Layout from '../components/Layouts/Layout';
 import Link from 'next/link';
 import WorkShowcase from '../components/WorkShowcase';
-import { motion } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 
 const AboutPage = (): JSX.Element => {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,9 +11,10 @@ const AboutPage = (): JSX.Element => {
   const toggleContent = () => {
     setIsOpen(!isOpen);
   };
-
+  const ref = useRef<HTMLDivElement | null>(null);
+  const isInView = useInView(ref);
   return (
-    <Layout className="w-full flex-col ">
+    <Layout className="w-full flex flex-col justify-center align-center">
       <section className="text-gray-400 lg:h-screen  dark:text-gray-100 body-font ">
         <div className="px-5 mx-auto flex flex-col justify-center align-center h-full">
           <AnimatedFadeInContainer type="FadeInBottom ">
@@ -70,17 +71,29 @@ const AboutPage = (): JSX.Element => {
         </div>
       </section>
 
-      <motion.button
-        onClick={toggleContent}
-        className="bg-blue-500 text-white py-2 px-4 rounded-md focus:outline-none"
-        whileHover={{
-          scale: 1.05,
-          boxShadow: '0px 0px 8px rgba(0, 0, 255, 0.6)',
-        }}
-        transition={{ duration: 0.3 }}
+      <motion.div
+        className="relative flex justify-center align-center"
+        whileHover={{ cursor: 'pointer' }}
       >
-        {isOpen ? 'Hide work' : 'See more about me'}
-      </motion.button>
+        <motion.div
+          className="absolute bottom-0 left-1/2 bg-white h-0.5"
+          style={{ transform: 'translateX(-50%)' }}
+          animate={{ width: isInView ? 'calc(100vw - 50%)' : '0%' }}
+          transition={{ duration: 0.3 }}
+        />
+
+        <motion.button
+          onClick={toggleContent}
+          className=" text-white py-2 px-4 rounded-md focus:outline-none z-10 "
+          whileHover={{
+            scale: 1.05,
+            boxShadow: '0px 0px 8px rgba(0, 0, 255, 0.1)',
+          }}
+          transition={{ duration: 0.3 }}
+        >
+          {isOpen ? 'Hide work' : 'See more about me'}
+        </motion.button>
+      </motion.div>
 
       {isOpen && (
         <motion.div animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
