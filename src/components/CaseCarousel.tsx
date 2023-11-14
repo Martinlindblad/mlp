@@ -5,8 +5,8 @@ import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import { Swiper, SwiperRef, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/effect-coverflow';
-import { motion } from 'framer-motion';
 import ContentLoader from '../components/AnimatedComponents/ContentLoader';
+import { EffectCoverflow, Pagination } from 'swiper/modules';
 
 export default function CaseCarousel() {
   const [page, setPage] = useState(0);
@@ -16,6 +16,7 @@ export default function CaseCarousel() {
     return data?.filter((item) => item != null);
   }, [data]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSlideChange = (swiper: {
     activeIndex: React.SetStateAction<number>;
   }) => {
@@ -23,57 +24,34 @@ export default function CaseCarousel() {
   };
   const swiperRef = useRef<SwiperRef | null>(null);
 
-  const fadeRotateVariants = {
-    hidden: {
-      opacity: 0,
-      scale: 0.75,
-    },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        duration: 0.5,
-      },
-    },
-    exit: {
-      scale: 0.75,
-      opacity: 0,
-    },
-  };
-
   return isLoading || !items ? (
     <ContentLoader />
   ) : (
     <AnimatedFadeInContainer type="FadeInBottom" className="h-full">
-      <div className="h-full w-full   ">
+      <div className="h-full w-full flex justify-content align-items  ">
         <Swiper
-          className="w-full h-3/4 lg:h-4/5 "
-          onSlideChange={(swiper) => handleSlideChange(swiper)}
-          speed={1200}
+          effect={'coverflow'}
+          grabCursor={true}
           centeredSlides={true}
-          onSwiper={(swiperInstance) => {
-            swiperRef.current = { swiper: swiperInstance };
+          slidesPerView={'auto'}
+          coverflowEffect={{
+            rotate: 50,
+            stretch: 0,
+            depth: 100,
+            modifier: 1,
+            slideShadows: true,
           }}
-          ref={swiperRef}
+          pagination={true}
+          modules={[EffectCoverflow, Pagination]}
+          className="mySwiper"
         >
           {items.map((item, index) => (
-            <SwiperSlide
-              key={index}
-              className="flex justify-center align-center"
-            >
-              <motion.div
-                className="w-full h-full "
-                variants={fadeRotateVariants}
-                initial="hidden"
-                animate={page === index ? 'visible' : 'hidden'}
-                exit="exit"
-              >
-                <CaseItem
-                  title={item.title}
-                  description={item.description}
-                  imageSource={item.imageSource}
-                />
-              </motion.div>
+            <SwiperSlide key={index} className="w-4/6 h-4/6">
+              <CaseItem
+                title={item.title}
+                description={item.description}
+                imageSource={item.imageSource}
+              />
             </SwiperSlide>
           ))}
         </Swiper>

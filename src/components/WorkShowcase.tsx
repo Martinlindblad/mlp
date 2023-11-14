@@ -4,7 +4,7 @@ import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 const WorkShowcase = (): JSX.Element => {
   return (
     <section className="text-gray-600 body-font overflow-hidden container lg:min-h-screen">
-      <div className="container px-5 py-24 mx-auto">
+      <div className="container px-5 py-24 lg:py-0 mx-auto">
         <div className="-my-8 divide-y-2 divide-gray-100">
           <AnimatedFadeInContainer type="FadeInBottom">
             <div className="py-8 flex flex-wrap md:flex-nowrap">

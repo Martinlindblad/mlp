@@ -68,6 +68,16 @@ const AboutPage = (): JSX.Element => {
               </div>
             </div>
           </AnimatedFadeInContainer>
+          <motion.button
+            onClick={toggleContent}
+            className="text-white py-20 px-4 rounded-md focus:outline-none z-10 "
+            whileHover={{
+              scale: 1.05,
+            }}
+            transition={{ duration: 0.3 }}
+          >
+            {isOpen ? 'Hide work' : 'See more about me'}
+          </motion.button>
         </div>
       </section>
 
@@ -81,22 +91,14 @@ const AboutPage = (): JSX.Element => {
           animate={{ width: isInView ? 'calc(100vw - 50%)' : '0%' }}
           transition={{ duration: 0.3 }}
         />
-
-        <motion.button
-          onClick={toggleContent}
-          className=" text-white py-2 px-4 rounded-md focus:outline-none z-10 "
-          whileHover={{
-            scale: 1.05,
-            boxShadow: '0px 0px 8px rgba(0, 0, 255, 0.1)',
-          }}
-          transition={{ duration: 0.3 }}
-        >
-          {isOpen ? 'Hide work' : 'See more about me'}
-        </motion.button>
       </motion.div>
 
       {isOpen && (
-        <motion.div animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+        <motion.div
+          key="workShowCase"
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
           <WorkShowcase />
         </motion.div>
       )}
