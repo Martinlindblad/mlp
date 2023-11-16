@@ -12,6 +12,7 @@
     "lint:eslint": "NODE_ENV=production eslint src --report-unused-disable-directives --color",
     "lint:tsc": "NODE_ENV=production tsc --noEmit --pretty"
   },
+  
   "nodemonConfig": {
     "ext": "js,jsx,ts,tsx,json,css,scss,svg",
     "watch": [

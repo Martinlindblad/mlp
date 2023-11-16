@@ -17,7 +17,7 @@ export default function CaseItem({
   imageSource,
 }: CaseItemProp & Props): JSX.Element {
   return (
-    <motion.div className="flex flex-row bg-white justify-center items-center w-4/6 h-96  mx-auto overflow-hidden rounded-xl shadow-xl">
+    <motion.div className="flex flex-col md:flex-row bg-white justify-center items-center h-full mx-auto overflow-hidden shadow-xl">
       <div className="p-6 text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-3">{title}</h2>
         <p className="text-gray-600 mb-4">{description}</p>

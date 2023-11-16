@@ -28,12 +28,13 @@ export default function CaseCarousel() {
     <ContentLoader />
   ) : (
     <AnimatedFadeInContainer type="FadeInBottom" className="h-full">
-      <div className="h-full w-full flex justify-content align-items  ">
+      <div className="flex flex-col items-center justify-center w-full h-screen">
         <Swiper
           effect={'coverflow'}
           grabCursor={true}
           centeredSlides={true}
           slidesPerView={'auto'}
+          ref={swiperRef}
           coverflowEffect={{
             rotate: 50,
             stretch: 0,
@@ -43,10 +44,11 @@ export default function CaseCarousel() {
           }}
           pagination={true}
           modules={[EffectCoverflow, Pagination]}
-          className="mySwiper"
+          className="mySwiper w-full md:w-4/6 rounded-lg"
+          onSlideChange={handleSlideChange}
         >
           {items.map((item, index) => (
-            <SwiperSlide key={index} className="w-4/6 h-4/6">
+            <SwiperSlide key={index}>
               <CaseItem
                 title={item.title}
                 description={item.description}
