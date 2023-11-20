@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import Layout from '../components/Layouts/Layout';
 import Link from 'next/link';
@@ -6,11 +6,6 @@ import WorkShowcase from '../components/WorkShowcase';
 import { motion, useInView } from 'framer-motion';
 
 const AboutPage = (): JSX.Element => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const toggleContent = () => {
-    setIsOpen(!isOpen);
-  };
   const ref = useRef<HTMLDivElement | null>(null);
   const isInView = useInView(ref);
   return (
@@ -68,16 +63,6 @@ const AboutPage = (): JSX.Element => {
               </div>
             </div>
           </AnimatedFadeInContainer>
-          <motion.button
-            onClick={toggleContent}
-            className="text-white py-20 px-4 rounded-md focus:outline-none z-10 "
-            whileHover={{
-              scale: 1.05,
-            }}
-            transition={{ duration: 0.3 }}
-          >
-            {isOpen ? 'Hide work' : 'See more about me'}
-          </motion.button>
         </div>
       </section>
 
@@ -93,15 +78,13 @@ const AboutPage = (): JSX.Element => {
         />
       </motion.div>
 
-      {isOpen && (
-        <motion.div
-          key="workShowCase"
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <WorkShowcase />
-        </motion.div>
-      )}
+      <motion.div
+        key="workShowCase"
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <WorkShowcase />
+      </motion.div>
     </Layout>
   );
 };
