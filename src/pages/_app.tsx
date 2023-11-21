@@ -4,6 +4,7 @@ import { ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import Navbar from '../sections/Navigation/Navbar';
 import { useEffect } from 'react';
+import Footer from '../sections/Footer/Footer';
 
 function MyApp({ Component, pageProps, router }: AppProps) {
   const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ function MyApp({ Component, pageProps, router }: AppProps) {
         <>
           <Component {...pageProps} key={router.asPath} />
           <Navbar />
+          <Footer />
         </>
       </QueryClientProvider>
     </ThemeProvider>

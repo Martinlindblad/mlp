@@ -4,7 +4,6 @@ import Form from './Form';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 import SocialMediaLinks from './SocialMediaLinks';
 
-// ContactDetails.js - New Component for Contact Details
 const ContactDetails = () => (
   <div className="space-y-4">
     {/* Phone */}
@@ -17,8 +16,8 @@ const ContactDetails = () => (
         className="rounded-full bg-[#6AB04C] p-0.5"
       />
       <div className="ml-4">
-        <h3 className="text-sm font-semibold text-gray-800">Phone Number</h3>
-        <p className="text-sm text-gray-600">(123) 456-7890</p>
+        <h3 className="text-sm font-semibold text-gray-400">Phone Number</h3>
+        <p className="text-sm text-gray-600">(+46) 73092979</p>
       </div>
     </div>
 
@@ -32,8 +31,8 @@ const ContactDetails = () => (
         className="rounded-full bg-[#6AB04C] p-0.5"
       />
       <div className="ml-4">
-        <h3 className="text-sm font-semibold text-gray-800">Email Address</h3>
-        <p className="text-sm text-gray-600">info@example.com</p>
+        <h3 className="text-sm font-semibold text-gray-400">Email Address</h3>
+        <p className="text-sm text-gray-600">Martin.lindblad1@gmail.com</p>
       </div>
     </div>
   </div>
@@ -66,8 +65,10 @@ const ContactForm = () => (
           <div className="lg:col-span-1 flex flex-col justify-center">
             <h2 className="text-4xl font-bold mb-4">Get in touch</h2>
             <p className="mb-4 text-lg text-gray-600">
-              Use the contcat form to get in touch with me. I will get back to
-              you as soon as possible.
+              Looking for a developer? Use the contcat form to get in touch with
+              me. I will get back to you as soon as possible. I am looking for a
+              new challenge and I am open to new opportunities. I am also open
+              to freelance work. I am looking forward to hearing from you!
             </p>
             <ContactMe />
           </div>

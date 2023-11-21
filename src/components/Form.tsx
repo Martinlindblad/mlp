@@ -2,8 +2,7 @@ import React from 'react';
 
 const Form = () => {
   return (
-    // Use 'bg-gray-950' for dark mode if it's a valid color in your design system, otherwise replace with 'bg-gray-900'
-    <div className="p-8 lg:p-12 relative  rounded-md">
+    <div className="p-2 lg:p-12 relative  rounded-md">
       <form action="#" className="space-y-8">
         <div>
           <label

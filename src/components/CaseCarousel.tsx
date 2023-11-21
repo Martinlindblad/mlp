@@ -44,7 +44,7 @@ export default function CaseCarousel() {
           }}
           pagination={true}
           modules={[EffectCoverflow, Pagination]}
-          className="mySwiper w-full h-4/6 xl:w-4/6  bg-cover bg-center "
+          className="mySwiper w-full xl:h-4/6 xl:w-4/6  bg-cover bg-center "
           onSlideChange={handleSlideChange}
         >
           {items.map((item, index) => (
@@ -58,7 +58,7 @@ export default function CaseCarousel() {
           ))}
         </Swiper>
 
-        <div className="pt-20 xl:bottom-10 w-full z-50 flex items-center justify-center ">
+        <div className="pt-10 md:pt-20 xl:bottom-10 w-full z-50 flex items-center justify-center ">
           <div className="justify-between flex items-center ">
             <div className="flex flex-col items-center">
               <span className="text-sm text-gray-700 dark:text-gray-400">
