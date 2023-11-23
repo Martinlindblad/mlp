@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Props } from 'next/script';
 import React from 'react';
-import Image from 'next/image';
+import MockupDeviceComponent from './MockupDeviceComponent';
 
 type CaseItemProp = {
   title: string;
@@ -66,14 +66,15 @@ export default function CaseItem({
           </Link>
         </div>
       </div>
-      <div className="relative h-56 w-full md:h-5/6 md:w-1/2">
+      {/* <div className="relative h-56 w-full md:h-5/6 md:w-1/2">
         <Image
           src={imageSource}
           alt="Picture of the author"
           layout="fill"
           objectFit="contain"
         />
-      </div>
+      </div> */}
+      <MockupDeviceComponent imageSrc={imageSource} deviceType={'phone'} />
     </motion.div>
   );
 }

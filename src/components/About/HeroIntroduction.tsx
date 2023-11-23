@@ -15,6 +15,7 @@ import Link from 'next/link';
 
 export default function Hero() {
   const { data: aboutData, isLoading } = useIntroductionQuery();
+  const { theme } = useTheme();
 
   const CharacterString = useMemo(() => {
     if (aboutData) {
@@ -45,8 +46,6 @@ export default function Hero() {
     }),
     [],
   );
-
-  const { theme } = useTheme();
 
   return isLoading ? (
     <ContentLoader />
