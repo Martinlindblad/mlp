@@ -46,7 +46,7 @@ const Footer = (): JSX.Element => {
         <div className="sm:flex sm:items-center sm:justify-between">
           <Link
             href="https://flowbite.com/"
-            className="flex items-center mb-4 sm:mb-0 space-x-3 rtl:space-x-reverse"
+            className="flex items-center mb-4 sm:mb-0 space-x-4 rtl:space-x-reverse"
           >
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-4xl  font-bold tracking-wider dark:text-gray-100">
               <AnimatedContainer

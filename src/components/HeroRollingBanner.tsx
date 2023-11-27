@@ -31,11 +31,11 @@ const HeroRollingBanner = () => {
   return (
     <Link
       href={'/experience'}
-      className="absolute hover:cursor-pointer h-20 left-0 bottom-0 w-full flex justify-center contrast-125 bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out inset-shadow"
+      className="absolute hover:cursor-pointer h-20 left-0 bottom-0 w-full flex justify-center contrast-125 hover:scale-105 transition-transform duration-300 ease-in-out inset-shadow"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-transparent via-black to-transparent opacity-50"></div>
       <div className="grid h-full w-full place-items-center overflow-hidden relative">
-        <div className="slide-track flex absolute left-0 animate-[Slide_57s_linear_infinite]">
+        <div className="slide-track flex absolute left-0 animate-[Slide_114s_linear_infinite]">
           <div className="slide-track flex absolute h-full">
             {[...images, ...images].map((img, index) => (
               <div
@@ -45,7 +45,7 @@ const HeroRollingBanner = () => {
                 className={`h-full flex items-center justify-center`}
                 key={img + index}
               >
-                <Icon icon={img} className="h-8 w-full mx-12" />
+                <Icon icon={img} className="h-8 w-full mx-10  p-1" />
               </div>
             ))}
           </div>

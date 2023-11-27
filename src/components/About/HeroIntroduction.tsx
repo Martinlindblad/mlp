@@ -68,12 +68,12 @@ export default function Hero() {
               <Logo containerStyle="w-10 mr-4" />
               {CharacterString.map((character, index) => (
                 <motion.span
-                  className={` ${
+                  className={`${
                     theme === 'dark'
                       ? 'animate-[darkColors_3s_ease-in-out]'
                       : 'animate-[lightColors_3s_ease-in-out]'
                   } ${
-                    index > 6 ? ' text-blue-500 font-thin' : ' font-extrabold'
+                    index > 6 ? 'text-blue-500 font-thin' : 'font-extrabold'
                   } `}
                   variants={{
                     hidden: {
@@ -101,14 +101,14 @@ export default function Hero() {
           <div className="grid grid-cols-12 items-center justify-center">
             <AnimatedFadeInContainer
               type="FadeInBottom"
-              className="relative col-span-10 col-start-2 lg:col-span-6 lg:col-start-2 xl:col-start-2 2xl:col-span-5"
+              className="relative col-span-10 col-start-2 lg:col-span-6 lg:col-start-2 xl:col-start-2 2xl:col-span-6"
             >
               <div className="flex flex-col py-4 sm:py-6 md:py-10 justify-center items-start">
                 <div className="flex flex-row justify-start items-start">
                   <h1 className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold pr-6">
                     Front-end Developer
                     <br />
-                    Design Meets Functionality
+                    Where design Meets Functionality
                   </h1>
                 </div>
                 <p className="text-sm sm:text-sm md:text-base lg:text-lg font-normal opacity-60 py-4 pr-4 md:pr-12 lg:pr-24">
