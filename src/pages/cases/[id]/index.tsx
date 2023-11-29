@@ -1,6 +1,8 @@
 import { ObjectId } from 'mongodb';
 import { GetStaticPaths, GetStaticProps } from 'next';
 import { connectToDatabase } from 'src/lib/mongodb';
+import ContentLoader from 'src/src/components/AnimatedComponents/ContentLoader';
+import AnimatedFadeInContainer from 'src/src/components/Layouts/AnimatedFadeInContainer';
 
 interface CaseData {
   _id: ObjectId;
@@ -10,19 +12,8 @@ interface CaseData {
 }
 
 interface CasePageProps {
-  caseData: CaseData;
+  caseData: CaseData | null;
 }
-
-const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
-  return (
-    <div>
-      <h1>{caseData.title}</h1>
-      <img src={caseData.imageSource} alt={caseData.title} />
-      <p>{caseData.description}</p>
-      {/* Render more case details here */}
-    </div>
-  );
-};
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const { database } = await connectToDatabase();
@@ -31,12 +22,9 @@ export const getStaticPaths: GetStaticPaths = async () => {
     .find({}, { projection: { _id: 1 } })
     .toArray();
 
-  const paths = cases.map((caseDoc: { _id: { toString: () => any } }) => ({
+  const paths = cases.map((caseDoc) => ({
     params: { id: caseDoc._id.toString() },
   }));
-
-  // Close the connection if you're managing it at the function level
-  // client.close();
 
   return { paths, fallback: 'blocking' };
 };
@@ -47,9 +35,6 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
     .collection('projects_and_cases')
     .findOne({ _id: new ObjectId(params?.id as string) });
 
-  // Close the connection if you're managing it at the function level
-  // client.close();
-
   if (!caseData) {
     return { notFound: true };
   }
@@ -58,8 +43,25 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
     props: {
       caseData: JSON.parse(JSON.stringify(caseData)),
     },
-    revalidate: 10, // In seconds. Adjust the revalidation time as needed.
+    revalidate: 5,
   };
+};
+
+const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
+  if (!caseData) {
+    return <ContentLoader />;
+  }
+
+  return (
+    <AnimatedFadeInContainer type="FadeInBottom" className="h-full">
+      <div>
+        <h1>{caseData.title}</h1>
+        <img src={caseData.imageSource} alt={caseData.title} />
+        <p>{caseData.description}</p>
+        {/* Render more case details here */}
+      </div>
+    </AnimatedFadeInContainer>
+  );
 };
 
 export default CasePage;

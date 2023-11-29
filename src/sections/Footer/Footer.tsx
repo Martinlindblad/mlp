@@ -45,7 +45,7 @@ const Footer = (): JSX.Element => {
       <div className="w-full max-w-screen-xl mx-auto p-4 md:py-8">
         <div className="sm:flex sm:items-center sm:justify-between">
           <Link
-            href="https://flowbite.com/"
+            href="/"
             className="flex items-center mb-4 sm:mb-0 space-x-4 rtl:space-x-reverse"
           >
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-4xl  font-bold tracking-wider dark:text-gray-100">
