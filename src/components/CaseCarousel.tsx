@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import CaseItem from './CaseItem';
+import CaseItem from './CaseCarouselItem';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import { Swiper, SwiperRef, SwiperSlide } from 'swiper/react';
@@ -11,9 +11,10 @@ import { EffectCoverflow, Pagination } from 'swiper/modules';
 export default function CaseCarousel() {
   const [page, setPage] = useState(0);
   const { data, isLoading } = useProjectsAndCasesQuery();
+
   const items = useMemo(() => {
     if (!data) return [];
-    return data?.filter((item) => item != null);
+    return data?.filter((item) => item != null).slice(0, 6);
   }, [data]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -53,6 +54,7 @@ export default function CaseCarousel() {
                 title={item.title}
                 description={item.description}
                 imageSource={item.imageSource}
+                id={item._id}
               />
             </SwiperSlide>
           ))}

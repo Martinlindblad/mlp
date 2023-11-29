@@ -1,21 +1,23 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Props } from 'next/script';
 import React from 'react';
 import MockupDeviceComponent from './MockupDeviceComponent';
+import { ObjectId } from 'mongodb';
 
-type CaseItemProp = {
+type CaseCarouselItemProp = {
+  id: ObjectId;
   title: string;
   description: string;
   imageSource: string;
 };
 
-export default function CaseItem({
+export default function CaseCarouselItem({
+  id,
   title,
   description,
   imageSource,
-}: CaseItemProp & Props): JSX.Element {
+}: CaseCarouselItemProp): JSX.Element {
   return (
     <motion.div className="flex flex-col md:flex-row bg-slate-300 justify-around items-center h-full mx-auto overflow-hidden shadow-xl">
       <div className="p-10 md:p-20 w-full md:w-1/2">
@@ -27,7 +29,7 @@ export default function CaseItem({
         </p>
         <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 pt-10">
           <Link
-            href="#"
+            href={`/cases/${id}`}
             className="flex-grow sm:flex-grow-0 inline-flex cursor-pointer items-center justify-center
         px-4 py-2 text-sm sm:text-base font-medium text-center text-white rounded-lg bg-lime-700
         hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-900 transition ease-in-out duration-300"
