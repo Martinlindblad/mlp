@@ -15,27 +15,38 @@ const Form = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log(email, subject, message);
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, subject, message }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      const { successMessage, errorMessage } = data;
+
+      if (errorMessage) {
+        setResponseMessage(errorMessage);
+      } else {
+        setResponseMessage(successMessage);
+      }
+    } catch (error) {
+      setResponseMessage(
+        "A network error occurred, or the server's response was not JSON.",
+      );
+    }
 
     setEmail('');
     setSubject('');
     setMessage('');
-
-    const res = await fetch('/api/contact', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, subject, message }),
-    });
-
-    const { successMessage, errorMessage } = await res.json();
-
-    if (errorMessage) {
-      setResponseMessage(errorMessage);
-    } else {
-      setResponseMessage(successMessage);
-    }
   };
 
   return (
@@ -104,7 +115,7 @@ const Form = () => {
         </button>
       </form>
 
-      <ContactFormMessage message={responeMessage} />
+      {responeMessage ? <ContactFormMessage message={responeMessage} /> : null}
     </div>
   );
 };

@@ -13,6 +13,6 @@
       ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "types/**/*.d.ts","./types/**/*.d.ts", "lib/mongodb.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "types/**/*.d.ts","./types/**/*.d.ts", "lib/mongodb.ts", "src/pages/api/contact/route.js"],
   "exclude": ["node_modules"]
 }
