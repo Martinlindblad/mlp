@@ -116,7 +116,7 @@ export default function Hero() {
                 </p>
                 <Link
                   href="/about"
-                  className="flex items-center bg-transparent border border-white text-white hover:bg-opacity-10 px-4 sm:px-6 md:px-10 mt-4 py-2 sm:py-2 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base"
+                  className="flex items-center bg-transparent border border-white text-white px-4 sm:px-6 md:px-10 mt-4 py-2 sm:py-2 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base hover:bg-[#desiredColor] hover:scale-105"
                 >
                   About Me
                 </Link>

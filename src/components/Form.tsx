@@ -1,9 +1,50 @@
 import React from 'react';
 
+const ContactFormMessage = ({ message }: { message: string }) => (
+  <div className="bg-green-500 text-white text-sm p-3 rounded-md">
+    {message}
+  </div>
+);
+
 const Form = () => {
+  const [email, setEmail] = React.useState('');
+  const [subject, setSubject] = React.useState('');
+  const [message, setMessage] = React.useState('');
+
+  const [responeMessage, setResponseMessage] = React.useState('');
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    console.log(email, subject, message);
+
+    setEmail('');
+    setSubject('');
+    setMessage('');
+
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, subject, message }),
+    });
+
+    const { successMessage, errorMessage } = await res.json();
+
+    if (errorMessage) {
+      setResponseMessage(errorMessage);
+    } else {
+      setResponseMessage(successMessage);
+    }
+  };
+
   return (
     <div className="p-2 lg:p-12 relative  rounded-md">
-      <form action="#" className="space-y-8">
+      <form
+        action="#"
+        className="space-y-8"
+        onSubmit={(formData) => handleSubmit(formData)}
+      >
         <div>
           <label
             htmlFor="email"
@@ -12,6 +53,8 @@ const Form = () => {
             Your Email
           </label>
           <input
+            onChange={(e) => setEmail(e.target.value)}
+            value={email}
             type="email"
             id="email"
             className="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5"
@@ -27,6 +70,8 @@ const Form = () => {
             Subject
           </label>
           <input
+            onChange={(e) => setSubject(e.target.value)}
+            value={subject}
             type="text"
             id="subject"
             className="block p-3 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
@@ -42,6 +87,8 @@ const Form = () => {
             Your Message
           </label>
           <textarea
+            onChange={(e) => setMessage(e.target.value)}
+            value={message}
             id="message"
             rows={6}
             className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg shadow-sm border border-gray-300 focus:ring-primary-500 focus:border-primary-500"
@@ -56,6 +103,8 @@ const Form = () => {
           Send Message
         </button>
       </form>
+
+      <ContactFormMessage message={responeMessage} />
     </div>
   );
 };
