@@ -1,8 +1,18 @@
 import React from 'react';
 
-const ContactFormMessage = ({ message }: { message: string }) => (
-  <div className="bg-green-500 text-white text-sm p-3 rounded-md">
-    {message}
+const ContactFormMessage = ({
+  message,
+  success,
+}: {
+  message: string;
+  success: boolean;
+}) => (
+  <div
+    className={`${
+      success ? 'bg-green-500' : 'bg-red-500'
+    } bg-green-500 text-white text-sm px-6 py-2 my-8 rounded-md`}
+  >
+    <p className="text-lg">{message}</p>
   </div>
 );
 
@@ -10,6 +20,8 @@ const Form = () => {
   const [email, setEmail] = React.useState('');
   const [subject, setSubject] = React.useState('');
   const [message, setMessage] = React.useState('');
+  const [fullName, setFullName] = React.useState('');
+  const [successful, setSuccessful] = React.useState(false);
 
   const [responeMessage, setResponseMessage] = React.useState('');
 
@@ -17,36 +29,56 @@ const Form = () => {
     e.preventDefault();
 
     try {
-      const res = await fetch('/api/contact', {
+      const res = await fetch('/api/contact/route', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, subject, message }),
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          subject: subject.trim(),
+          message: message.trim(),
+        }),
       });
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
 
       const data = await res.json();
 
-      const { successMessage, errorMessage } = data;
-
-      if (errorMessage) {
-        setResponseMessage(errorMessage);
+      // Check if the response was not OK and process the error message
+      if (!res.ok) {
+        // Set the error message from the response, if available
+        setResponseMessage(
+          data.errorMessage || `HTTP error! status: ${res.status}`,
+        );
+        setSuccessful(false);
       } else {
-        setResponseMessage(successMessage);
+        // If the submission was successful, clear the form fields and update state
+        if (data.success) {
+          setResponseMessage(data.successMessage);
+          setSuccessful(true);
+          setFullName('');
+          setEmail('');
+          setSubject('');
+          setMessage('');
+        } else {
+          setResponseMessage(data.errorMessage || 'An unknown error occurred.');
+          setSuccessful(false);
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Network or other error', error);
+      // Update the state to reflect a network or other error
       setResponseMessage(
-        "A network error occurred, or the server's response was not JSON.",
+        'A network error occurred, or the server’s response could not be processed.',
       );
+      setSuccessful(false);
+    } finally {
+      if (successful) {
+        setTimeout(() => {
+          setResponseMessage('');
+        }, 5000);
+      }
     }
-
-    setEmail('');
-    setSubject('');
-    setMessage('');
   };
 
   return (
@@ -56,6 +88,24 @@ const Form = () => {
         className="space-y-8"
         onSubmit={(formData) => handleSubmit(formData)}
       >
+        <div>
+          <label
+            htmlFor="fullName"
+            className="block mb-2 text-sm font-medium text-gray-800 dark:text-gray-200"
+          >
+            Your Name
+          </label>
+          <input
+            onChange={(e) => setFullName(e.target.value)}
+            value={fullName}
+            type="text"
+            id="fullName"
+            className="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5"
+            placeholder="Your Name"
+            required
+          />
+        </div>
+
         <div>
           <label
             htmlFor="email"
@@ -115,7 +165,9 @@ const Form = () => {
         </button>
       </form>
 
-      {responeMessage ? <ContactFormMessage message={responeMessage} /> : null}
+      {responeMessage ? (
+        <ContactFormMessage success={successful} message={responeMessage} />
+      ) : null}
     </div>
   );
 };

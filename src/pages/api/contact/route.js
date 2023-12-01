@@ -1,37 +1,47 @@
-import { NextResponse } from 'next/server';
 import { connectToDatabase } from 'src/lib/mongodb';
 
 /**
- * @param {{ json: () => PromiseLike<{ fullname: any; email: any; message: any; }> | { fullname: any; email: any; message: any; }; }} req
+ * @param {{ method: string; body: { fullName: string; email: string; subject: string; message: string; }; }} req
+ * @param {{ status: (arg0: number) => { (): any; new (): any; json: { (arg0: { errorMessage?: string; success?: boolean; successMessage?: string; }): void; new (): any; }; }; }} res
  */
-export async function POST(req) {
-  const { fullname, email, message } = await req.json();
-
-  if (!fullname || !email || !message) {
-    return NextResponse.json({
-      errorMessage: ['Missing fields'],
-      success: false,
-    });
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.status(405).json({ errorMessage: 'Method Not Allowed' });
+    return;
   }
 
   try {
+    const { fullName, email, subject, message } = req.body;
+
+    console.log('req.body:', req.body);
+
+    if (!fullName || !email || !subject || !message) {
+      res.status(400).json({
+        errorMessage: 'Missing fields',
+        success: false,
+      });
+      return;
+    }
+
     const { database } = await connectToDatabase();
 
-    await database
-      .collection('contact')
-      .insertOne({ fullname, email, message });
+    await database.collection('contact').insertOne({
+      fullName,
+      email,
+      subject,
+      message,
+      date: new Date(),
+    });
 
-    return NextResponse.json({
+    res.status(201).json({
       successMessage: 'Message sent successfully',
       success: true,
     });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({
-      errorMessage: ['Unable to send message.'],
+    console.error('Insertion error:', error);
+    res.status(500).json({
+      errorMessage: 'Unable to send message.',
       success: false,
     });
   }
 }
-
-export default POST;
