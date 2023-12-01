@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import React from 'react';
 
 const ContactFormMessage = ({
@@ -6,15 +7,28 @@ const ContactFormMessage = ({
 }: {
   message: string;
   success: boolean;
-}) => (
-  <div
-    className={`${
-      success ? 'bg-green-500' : 'bg-red-500'
-    } bg-green-500 text-white text-sm px-6 py-2 my-8 rounded-md`}
-  >
-    <p className="text-lg">{message}</p>
-  </div>
-);
+}) => {
+  return (
+    <div>
+      {message && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{
+            type: 'spring',
+            stiffness: 260,
+            damping: 20,
+          }}
+          className={`${
+            success ? 'bg-green-500' : 'bg-red-500'
+          } bg-green-500 text-white text-sm px-6 py-2 my-8 rounded-md`}
+        >
+          <p className="text-lg">{message}</p>
+        </motion.div>
+      )}
+    </div>
+  );
+};
 
 const Form = () => {
   const [email, setEmail] = React.useState('');
@@ -165,9 +179,7 @@ const Form = () => {
         </button>
       </form>
 
-      {responeMessage ? (
-        <ContactFormMessage success={successful} message={responeMessage} />
-      ) : null}
+      <ContactFormMessage success={successful} message={responeMessage} />
     </div>
   );
 };
