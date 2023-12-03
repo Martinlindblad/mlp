@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 
 import MainPageShortcuts from '../sections/MainPage/MainPageShortcuts';
 import Hero from '../components/About/HeroIntroduction';
+import AllShowcasesSection from '../sections/Cases/AllShowcasesSection';
 
 const Cases = dynamic(() => import('../sections/Cases/Cases'));
 
@@ -26,6 +27,7 @@ export default function Home() {
         <Hero />
       </div>
       <Cases />
+      <AllShowcasesSection />
       <MainPageShortcuts />
     </Layout>
   );

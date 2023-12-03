@@ -9,7 +9,6 @@ export function ExperienceComponent() {
       { title: 'Print & Web Designer', duration: 'X years' },
       { title: 'UI/UX Designer & Developer', duration: 'X years' },
       { title: 'Web Developer', duration: 'X years' },
-      //... Add more as needed
     ],
     [],
   );

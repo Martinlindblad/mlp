@@ -5,6 +5,7 @@ type AnimatedStaggerItemProps = {
   whileHover?: HTMLMotionProps<'div'>['whileHover'];
   className?: string;
   children: React.ReactNode;
+  rest?: HTMLMotionProps<'div'>;
 };
 
 const AnimatedStaggerItem: React.FC<AnimatedStaggerItemProps> = ({
@@ -12,12 +13,14 @@ const AnimatedStaggerItem: React.FC<AnimatedStaggerItemProps> = ({
   className,
   itemVariant,
   whileHover,
+  rest,
 }) => {
   return (
     <motion.div
       className={className}
       variants={itemVariant}
       whileHover={whileHover}
+      {...rest}
     >
       {children}
     </motion.div>
