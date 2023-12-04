@@ -2,7 +2,8 @@ import { HTMLMotionProps, motion, Variants } from 'framer-motion';
 
 type AnimatedStaggerItemProps = {
   itemVariant?: Variants;
-  whileHover?: HTMLMotionProps<'div'>['whileHover'];
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   className?: string;
   children: React.ReactNode;
   rest?: HTMLMotionProps<'div'>;
@@ -12,14 +13,16 @@ const AnimatedStaggerItem: React.FC<AnimatedStaggerItemProps> = ({
   children,
   className,
   itemVariant,
-  whileHover,
+  onMouseEnter,
+  onMouseLeave,
   rest,
 }) => {
   return (
     <motion.div
       className={className}
       variants={itemVariant}
-      whileHover={whileHover}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       {...rest}
     >
       {children}
