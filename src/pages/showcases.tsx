@@ -75,7 +75,7 @@ const ShowCases = () => {
   const getStaggerItemVariants = useCallback(
     ({ index }: { index: number }) => ({
       hidden: {
-        opacity: 0,
+        opacity: 1,
         scale: 0.75,
       },
       visible: {
