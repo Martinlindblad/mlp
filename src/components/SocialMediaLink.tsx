@@ -66,7 +66,6 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
       itemVariant={itemVariant}
       whileHover={{
         transition: { duration: 0.3 },
-        // Add glow effect with box-shadow and blur
         boxShadow:
           theme === 'dark'
             ? '0 0 0 1px rgba(255, 255, 255, 0.7)'

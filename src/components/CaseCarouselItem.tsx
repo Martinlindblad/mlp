@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import React, { useMemo } from 'react';
+import React from 'react';
 import MockupDeviceComponent from './MockupDeviceComponent';
 import { ObjectId } from 'mongodb';
 
@@ -22,9 +22,6 @@ export default function CaseCarouselItem({
   from,
   to,
 }: CaseCarouselItemProp): JSX.Element {
-  const itemClasses = useMemo(() => {
-    return `absolute top-0 left-0 w-full h-full bg-gradient-to-r from-[${from}] to-[${to}] z-0`;
-  }, [from, to]);
   return (
     <motion.div className="flex flex-col md:flex-row bg-slate-300 justify-around items-center h-full mx-auto overflow-hidden shadow-xl">
       <div className="p-10 md:p-20 w-full md:w-1/2 z-10">
@@ -83,7 +80,14 @@ export default function CaseCarouselItem({
           objectFit="contain"
         />
       </div> */}
-      {from && to && <div className={itemClasses} />}
+      {from && to && (
+        <div
+          className={'absolute top-0 left-0 w-full h-full z-0'}
+          style={{
+            background: `linear-gradient(${from}, ${to})`,
+          }}
+        />
+      )}
       <MockupDeviceComponent imageSrc={imageSource} deviceType={'phone'} />
     </motion.div>
   );
