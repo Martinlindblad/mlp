@@ -10,6 +10,8 @@ type CaseCarouselItemProp = {
   title: string;
   description: string;
   imageSource: string;
+  from: string;
+  to: string;
 };
 
 export default function CaseCarouselItem({
@@ -17,10 +19,12 @@ export default function CaseCarouselItem({
   title,
   description,
   imageSource,
+  from,
+  to,
 }: CaseCarouselItemProp): JSX.Element {
   return (
     <motion.div className="flex flex-col md:flex-row bg-slate-300 justify-around items-center h-full mx-auto overflow-hidden shadow-xl">
-      <div className="p-10 md:p-20 w-full md:w-1/2">
+      <div className="p-10 md:p-20 w-full md:w-1/2 z-10">
         <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-800 mb-3">
           {title}
         </h2>
@@ -76,6 +80,14 @@ export default function CaseCarouselItem({
           objectFit="contain"
         />
       </div> */}
+      {from && to && (
+        <div
+          className={'absolute top-0 left-0 w-full h-full z-0'}
+          style={{
+            background: `linear-gradient(${from}, ${to})`,
+          }}
+        />
+      )}
       <MockupDeviceComponent imageSrc={imageSource} deviceType={'phone'} />
     </motion.div>
   );

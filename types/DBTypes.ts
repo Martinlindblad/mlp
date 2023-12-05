@@ -44,4 +44,6 @@ export interface ProjectsAndCases {
   title: string;
   description: string;
   imageSource: string;
+  from: string;
+  to: string;
 }

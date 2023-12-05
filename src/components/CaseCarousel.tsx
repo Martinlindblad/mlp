@@ -50,12 +50,7 @@ export default function CaseCarousel() {
         >
           {items.map((item, index) => (
             <SwiperSlide key={index}>
-              <CaseItem
-                title={item.title}
-                description={item.description}
-                imageSource={item.imageSource}
-                id={item._id}
-              />
+              <CaseItem {...item} id={item._id} />
             </SwiperSlide>
           ))}
         </Swiper>
