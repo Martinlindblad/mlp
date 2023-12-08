@@ -3,7 +3,7 @@ import CaseCarousel from 'src/src/components/CaseCarousel';
 
 export default function Cases() {
   return (
-    <section className="lg:h-screen w-full overflow-hidden relative">
+    <section className="lg:h-screen  w-full overflow-hidden relative">
       <video
         autoPlay
         loop

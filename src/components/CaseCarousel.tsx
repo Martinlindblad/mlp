@@ -45,7 +45,7 @@ export default function CaseCarousel() {
           }}
           pagination={true}
           modules={[EffectCoverflow, Pagination]}
-          className="mySwiper w-full xl:h-4/6 xl:w-4/6  bg-cover bg-center "
+          className="mySwiper w-full  xl:h-4/6 xl:w-4/6  bg-cover bg-center "
           onSlideChange={handleSlideChange}
         >
           {items.map((item, index) => (

@@ -2,7 +2,6 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import React from 'react';
-import MockupDeviceComponent from './MockupDeviceComponent';
 import { ObjectId } from 'mongodb';
 
 type CaseCarouselItemProp = {
@@ -18,13 +17,13 @@ export default function CaseCarouselItem({
   id,
   title,
   description,
-  imageSource,
+  // imageSource,
   from,
   to,
 }: CaseCarouselItemProp): JSX.Element {
   return (
-    <motion.div className="flex flex-col md:flex-row bg-slate-300 justify-around items-center h-full mx-auto overflow-hidden shadow-xl">
-      <div className="p-10 md:p-20 w-full md:w-1/2 z-10">
+    <motion.div className="flex flex-col md:flex-row bg-slate-300 justify-around items-center h-full mx-auto overflow-hidden shadow-xl ">
+      <div className="p-10 md:p-20 w-full md:w-1/2 z-10 f">
         <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-800 mb-3">
           {title}
         </h2>
@@ -88,7 +87,7 @@ export default function CaseCarouselItem({
           }}
         />
       )}
-      <MockupDeviceComponent imageSrc={imageSource} deviceType={'phone'} />
+      {/* <MockupDeviceComponent imageSrc={imageSource} deviceType={'phone'} /> */}
     </motion.div>
   );
 }
