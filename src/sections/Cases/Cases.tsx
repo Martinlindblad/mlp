@@ -14,7 +14,7 @@ export default function Cases() {
         <source src="/assets/man.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
-      <div className="absolute z-20 inset-0 bg-gradient-to-b from-gray-900 to-gray-400 opacity-90"></div>
+      <div className="absolute z-20 inset-0 bg-gradient-to-b from-gray-900 to-gray-400 opacity-60"></div>
       <div className="relative z-30">
         <CaseCarousel />
       </div>

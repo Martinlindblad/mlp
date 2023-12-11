@@ -58,7 +58,7 @@ export default function Hero() {
       />
 
       <div className="col-span-10 col-start-2 lg:col-span-12">
-        <div className="pt-96 sm:pt-6 lg:pb-0 sm:pl-32 lg:flex-row flex-col flex flex-wrap justify-center relative">
+        <div className="pt-60 sm:pt-6 lg:pb-0 sm:pl-32 lg:flex-row flex-col flex flex-wrap justify-center relative">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-4xl  font-bold tracking-wider dark:text-gray-100">
             <AnimatedContainer
               key={'IntroductionNameContainer'}
@@ -103,7 +103,7 @@ export default function Hero() {
               type="FadeInBottom"
               className="relative col-span-10 col-start-2 lg:col-span-6 lg:col-start-2 xl:col-start-2 2xl:col-span-6"
             >
-              <div className="flex flex-col py-4 sm:py-6 md:py-10 justify-center items-start">
+              <div className="flex flex-col py-4 sm:py-0 md:py-10 justify-center items-start">
                 <div className="flex flex-row justify-start items-start">
                   <h1 className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold pr-6">
                     Front-end Developer
@@ -116,7 +116,7 @@ export default function Hero() {
                 </p>
                 <Link
                   href="/about"
-                  className="flex items-center bg-transparent border border-white text-white px-4 sm:px-6 md:px-10 mt-4 py-2 sm:py-2 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base hover:bg-[#desiredColor] hover:scale-105"
+                  className="flex items-center bg-transparent border border-white text-white px-4 sm:px-6 md:px-10 mt-4 sm:mt-0 py-2 sm:py-0 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base hover:bg-[#desiredColor] hover:scale-105"
                 >
                   About Me
                 </Link>

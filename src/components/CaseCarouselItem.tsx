@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import React from 'react';
 import { ObjectId } from 'mongodb';
+import Image from 'next/image';
 
 type CaseCarouselItemProp = {
   id: ObjectId;
@@ -17,28 +18,48 @@ export default function CaseCarouselItem({
   id,
   title,
   description,
-  // imageSource,
+  imageSource,
   from,
   to,
 }: CaseCarouselItemProp): JSX.Element {
   return (
-    <motion.div className="flex flex-col md:flex-row bg-slate-300 justify-around items-center h-full mx-auto overflow-hidden shadow-xl ">
-      <div className="p-10 md:p-20 w-full md:w-1/2 z-10 f">
+    <motion.div className="relative flex justify-center items-center h-full shadow-xl py-20 md:py-10">
+      {/* Background Image */}
+      <Image
+        src={imageSource}
+        alt="Background"
+        layout="fill"
+        objectFit="cover"
+        className="absolute z-0 "
+      />
+
+      {/* Gradient Overlay */}
+      {from && to && (
+        <div
+          className="absolute top-0 left-0 bottom-0 top-0 w-full  z-10"
+          style={{
+            background: `linear-gradient(to bottom, rgba(${from}, 0.4), rgba(${to}, 0.4))`,
+          }}
+        />
+      )}
+
+      {/* Content */}
+      <div className="relative z-20 p-5 md:p-10 max-w-2xl text-center">
         <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-800 mb-3">
           {title}
         </h2>
         <p className="text-gray-600 mb-4 text-sm sm:text-base md:text-lg lg:text-xl">
           {description}
         </p>
-        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 pt-10">
+        {/* Buttons and links */}
+        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 pt-10 justify-center align-center">
           <Link
             href={`/cases/${id}`}
             className="flex-grow sm:flex-grow-0 inline-flex cursor-pointer items-center justify-center
-        px-4 py-2 text-sm sm:text-base font-medium text-center text-white rounded-lg bg-lime-700
-        hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-900 transition ease-in-out duration-300"
+            px-4 py-2 text-sm sm:text-base font-medium text-center text-white rounded-lg bg-lime-700
+            hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-900 transition ease-in-out duration-300"
           >
             <span>Go to case</span>
-
             <svg
               className="w-5 h-5 ml-2 -mr-1"
               fill="currentColor"
@@ -55,7 +76,8 @@ export default function CaseCarouselItem({
           <Link
             href="#"
             className="flex-grow sm:flex-grow-0 inline-flex cursor-pointer items-center justify-center
-            px-4 py-2 text-sm sm:text-base font-medium text-center text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-300 focus:ring-4 focus:ring-gray-100 dark:border-gray-700 dark:hover:bg-gray-700 dark:focus:ring-gray-800 transition ease-in-out duration-300"
+            px-4 py-2 text-sm sm:text-base font-medium text-center text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-300
+             focus:ring-4 focus:ring-gray-100 dark:border-gray-700 dark:hover:bg-gray-700 dark:focus:ring-gray-800 transition ease-in-out duration-300"
           >
             <span>Visit my github</span>
             <svg
@@ -71,23 +93,6 @@ export default function CaseCarouselItem({
           </Link>
         </div>
       </div>
-      {/* <div className="relative h-56 w-full md:h-5/6 md:w-1/2">
-        <Image
-          src={imageSource}
-          alt="Picture of the author"
-          layout="fill"
-          objectFit="contain"
-        />
-      </div> */}
-      {from && to && (
-        <div
-          className={'absolute top-0 left-0 w-full h-full z-0'}
-          style={{
-            background: `linear-gradient(${from}, ${to})`,
-          }}
-        />
-      )}
-      {/* <MockupDeviceComponent imageSrc={imageSource} deviceType={'phone'} /> */}
     </motion.div>
   );
 }

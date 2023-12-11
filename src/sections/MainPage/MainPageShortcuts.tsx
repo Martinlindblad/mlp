@@ -1,6 +1,7 @@
 import React from 'react';
 // import Stepper from 'src/src/components/Stepper';
 import CentralContentPageLinks from '../CentralContentPageLinks';
+import Image from 'next/image';
 
 const MainPageShortcuts = () => {
   return (
@@ -26,18 +27,26 @@ const MainPageShortcuts = () => {
               future of digital interaction, one user experience at a time.
             </p>
           </div>
-
           <div className="grid grid-cols-2 gap-4 mt-8">
-            <img
-              className="w-full rounded-lg"
-              src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/content/office-long-2.png"
-              alt="office content 1"
-            />
-            <img
-              className="mt-4 w-full lg:mt-10 rounded-lg"
-              src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/content/office-long-1.png"
-              alt="office content 2"
-            />
+            <div className="w-full rounded-lg overflow-hidden">
+              <Image
+                src="/images/business.jpg"
+                className="rounded-lg"
+                alt="office content 1"
+                width={300}
+                height={500}
+                objectFit="cover"
+              />
+            </div>
+            <div className="w-full rounded-lg overflow-hidden mt-4 lg:mt-10">
+              <Image
+                src="/images/classy.jpg"
+                alt="office content 2"
+                width={300}
+                height={500}
+                objectFit="cover"
+              />
+            </div>
           </div>
         </div>
         <CentralContentPageLinks />

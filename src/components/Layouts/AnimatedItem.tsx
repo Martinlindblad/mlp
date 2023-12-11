@@ -4,6 +4,8 @@ type AnimatedStaggerItemProps = {
   itemVariant?: Variants;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  onTouchStart?: () => void;
+  onTouchEnd?: () => void;
   className?: string;
   children: React.ReactNode;
   rest?: HTMLMotionProps<'div'>;
@@ -15,6 +17,8 @@ const AnimatedStaggerItem: React.FC<AnimatedStaggerItemProps> = ({
   className,
   itemVariant,
   onMouseEnter,
+  onTouchStart,
+  onTouchEnd,
   onMouseLeave,
   whileHover,
   rest,
@@ -25,6 +29,8 @@ const AnimatedStaggerItem: React.FC<AnimatedStaggerItemProps> = ({
       variants={itemVariant}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
       whileHover={whileHover}
       {...rest}
     >
