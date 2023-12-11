@@ -30,7 +30,7 @@ const MainPageShortcuts = () => {
           <div className="grid grid-cols-2 gap-4 mt-8">
             <div className="w-full rounded-lg overflow-hidden">
               <Image
-                src="/images/business.jpg"
+                src="/images/business.webp"
                 className="rounded-lg"
                 alt="office content 1"
                 width={300}
@@ -40,7 +40,7 @@ const MainPageShortcuts = () => {
             </div>
             <div className="w-full rounded-lg overflow-hidden mt-4 lg:mt-10">
               <Image
-                src="/images/classy.jpg"
+                src="/images/classy.webp"
                 alt="office content 2"
                 width={300}
                 height={500}

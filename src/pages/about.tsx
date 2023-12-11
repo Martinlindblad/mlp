@@ -27,7 +27,7 @@ const AboutPage = (): JSX.Element => {
                     <img
                       alt="content"
                       className="object-cover object-left h-full w-full opacity-85"
-                      src="/images/profilbild2.jpg"
+                      src="/images/profilbild2.webp"
                     />
                   </div>
                   <div className="flex flex-col items-center text-center justify-center">
