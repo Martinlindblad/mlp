@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
-import AnimatedContainer from '../components/Layouts/AnimatedContainer';
-import AnimatedStaggerItem from '../components/Layouts/AnimatedItem';
-import { useCallback, useMemo, useReducer as useReducer } from 'react';
+
+import { useMemo, useReducer as useReducer } from 'react';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import PageLoader from '../components/AnimatedComponents/ContentLoader';
 import Link from 'next/link';
+import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 
 function caseReducer(
   state: { [x: string]: boolean },
@@ -26,27 +26,7 @@ const ShowCases = () => {
     return data?.filter((item) => item != null);
   }, [data]);
 
-  const container = useMemo(
-    () => ({
-      hidden: {
-        opacity: 0,
-        scale: 0,
-      },
-      visible: {
-        opacity: 1,
-        scale: 1,
-      },
-      animate: {
-        opacity: 1,
-        transition: {
-          staggerChildren: 0.5,
-          delayChildren: 0.5,
-        },
-      },
-    }),
-    [],
-  );
-  const itemVariant = useMemo(() => {
+  const enter = useMemo(() => {
     const InitialValue = { y: 400 };
 
     const finalPosition = {
@@ -74,7 +54,8 @@ const ShowCases = () => {
       },
     };
   }, []);
-  const itemVariant2 = useMemo(() => {
+
+  const exit = useMemo(() => {
     const InitialValue = { y: 0 };
 
     const finalPosition = {
@@ -103,29 +84,6 @@ const ShowCases = () => {
     };
   }, []);
 
-  const getStaggerItemVariants = useCallback(
-    ({ index }: { index: number }) => ({
-      hidden: {
-        opacity: 1,
-        scale: 0.75,
-      },
-      visible: {
-        opacity: 1,
-        scale: 1,
-        transition: {
-          delay: index * 0.4,
-          duration: 0.4,
-          ease: 'easeInOut',
-        },
-      },
-      exit: {
-        scale: 0.75,
-        opacity: 0,
-      },
-    }),
-    [],
-  );
-
   const initialCaseState = useMemo(() => {
     const initialState = {} as { [key: string]: boolean };
     cases.forEach((item) => {
@@ -146,15 +104,12 @@ const ShowCases = () => {
       {isLoading || !cases ? (
         <PageLoader />
       ) : (
-        <AnimatedContainer
-          containerVariant={container}
-          className="container mx-auto px-4"
-        >
+        <div>
           {cases.map((item, index) => (
-            <AnimatedStaggerItem
+            <AnimatedFadeInContainer
+              type="FadeInBottom"
               className="w-full lg:h-46 py-2  sm:p-4 overflow-hidden"
               key={index}
-              itemVariant={getStaggerItemVariants({ index })}
               onTouchStart={() => handleInteraction(item._id.toString())}
               onTouchEnd={() => handleInteraction(item._id.toString())}
               onMouseEnter={() => handleInteraction(item._id.toString())}
@@ -168,10 +123,10 @@ const ShowCases = () => {
                   animate={
                     caseState[item._id.toString()] ? 'visible' : 'hidden'
                   }
-                  variants={itemVariant2}
+                  variants={exit}
                   className="px-4 mx-auto max-w-screen-xl text-center py-24 lg:py-28"
                 >
-                  <h1 className="mb-4 text-4xl font-extrabold tracking-tight leading-none text-white text-xl md:text-2xl lg:text-3xl text-center">
+                  <h1 className="mb-4 font-extrabold tracking-tight leading-none text-white text-xl md:text-2xl lg:text-3xl text-center">
                     <span className="inline-block mb-2 text-white">
                       {item.title}
                     </span>
@@ -181,7 +136,7 @@ const ShowCases = () => {
                   animate={
                     caseState[item._id.toString()] ? 'visible' : 'hidden'
                   }
-                  variants={itemVariant}
+                  variants={enter}
                   className="flex flex-col items-center justify-center w-full h-full absolute z-10 top-0 left-0 overflow-hidden"
                   style={{
                     background: `linear-gradient(rgba(${item.from}, 0.5), rgba(${item.to},0.5))`,
@@ -202,9 +157,9 @@ const ShowCases = () => {
                   </div>
                 </motion.div>
               </div>
-            </AnimatedStaggerItem>
+            </AnimatedFadeInContainer>
           ))}
-        </AnimatedContainer>
+        </div>
       )}
     </>
   );

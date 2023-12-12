@@ -6,10 +6,10 @@ type AnimatedStaggerItemProps = {
   onMouseLeave?: () => void;
   onTouchStart?: () => void;
   onTouchEnd?: () => void;
+  whileHover?: HTMLMotionProps<'div'>['whileHover'];
   className?: string;
   children: React.ReactNode;
   rest?: HTMLMotionProps<'div'>;
-  whileHover?: HTMLMotionProps<'div'>['whileHover'];
 };
 
 const AnimatedStaggerItem: React.FC<AnimatedStaggerItemProps> = ({
