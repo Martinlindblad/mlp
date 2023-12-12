@@ -104,11 +104,11 @@ const ShowCases = () => {
       {isLoading || !cases ? (
         <PageLoader />
       ) : (
-        <div>
+        <div className="flex flex-col md:flex-row w-full flex-wrap">
           {cases.map((item, index) => (
             <AnimatedFadeInContainer
               type="FadeInBottom"
-              className="w-full lg:h-46 py-2  sm:p-4 overflow-hidden"
+              className="w-full md:w-2/4 lg:h-46 py-2 sm:p-4 overflow-hidden"
               key={index}
               onTouchStart={() => handleInteraction(item._id.toString())}
               onTouchEnd={() => handleInteraction(item._id.toString())}

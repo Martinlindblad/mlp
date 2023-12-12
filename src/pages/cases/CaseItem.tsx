@@ -24,9 +24,9 @@ const CaseItem: React.FC<CaseItemProps> = ({
         </div>
         <div className="flex mt-4">
           <Link href={`/cases/${id}`}>
-            <a className="text-blue-500 hover:text-blue-600 transition duration-300 text-sm font-semibold">
+            <span className="text-blue-500 hover:text-blue-600 transition duration-300 text-sm font-semibold">
               View Case
-            </a>
+            </span>
           </Link>
           <button className="text-white bg-blue-600 hover:bg-blue-700 transition duration-300 ml-2 px-4 py-2 rounded text-sm font-semibold">
             Other Action

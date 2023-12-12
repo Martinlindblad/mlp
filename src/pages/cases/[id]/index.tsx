@@ -3,12 +3,15 @@ import { GetStaticPaths, GetStaticProps } from 'next';
 import { connectToDatabase } from 'src/lib/mongodb';
 import ContentLoader from 'src/src/components/AnimatedComponents/ContentLoader';
 import AnimatedFadeInContainer from 'src/src/components/Layouts/AnimatedFadeInContainer';
+import Image from 'next/image';
 
 interface CaseData {
   _id: ObjectId;
   title: string;
   description: string;
   imageSource: string;
+  from: string;
+  to: string;
 }
 
 interface CasePageProps {
@@ -53,14 +56,35 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
   }
 
   return (
-    <AnimatedFadeInContainer type="FadeInBottom" className="h-full">
-      <div>
-        <h1>{caseData.title}</h1>
-        <img src={caseData.imageSource} alt={caseData.title} />
-        <p>{caseData.description}</p>
-        {/* Render more case details here */}
+    <div className="relative h-screen">
+      <div className="relative w-full h-1/2">
+        <Image
+          className="absolute w-full h-full object-cover"
+          src={caseData.imageSource}
+          alt={caseData.title}
+          layout="fill"
+          objectPosition="center"
+          priority
+        />
+        <div className="absolute inset-0 bg-black opacity-60"></div>
+        {/* Optional dark overlay */}
+        <AnimatedFadeInContainer type="FadeInTop" className="h-full">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <h1 className="text-3xl lg:text-5xl font-bold text-white">
+              {caseData.title}
+            </h1>
+          </div>
+        </AnimatedFadeInContainer>
       </div>
-    </AnimatedFadeInContainer>
+
+      {/* Content Section */}
+      <div className="bg-white p-8">
+        <AnimatedFadeInContainer type="FadeInTop">
+          <p className="text-lg text-gray-700 mb-4">{caseData.description}</p>
+          <div className="flex flex-wrap space-x-4"></div>
+        </AnimatedFadeInContainer>
+      </div>
+    </div>
   );
 };
 
