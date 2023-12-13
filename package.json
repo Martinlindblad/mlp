@@ -13,7 +13,6 @@
     "lint:tsc": "NODE_ENV=production tsc --noEmit --pretty",
     "setup-db": "ts-node scripts/setupSchema.ts"
   },
-  
   "nodemonConfig": {
     "ext": "js,jsx,ts,tsx,json,css,scss,svg",
     "watch": [
@@ -28,10 +27,12 @@
   },
   "dependencies": {
     "@headlessui/react": "^1.7.9",
+    "@iconify/react": "^4.1.1",
     "@popmotion/popcorn": "0.4.4",
     "@svgr/webpack": "^6.5.1",
     "@typescript-eslint/eslint-plugin": "^6.7.3",
     "@typescript-eslint/parser": "^6.7.3",
+    "@vercel/speed-insights": "^1.0.1",
     "axios": "^1.2.2",
     "dayjs": "^1.11.7",
     "flowbite": "^1.6.0",
@@ -45,7 +46,6 @@
     "react-query": "^3.39.2",
     "sharp": "^0.31.3",
     "swiper": "^10.3.1",
-    "@iconify/react": "^4.1.1",
     "vercel": "^28.10.1"
   },
   "devDependencies": {
