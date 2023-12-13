@@ -3,6 +3,7 @@ import { useMemo, useReducer } from 'react';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import PageLoader from '../components/AnimatedComponents/ContentLoader';
 import Link from 'next/link';
+import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import AnimatedPreseceWrapper from '../components/Layouts/AnimatePresenceWrapper';
 import useWindowDimensions from '../hooks/useWindowDimensions';
 
@@ -57,7 +58,8 @@ const ShowCaseItem = ({
   };
 
   return (
-    <div
+    <AnimatedFadeInContainer
+      type="FadeInBottom"
       className="lg:h-64 py-2 sm:p-4 overflow-hidden relative"
       key={`${item._id}-Showcase-item`}
       onTouchStart={handleOnMouseTouch}
@@ -100,7 +102,7 @@ const ShowCaseItem = ({
           </Link>
         </div>
       </motion.div>
-    </div>
+    </AnimatedFadeInContainer>
   );
 };
 
@@ -118,59 +120,16 @@ const ShowCases = () => {
   }, [data]);
 
   const enter = useMemo(() => {
-    const InitialValue = { y: 400 };
-
-    const finalPosition = {
-      y: 0,
-    };
-
-    const transition = 0.5;
-
     return {
-      hidden: {
-        opacity: 1,
-        scale: 1,
-        ...InitialValue,
-        transition: {
-          duration: transition,
-        },
-      },
-      visible: {
-        opacity: 1,
-        scale: 1,
-        ...finalPosition,
-        transition: {
-          duration: transition,
-        },
-      },
+      hidden: { opacity: 1, y: 400, transition: { duration: 0.3 } },
+      visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
     };
   }, []);
 
   const exit = useMemo(() => {
-    const InitialValue = { y: 0 };
-
-    const finalPosition = {
-      y: -400,
-    };
-
-    const transition = 0.5;
     return {
-      hidden: {
-        opacity: 1,
-        scale: 1,
-        ...InitialValue,
-        transition: {
-          duration: transition,
-        },
-      },
-      visible: {
-        opacity: 1,
-        scale: 1,
-        ...finalPosition,
-        transition: {
-          duration: transition,
-        },
-      },
+      hidden: { opacity: 1, y: -400, transition: { duration: 0.3 } },
+      visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
     };
   }, []);
 
