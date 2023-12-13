@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { motion } from 'framer-motion';
 import { useMemo, useReducer } from 'react';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import PageLoader from '../components/AnimatedComponents/ContentLoader';
 import Link from 'next/link';
-import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import AnimatedPreseceWrapper from '../components/Layouts/AnimatePresenceWrapper';
 import useWindowDimensions from '../hooks/useWindowDimensions';
 
@@ -59,8 +57,7 @@ const ShowCaseItem = ({
   };
 
   return (
-    <AnimatedFadeInContainer
-      type="FadeInBottom"
+    <div
       className="lg:h-64 py-2 sm:p-4 overflow-hidden relative"
       key={`${item._id}-Showcase-item`}
       onTouchStart={handleOnMouseTouch}
@@ -68,7 +65,7 @@ const ShowCaseItem = ({
       onMouseEnter={handleOnMouseOver}
       onMouseLeave={handleOnMouseOver}
     >
-      {/* <img
+      <img
         src={item.imageSource}
         alt={item.title}
         loading="lazy"
@@ -102,9 +99,8 @@ const ShowCaseItem = ({
             <span className="inline-block text-white">Go to case</span>
           </Link>
         </div>
-      </motion.div> */}
-      <></>
-    </AnimatedFadeInContainer>
+      </motion.div>
+    </div>
   );
 };
 
