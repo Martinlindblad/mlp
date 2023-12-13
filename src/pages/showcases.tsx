@@ -5,6 +5,7 @@ import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import PageLoader from '../components/AnimatedComponents/ContentLoader';
 import Link from 'next/link';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
+import AnimatedPreseceWrapper from '../components/Layouts/AnimatePresenceWrapper';
 
 function caseReducer(
   state: { [x: string]: boolean },
@@ -100,16 +101,16 @@ const ShowCases = () => {
   };
 
   return (
-    <>
+    <AnimatedPreseceWrapper>
       {isLoading || !cases ? (
         <PageLoader />
       ) : (
         <div className="flex flex-col md:flex-row w-full flex-wrap">
-          {cases.map((item, index) => (
+          {cases.map((item) => (
             <AnimatedFadeInContainer
               type="FadeInBottom"
               className="w-full md:w-2/4 lg:h-46 py-2 sm:p-4 overflow-hidden"
-              key={index}
+              key={`${item._id}-Showcase-item`}
               onTouchStart={() => handleInteraction(item._id.toString())}
               onTouchEnd={() => handleInteraction(item._id.toString())}
               onMouseEnter={() => handleInteraction(item._id.toString())}
@@ -161,7 +162,7 @@ const ShowCases = () => {
           ))}
         </div>
       )}
-    </>
+    </AnimatedPreseceWrapper>
   );
 };
 
