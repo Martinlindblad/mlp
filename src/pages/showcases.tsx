@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { motion } from 'framer-motion';
 import { useMemo, useReducer } from 'react';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
@@ -67,7 +68,7 @@ const ShowCaseItem = ({
       onMouseEnter={handleOnMouseOver}
       onMouseLeave={handleOnMouseOver}
     >
-      <img
+      {/* <img
         src={item.imageSource}
         alt={item.title}
         loading="lazy"
@@ -101,7 +102,8 @@ const ShowCaseItem = ({
             <span className="inline-block text-white">Go to case</span>
           </Link>
         </div>
-      </motion.div>
+      </motion.div> */}
+      <></>
     </AnimatedFadeInContainer>
   );
 };
@@ -194,7 +196,7 @@ const ShowCases = () => {
       {isLoading ? (
         <PageLoader />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 py-20 sm:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 py-20 sm:py-16 lg:py-26">
           {cases.map((item) => (
             <ShowCaseItem
               key={item._id.toString()}
