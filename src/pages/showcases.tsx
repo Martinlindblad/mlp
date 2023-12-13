@@ -128,8 +128,8 @@ const ShowCases = () => {
 
   const exit = useMemo(() => {
     return {
-      hidden: { opacity: 1, y: -400, transition: { duration: 0.3 } },
-      visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+      hidden: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+      visible: { opacity: 1, y: -400, transition: { duration: 0.3 } },
     };
   }, []);
 
