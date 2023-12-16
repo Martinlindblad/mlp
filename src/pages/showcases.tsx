@@ -6,6 +6,7 @@ import Link from 'next/link';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import AnimatedPreseceWrapper from '../components/Layouts/AnimatePresenceWrapper';
 import useWindowDimensions from '../hooks/useWindowDimensions';
+import Image from 'next/image';
 
 interface CaseItem {
   _id: {
@@ -112,12 +113,16 @@ const ShowCaseItem = ({
       }}
       {...extraProps}
     >
-      {/* <img
+      <Image
         src={item.imageSource}
         alt={item.title}
-        loading="lazy"
-        className="w-full h-full object-cover object-center absolute top-0 left-0 z-0 opacity-50"
-      /> */}
+        fill
+        className="opacity-50"
+        sizes="(min-width: 808px) 50vw, 100vw"
+        style={{
+          objectFit: 'cover',
+        }}
+      />
       <motion.div
         {...titleAnimationProps}
         className="px-4 mx-auto max-w-screen-xl text-center py-24 lg:py-28 relative z-10"
