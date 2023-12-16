@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { motion, useReducedMotion } from 'framer-motion';
 import { useMemo, useReducer } from 'react';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
@@ -119,16 +118,16 @@ const ShowCaseItem = ({
         loading="lazy"
         className="w-full h-full object-cover object-center absolute top-0 left-0 z-0 opacity-50"
       /> */}
-      <div
-        // {...titleAnimationProps}
+      <motion.div
+        {...titleAnimationProps}
         className="px-4 mx-auto max-w-screen-xl text-center py-24 lg:py-28 relative z-10"
       >
         <h1 className="mb-4 font-extrabold tracking-tight leading-none text-white text-xl md:text-2xl lg:text-3xl text-center">
           <span className="inline-block mb-2 text-white">{item.title}</span>
         </h1>
-      </div>
-      <div
-        // {...descriptionAnimationProps}
+      </motion.div>
+      <motion.div
+        {...descriptionAnimationProps}
         className="flex flex-col items-center justify-center w-full h-full absolute top-0 left-0 z-10"
       >
         <div className="flex flex-col items-center">
@@ -142,7 +141,7 @@ const ShowCaseItem = ({
             <span className="inline-block text-white">Go to case</span>
           </Link>
         </div>
-      </div>
+      </motion.div>
     </AnimatedFadeInContainer>
   );
 };
@@ -197,7 +196,7 @@ const ShowCases = () => {
       {isLoading ? (
         <PageLoader />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 py-20 sm:py-16 lg:py-26">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 py-20 sm:py-16 lg:py-28">
           {cases.map((item) => (
             <ShowCaseItem
               key={item._id.toString()}
