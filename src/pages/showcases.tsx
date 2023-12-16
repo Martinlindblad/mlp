@@ -50,15 +50,11 @@ const ShowCaseItem = ({
   const stringifiedID = item._id.toString();
   const shouldReduceMotion = useReducedMotion();
 
-  const handleOnMouseOver = () => {
-    if (isMobile) return;
-    handleInteraction(stringifiedID);
-  };
-  const handleOnMouseTouch = () => {
+  const handleClick = () => {
+    if (!isMobile) return;
     handleInteraction(stringifiedID);
   };
 
-  // Set animation variants based on shouldReduceMotion and caseState
   const titleAnimationProps = useMemo(
     () =>
       shouldReduceMotion
@@ -91,18 +87,30 @@ const ShowCaseItem = ({
     [shouldReduceMotion, caseState, stringifiedID, enter],
   );
 
+  const extraProps = useMemo(() => {
+    const handleOnMouseOver = () => {
+      if (isMobile) return;
+      handleInteraction(stringifiedID);
+    };
+    if (!isMobile) {
+      return {
+        onMouseEnter: handleOnMouseOver,
+        onMouseLeave: handleOnMouseOver,
+      };
+    }
+    return {};
+  }, [isMobile, handleInteraction, stringifiedID]);
+
   return (
     <AnimatedFadeInContainer
       type={isMobile ? 'Cancel' : 'FadeInBottom'}
       className="lg:h-64 py-2 sm:p-4 overflow-hidden relative"
       key={`${item._id}-Showcase-item`}
-      onTouchStart={handleOnMouseTouch}
-      onTouchEnd={handleOnMouseTouch}
-      onMouseEnter={handleOnMouseOver}
-      onMouseLeave={handleOnMouseOver}
+      onClick={handleClick}
       styleProp={{
         background: `linear-gradient(rgba(${item.from}, 0.5), rgba(${item.to},0.5))`,
       }}
+      {...extraProps}
     >
       <img
         src={item.imageSource}
@@ -152,7 +160,6 @@ const ShowCases = () => {
     return data.filter((item) => item != null);
   }, [data]);
 
-  // Adjust enter and exit animations based on shouldReduceMotion
   const enter = useMemo(() => {
     return shouldReduceMotion
       ? {}

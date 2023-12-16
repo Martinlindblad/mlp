@@ -7,10 +7,9 @@ type ContainerType = {
   type?: FadeInAnimationType;
   transition?: number;
   delay?: number;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-  onTouchStart?: () => void;
-  onTouchEnd?: () => void;
+  onClick?: () => void;
+  onMouseEnter?: HTMLMotionProps<'div'>['onMouseEnter'];
+  onMouseLeave?: HTMLMotionProps<'div'>['onMouseLeave'];
   whileHover?: HTMLMotionProps<'div'>['whileHover'];
   className?: string;
   children: React.ReactNode;
@@ -23,9 +22,8 @@ const AnimatedFadeInContainer = ({
   type,
   transition = 0.5,
   delay = 0.6,
+  onClick,
   onMouseEnter,
-  onTouchStart,
-  onTouchEnd,
   onMouseLeave,
   whileHover,
   styleProp,
@@ -83,8 +81,7 @@ const AnimatedFadeInContainer = ({
             layout
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
+            onClick={onClick}
             whileHover={whileHover}
             ref={ref}
             className={className}
@@ -106,8 +103,7 @@ const AnimatedFadeInContainer = ({
             animate={isInView ? 'visible' : 'hidden'}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
+            onClick={onClick}
             whileHover={whileHover}
             ref={ref}
             className={className}
