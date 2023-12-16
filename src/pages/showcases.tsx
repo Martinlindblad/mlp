@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useMemo, useReducer } from 'react';
 import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import PageLoader from '../components/AnimatedComponents/ContentLoader';
@@ -48,6 +48,7 @@ const ShowCaseItem = ({
   isMobile,
 }: ShowCaseItemProps) => {
   const stringifiedID = item._id.toString();
+  const shouldReduceMotion = useReducedMotion();
 
   const handleOnMouseOver = () => {
     if (isMobile) return;
@@ -56,6 +57,39 @@ const ShowCaseItem = ({
   const handleOnMouseTouch = () => {
     handleInteraction(stringifiedID);
   };
+
+  // Set animation variants based on shouldReduceMotion and caseState
+  const titleAnimationProps = useMemo(
+    () =>
+      shouldReduceMotion
+        ? {
+            initial: 'hidden',
+            animate: 'visible',
+            exit: 'hidden',
+          }
+        : {
+            initial: 'hidden',
+            animate: caseState[stringifiedID] ? 'visible' : 'hidden',
+            variants: exit,
+          },
+    [shouldReduceMotion, caseState, stringifiedID, exit],
+  );
+
+  const descriptionAnimationProps = useMemo(
+    () =>
+      shouldReduceMotion
+        ? {
+            initial: 'hidden',
+            animate: 'visible',
+            exit: 'hidden',
+          }
+        : {
+            initial: 'hidden',
+            animate: caseState[stringifiedID] ? 'visible' : 'hidden',
+            variants: enter,
+          },
+    [shouldReduceMotion, caseState, stringifiedID, enter],
+  );
 
   return (
     <AnimatedFadeInContainer
@@ -66,16 +100,18 @@ const ShowCaseItem = ({
       onTouchEnd={handleOnMouseTouch}
       onMouseEnter={handleOnMouseOver}
       onMouseLeave={handleOnMouseOver}
+      styleProp={{
+        background: `linear-gradient(rgba(${item.from}, 0.5), rgba(${item.to},0.5))`,
+      }}
     >
       <img
         src={item.imageSource}
         alt={item.title}
         loading="lazy"
-        className="w-full h-full object-cover object-center absolute top-0 left-0 z-0"
+        className="w-full h-full object-cover object-center absolute top-0 left-0 z-0 opacity-50"
       />
       <motion.div
-        animate={caseState[stringifiedID] ? 'visible' : 'hidden'}
-        variants={exit}
+        {...titleAnimationProps}
         className="px-4 mx-auto max-w-screen-xl text-center py-24 lg:py-28 relative z-10"
       >
         <h1 className="mb-4 font-extrabold tracking-tight leading-none text-white text-xl md:text-2xl lg:text-3xl text-center">
@@ -83,12 +119,8 @@ const ShowCaseItem = ({
         </h1>
       </motion.div>
       <motion.div
-        animate={caseState[stringifiedID] ? 'visible' : 'hidden'}
-        variants={enter}
+        {...descriptionAnimationProps}
         className="flex flex-col items-center justify-center w-full h-full absolute top-0 left-0 z-10"
-        style={{
-          background: `linear-gradient(rgba(${item.from}, 0.5), rgba(${item.to},0.5))`,
-        }}
       >
         <div className="flex flex-col items-center">
           <h1 className="text-xl md:text-2xl lg:text-3xl text-center font-bold">
@@ -109,6 +141,7 @@ const ShowCaseItem = ({
 const ShowCases = () => {
   const { data, isLoading } = useProjectsAndCasesQuery();
   const windowWidth = useWindowDimensions().width;
+  const shouldReduceMotion = useReducedMotion();
 
   const isMobile = useMemo(() => {
     return windowWidth < 768;
@@ -119,19 +152,24 @@ const ShowCases = () => {
     return data.filter((item) => item != null);
   }, [data]);
 
+  // Adjust enter and exit animations based on shouldReduceMotion
   const enter = useMemo(() => {
-    return {
-      hidden: { opacity: 1, y: 400, transition: { duration: 0.3 } },
-      visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-    };
-  }, []);
+    return shouldReduceMotion
+      ? {}
+      : {
+          hidden: { opacity: 1, y: 400, transition: { duration: 0.3 } },
+          visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+        };
+  }, [shouldReduceMotion]);
 
   const exit = useMemo(() => {
-    return {
-      hidden: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-      visible: { opacity: 1, y: -400, transition: { duration: 0.3 } },
-    };
-  }, []);
+    return shouldReduceMotion
+      ? {}
+      : {
+          hidden: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+          visible: { opacity: 1, y: -400, transition: { duration: 0.3 } },
+        };
+  }, [shouldReduceMotion]);
 
   const initialCaseState = useMemo<{ [key: string]: boolean }>(() => {
     return cases.reduce((state, item) => {

@@ -14,7 +14,7 @@ type ContainerType = {
   whileHover?: HTMLMotionProps<'div'>['whileHover'];
   className?: string;
   children: React.ReactNode;
-  rest?: HTMLMotionProps<'div'>;
+  styleProp?: React.CSSProperties;
 };
 
 const AnimatedFadeInContainer = ({
@@ -28,7 +28,7 @@ const AnimatedFadeInContainer = ({
   onTouchEnd,
   onMouseLeave,
   whileHover,
-  rest,
+  styleProp,
 }: ContainerType) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const isInView = useInView(ref);
@@ -83,6 +83,7 @@ const AnimatedFadeInContainer = ({
       default:
         return (
           <motion.div
+            style={styleProp}
             layout
             variants={container}
             animate={isInView ? 'visible' : 'hidden'}
@@ -91,7 +92,6 @@ const AnimatedFadeInContainer = ({
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
             whileHover={whileHover}
-            {...rest}
             ref={ref}
             className={className}
             initial="hidden"
