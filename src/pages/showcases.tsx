@@ -113,12 +113,12 @@ const ShowCaseItem = ({
       }}
       {...extraProps}
     >
-      <img
+      {/* <img
         src={item.imageSource}
         alt={item.title}
         loading="lazy"
         className="w-full h-full object-cover object-center absolute top-0 left-0 z-0 opacity-50"
-      />
+      /> */}
       <div
         // {...titleAnimationProps}
         className="px-4 mx-auto max-w-screen-xl text-center py-24 lg:py-28 relative z-10"
