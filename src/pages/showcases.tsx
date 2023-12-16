@@ -93,7 +93,7 @@ const ShowCaseItem = ({
 
   return (
     <AnimatedFadeInContainer
-      type="FadeInBottom"
+      type={isMobile ? 'Cancel' : 'FadeInBottom'}
       className="lg:h-64 py-2 sm:p-4 overflow-hidden relative"
       key={`${item._id}-Showcase-item`}
       onTouchStart={handleOnMouseTouch}

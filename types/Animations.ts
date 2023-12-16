@@ -3,6 +3,7 @@ export const FadeInAnimationTypeList = [
   'FadeInLeft',
   'FadeInRight',
   'FadeInUp',
+  'Cancel',
 ];
 
-export type FadeInAnimationType = typeof FadeInAnimationTypeList[number];
+export type FadeInAnimationType = (typeof FadeInAnimationTypeList)[number];

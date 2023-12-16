@@ -76,6 +76,23 @@ const AnimatedFadeInContainer = ({
 
   const renderAnimation = () => {
     switch (type) {
+      case 'Cancel':
+        return (
+          <motion.div
+            style={styleProp}
+            layout
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+            whileHover={whileHover}
+            ref={ref}
+            className={className}
+            initial="hidden"
+          >
+            {children}
+          </motion.div>
+        );
       case 'FadeInLeft':
       case 'FadeInRight':
       case 'FadeInTop':
