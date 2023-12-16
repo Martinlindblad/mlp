@@ -55,6 +55,7 @@ const ShowCaseItem = ({
     handleInteraction(stringifiedID);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const titleAnimationProps = useMemo(
     () =>
       shouldReduceMotion
@@ -71,6 +72,7 @@ const ShowCaseItem = ({
     [shouldReduceMotion, caseState, stringifiedID, exit],
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const descriptionAnimationProps = useMemo(
     () =>
       shouldReduceMotion
@@ -119,7 +121,7 @@ const ShowCaseItem = ({
         className="w-full h-full object-cover object-center absolute top-0 left-0 z-0 opacity-50"
       />
       <motion.div
-        {...titleAnimationProps}
+        // {...titleAnimationProps}
         className="px-4 mx-auto max-w-screen-xl text-center py-24 lg:py-28 relative z-10"
       >
         <h1 className="mb-4 font-extrabold tracking-tight leading-none text-white text-xl md:text-2xl lg:text-3xl text-center">
@@ -127,7 +129,7 @@ const ShowCaseItem = ({
         </h1>
       </motion.div>
       <motion.div
-        {...descriptionAnimationProps}
+        // {...descriptionAnimationProps}
         className="flex flex-col items-center justify-center w-full h-full absolute top-0 left-0 z-10"
       >
         <div className="flex flex-col items-center">
