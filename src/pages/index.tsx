@@ -2,9 +2,10 @@ import Head from 'next/head';
 import Layout from '../components/Layouts/Layout';
 import dynamic from 'next/dynamic';
 
-import MainPageShortcuts from '../sections/MainPage/MainPageShortcuts';
+import MainPageShortcuts from '../sections/MainPage/FrontendDeveloperPursuit';
 import Hero from '../components/About/HeroIntroduction';
 import AllShowcasesSection from '../sections/Cases/AllShowcasesSection';
+import CentralContentPageLinks from '../sections/CentralContentPageLinks';
 
 const Cases = dynamic(() => import('../sections/Cases/Cases'));
 
@@ -27,6 +28,7 @@ export default function Home() {
         <Hero />
       </div>
       <Cases />
+      <CentralContentPageLinks />
       <AllShowcasesSection />
       <MainPageShortcuts />
     </Layout>

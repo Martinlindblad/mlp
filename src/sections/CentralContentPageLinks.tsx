@@ -31,7 +31,7 @@ const CentralContentPageLinks = (): JSX.Element => {
     <AnimatedContainer
       key="CentralContentPageLinksContainer"
       containerVariant={container}
-      className="flex flex-row flex-wrap justify-between w-full py-20 "
+      className="flex flex-row flex-wrap justify-between w-full py-20 lg:py-32 container"
     >
       {isLoadingPageCards ? (
         <ContentLoader />

@@ -12,6 +12,7 @@ import ContentLoader from '../AnimatedComponents/ContentLoader';
 
 import Logo from '../SVG/Logo';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Hero() {
   const { data: aboutData, isLoading } = useIntroductionQuery();
@@ -51,10 +52,12 @@ export default function Hero() {
     <ContentLoader />
   ) : (
     <main className="lg:container grid grid-cols-12 pb-12 lg:pb-0 h-screen">
-      <img
-        alt="content"
-        className="object-cover absolute z-0 object-left h-full opacity-60 right-0 grayscale contrast-200 shadow-lg"
+      <Image
+        alt="Profile Picture"
+        className="object-cover absolute z-0 object-right h-full dark:opacity-60 opacity-70 right-0 grayscale contrast-200 shadow-lg"
         src="/images/profilepicture.webp"
+        layout="fill"
+        objectFit="contain"
       />
 
       <div className="col-span-10 col-start-2 lg:col-span-12">
@@ -116,7 +119,7 @@ export default function Hero() {
                 </p>
                 <Link
                   href="/about"
-                  className="flex items-center bg-transparent border border-white text-white px-4 sm:px-6 md:px-10 mt-4 sm:mt-0 py-2 sm:py-0 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base hover:bg-[#desiredColor] hover:scale-105"
+                  className="flex items-center bg-transparent border  px-4 sm:px-6 md:px-10 mt-4 sm:mt-0 py-2 sm:py-0 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base hover:bg-[#desiredColor] hover:scale-105"
                 >
                   About Me
                 </Link>

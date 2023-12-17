@@ -36,7 +36,7 @@ export default function CaseCarouselItem({
       {/* Gradient Overlay */}
       {from && to && (
         <div
-          className="absolute top-0 left-0 bottom-0 top-0 w-full  z-10"
+          className="absolute top-0 left-0 bottom-0 w-full  z-10"
           style={{
             background: `linear-gradient(to bottom, rgba(${from}, 0.4), rgba(${to}, 0.4))`,
           }}

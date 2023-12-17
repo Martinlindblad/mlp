@@ -47,3 +47,10 @@ export interface ProjectsAndCases {
   from: string;
   to: string;
 }
+export interface Pursuit {
+  _id: ObjectId;
+  title: string;
+  description: string;
+  leftImageSource: string;
+  rightImageSource: string;
+}
