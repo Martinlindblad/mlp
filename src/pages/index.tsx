@@ -7,7 +7,7 @@ import Hero from '../components/About/HeroIntroduction';
 import AllShowcasesSection from '../sections/Cases/AllShowcasesSection';
 import CentralContentPageLinks from '../sections/CentralContentPageLinks';
 
-const Cases = dynamic(() => import('../sections/Cases/Cases'));
+const Cases = dynamic(() => import('../sections/Cases/CaseCarouselBlock'));
 
 export default function Home() {
   return (
