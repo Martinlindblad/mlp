@@ -4,6 +4,7 @@ import { connectToDatabase } from 'src/lib/mongodb';
 import ContentLoader from 'src/src/components/AnimatedComponents/ContentLoader';
 import AnimatedFadeInContainer from 'src/src/components/Layouts/AnimatedFadeInContainer';
 import Image from 'next/image';
+import YouTube, { YouTubeProps } from 'react-youtube';
 
 interface ProjectDetail {
   title: string;
@@ -13,6 +14,9 @@ interface ProjectDetail {
 interface ProjectDetails {
   headline: string;
   description: string;
+  videoID?: string;
+  videoTitle?: string;
+  imageSources?: string[];
   details: ProjectDetail[];
 }
 interface CaseData {
@@ -55,6 +59,42 @@ const ProjectDetailItem: React.FC<{
   );
 };
 
+const ProjectDetailVideoComponent: React.FC<{
+  videoID: string;
+  title: string;
+}> = ({ videoID, title }) => {
+  const onPlayerReady: YouTubeProps['onReady'] = (event) => {
+    event.target.pauseVideo();
+  };
+
+  const opts: YouTubeProps['opts'] = {
+    playerVars: {
+      autoplay: 0,
+      loop: 1,
+      playlist: videoID,
+      controls: 1,
+      modestbranding: 1,
+      rel: 0,
+    },
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center my-10 lg:pt-20">
+      <h2 className="text-xl text-white font-semibold mb-3 text-center">
+        {title}
+      </h2>
+      <div className="mx-auto border border-gray-200 rounded-lg dark:border-gray-700 overflow-hidden">
+        <YouTube
+          videoId={videoID}
+          opts={opts}
+          onReady={onPlayerReady}
+          className="w-full h-full"
+        />
+      </div>
+    </div>
+  );
+};
+
 export const getStaticPaths: GetStaticPaths = async () => {
   const { database } = await connectToDatabase();
   const cases = await database
@@ -94,7 +134,14 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
   }
   const { imageSource, title, description, projectDetails } = caseData;
 
-  const { headline, details, description: projectDescription } = projectDetails;
+  const {
+    headline,
+    details,
+    description: projectDescription,
+    videoID,
+
+    videoTitle,
+  } = projectDetails;
 
   return (
     <div className="relative min-h-screen ">
@@ -116,40 +163,54 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
         </AnimatedFadeInContainer>
       </div>
       <div className=" p-8 relative container">
-        <AnimatedFadeInContainer type="FadeInTop">
+        <AnimatedFadeInContainer type="FadeInLeft" className="h-full">
           <h2 className="mb-6 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white w-1/3">
             {description}
           </h2>
-          <div className="flex flex-col md:flex-row">
-            <div className="relative w-full md:w-1/3 h-96 ">
-              <Image
-                className="absolute w-full h-full object-cover rounded-xl "
-                src={imageSource}
-                alt={title}
-                layout="fill"
-                objectPosition="center"
-                priority
-              />
-            </div>
-            <div className="flex flex-col md:w-1/2 md:px-20 py-4">
-              <h3 className="text-xl mb-2">{headline}</h3>
-              <p className="text-lg mb-4 ">{projectDescription}</p>
+        </AnimatedFadeInContainer>
+        <div className="flex flex-col md:flex-row">
+          <AnimatedFadeInContainer
+            type="FadeInLeft"
+            className="relative w-full md:w-1/3 h-96 "
+          >
+            <Image
+              className="absolute w-full h-full object-cover rounded-xl "
+              src={imageSource} // TODO: Change to imageSources[0] and create a carousel
+              alt={title}
+              layout="fill"
+              objectPosition="center"
+              priority
+            />
+          </AnimatedFadeInContainer>
+          <AnimatedFadeInContainer
+            type="FadeInRight"
+            className="flex flex-col md:w-1/2 md:px-20 py-4"
+          >
+            <h3 className="text-xl mb-2">{headline}</h3>
+            <p className="text-lg mb-4 ">{projectDescription}</p>
+          </AnimatedFadeInContainer>
+        </div>
+        {videoID && videoTitle && (
+          <AnimatedFadeInContainer
+            type="FadeInBottom"
+            className="relative w-full"
+          >
+            <ProjectDetailVideoComponent videoID={videoID} title={videoTitle} />
+          </AnimatedFadeInContainer>
+        )}
+        <section className="">
+          <div className="py-8 px-4 mx-auto  sm:py-16 lg:px-6">
+            <div className="space-y-8 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-12 md:space-y-0">
+              {details.map((detail, index) => (
+                <ProjectDetailItem
+                  detail={detail}
+                  key={detail.title}
+                  index={index}
+                />
+              ))}
             </div>
           </div>
-          <section className="">
-            <div className="py-8 px-4 mx-auto  sm:py-16 lg:px-6">
-              <div className="space-y-8 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-12 md:space-y-0">
-                {details.map((detail, index) => (
-                  <ProjectDetailItem
-                    detail={detail}
-                    key={detail.title}
-                    index={index}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        </AnimatedFadeInContainer>
+        </section>
       </div>
     </div>
   );
