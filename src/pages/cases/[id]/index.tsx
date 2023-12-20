@@ -5,6 +5,8 @@ import ContentLoader from 'src/src/components/AnimatedComponents/ContentLoader';
 import AnimatedFadeInContainer from 'src/src/components/Layouts/AnimatedFadeInContainer';
 import Image from 'next/image';
 import YouTube, { YouTubeProps } from 'react-youtube';
+import AnimatedName from 'src/src/components/AnimatedComponents/AnimatedName';
+import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
 
 interface ProjectDetail {
   title: string;
@@ -16,6 +18,7 @@ interface ProjectDetails {
   description: string;
   videoID?: string;
   videoTitle?: string;
+  videoDescription?: string;
   imageSources?: string[];
   details: ProjectDetail[];
 }
@@ -53,16 +56,21 @@ const ProjectDetailItem: React.FC<{
           ></path>
         </svg>
       </div>
-      <h3 className="mb-2 text-xl font-bold dark:text-white">{detail.title}</h3>
-      <p className="text-gray-500 dark:text-gray-400">{detail.description}</p>
+      <h3 className="mb-2 text-lg lg:text-xl xl:text-2xl font-bold dark:text-white">
+        {detail.title}
+      </h3>
+      <p className="text-gray-500 dark:text-gray-400 text-sm md:text-md lg:text-lg xl:text-lg mb-4 ">
+        {detail.description}
+      </p>
     </AnimatedFadeInContainer>
   );
 };
 
 const ProjectDetailVideoComponent: React.FC<{
   videoID: string;
-  title: string;
-}> = ({ videoID, title }) => {
+  videoTitle: string;
+  videoDescription: string;
+}> = ({ videoID, videoTitle, videoDescription }) => {
   const onPlayerReady: YouTubeProps['onReady'] = (event) => {
     event.target.pauseVideo();
   };
@@ -80,15 +88,20 @@ const ProjectDetailVideoComponent: React.FC<{
 
   return (
     <div className="flex flex-col items-center justify-center my-10 lg:pt-20">
-      <h2 className="text-xl text-white font-semibold mb-3 text-center">
-        {title}
-      </h2>
+      <div className="py-8 px-4 mx-auto max-w-screen-xl text-center lg:py-16">
+        <h1 className="mb-4 text-4xl font-extrabold tracking-tight leading-none text-gray-900 md:text-4xl lg:text-5xl dark:text-white">
+          {videoTitle}
+        </h1>
+        <p className="mb-8 text-lg font-normal text-gray-500 lg:text-xl sm:px-16 lg:px-48 dark:text-gray-400">
+          {videoDescription}
+        </p>
+      </div>
       <div className="mx-auto border border-gray-200 rounded-lg dark:border-gray-700 overflow-hidden">
         <YouTube
           videoId={videoID}
           opts={opts}
           onReady={onPlayerReady}
-          className="w-full h-full"
+          className=" h-auto lg:h-full lg:w-full"
         />
       </div>
     </div>
@@ -129,6 +142,8 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
 };
 
 const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
+  const { data: aboutData } = useIntroductionQuery();
+
   if (!caseData) {
     return <ContentLoader />;
   }
@@ -139,80 +154,93 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
     details,
     description: projectDescription,
     videoID,
-
+    videoDescription,
     videoTitle,
   } = projectDetails;
 
   return (
-    <div className="relative min-h-screen ">
-      <div className="relative w-full h-96">
-        <Image
-          className="absolute w-full h-full object-cover"
-          src={imageSource}
-          alt={title}
-          layout="fill"
-          objectPosition="center"
-          priority
-        />
-        <div className="absolute inset-0 dark:bg-slate-950 bg-slate-100 opacity-60"></div>
-        {/* Optional dark overlay */}
-        <AnimatedFadeInContainer type="FadeInTop" className="h-full">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <h1 className="text-3xl lg:text-5xl font-bold  ">{title}</h1>
-          </div>
-        </AnimatedFadeInContainer>
-      </div>
-      <div className=" p-8 relative container">
-        <AnimatedFadeInContainer type="FadeInLeft" className="h-full">
-          <h2 className="mb-6 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white w-1/3">
-            {description}
-          </h2>
-        </AnimatedFadeInContainer>
-        <div className="flex flex-col md:flex-row">
-          <AnimatedFadeInContainer
-            type="FadeInLeft"
-            className="relative w-full md:w-1/3 h-96 "
-          >
-            <Image
-              className="absolute w-full h-full object-cover rounded-xl "
-              src={imageSource} // TODO: Change to imageSources[0] and create a carousel
-              alt={title}
-              layout="fill"
-              objectPosition="center"
-              priority
-            />
-          </AnimatedFadeInContainer>
-          <AnimatedFadeInContainer
-            type="FadeInRight"
-            className="flex flex-col md:w-1/2 md:px-20 py-4"
-          >
-            <h3 className="text-xl mb-2">{headline}</h3>
-            <p className="text-lg mb-4 ">{projectDescription}</p>
+    <>
+      <div className="relative min-h-screen ">
+        <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
+          <AnimatedName aboutData={aboutData} />
+        </div>
+        <div className="relative w-full h-96">
+          <Image
+            className="absolute w-full h-full object-cover"
+            src={imageSource}
+            alt={title}
+            layout="fill"
+            objectPosition="center"
+            priority
+          />
+          <div className="absolute inset-0 dark:bg-slate-950 bg-slate-100 opacity-60"></div>
+          {/* Optional dark overlay */}
+          <AnimatedFadeInContainer type="FadeInTop" className="h-full">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <h1 className="text-3xl lg:text-5xl font-bold  ">{title}</h1>
+            </div>
           </AnimatedFadeInContainer>
         </div>
-        {videoID && videoTitle && (
-          <AnimatedFadeInContainer
-            type="FadeInBottom"
-            className="relative w-full"
-          >
-            <ProjectDetailVideoComponent videoID={videoID} title={videoTitle} />
+        <div className=" p-8 relative container">
+          <AnimatedFadeInContainer type="FadeInLeft" className="h-full">
+            <h2 className="mb-6 text-xl lg:text-3xl tracking-tight font-extrabold text-gray-900 dark:text-white lg:w-1/3">
+              {description}
+            </h2>
           </AnimatedFadeInContainer>
-        )}
-        <section className="">
-          <div className="py-8 px-4 mx-auto  sm:py-16 lg:px-6">
-            <div className="space-y-8 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-12 md:space-y-0">
-              {details.map((detail, index) => (
-                <ProjectDetailItem
-                  detail={detail}
-                  key={detail.title}
-                  index={index}
-                />
-              ))}
-            </div>
+          <div className="flex flex-col md:flex-row">
+            <AnimatedFadeInContainer
+              type="FadeInLeft"
+              className="relative w-full md:w-1/3 h-96 "
+            >
+              <Image
+                className="absolute w-full h-full object-cover rounded-xl "
+                src={imageSource} // TODO: Change to imageSources[0] and create a carousel
+                alt={title}
+                layout="fill"
+                objectPosition="center"
+                priority
+              />
+            </AnimatedFadeInContainer>
+            <AnimatedFadeInContainer
+              type="FadeInRight"
+              className="flex flex-col md:w-1/2 md:px-20 py-4"
+            >
+              <h3 className="text-md md:text-lg lg:text-xl xl:text-2xl mb-2">
+                {headline}
+              </h3>
+              <p className="text-sm md:text-md lg:text-lg xl:text-xl mb-4 ">
+                {projectDescription}
+              </p>
+            </AnimatedFadeInContainer>
           </div>
-        </section>
+          {videoID && videoTitle && (
+            <AnimatedFadeInContainer
+              type="FadeInBottom"
+              className="relative w-full"
+            >
+              <ProjectDetailVideoComponent
+                videoID={videoID}
+                videoTitle={videoTitle}
+                videoDescription={videoDescription ?? ''}
+              />
+            </AnimatedFadeInContainer>
+          )}
+          <section className="">
+            <div className="py-8 px-4 mx-auto  sm:py-16 lg:px-6">
+              <div className="space-y-8 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-12 md:space-y-0">
+                {details.map((detail, index) => (
+                  <ProjectDetailItem
+                    detail={detail}
+                    key={detail.title}
+                    index={index}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

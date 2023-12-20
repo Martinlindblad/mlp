@@ -7,6 +7,8 @@ import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContain
 import AnimatedPreseceWrapper from '../components/Layouts/AnimatePresenceWrapper';
 import useWindowDimensions from '../hooks/useWindowDimensions';
 import Image from 'next/image';
+import AnimatedName from '../components/AnimatedComponents/AnimatedName';
+import useIntroductionQuery from '../hooks/useIntroductiontQuery';
 
 interface CaseItem {
   _id: {
@@ -196,8 +198,13 @@ const ShowCases = () => {
     caseDispatch({ type: 'toggle', id });
   };
 
+  const { data: aboutData } = useIntroductionQuery();
+
   return (
     <AnimatedPreseceWrapper>
+      <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
+        <AnimatedName aboutData={aboutData} />
+      </div>
       {isLoading ? (
         <PageLoader />
       ) : (

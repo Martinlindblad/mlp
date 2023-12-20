@@ -63,11 +63,12 @@ const Logo: React.FC<LogoProps> = ({ containerStyle }) => {
         console.error('Animation error:', error);
       });
   }, [controls1, controls2]);
+
   return (
     <div className={containerStyle}>
       <div>
         <svg
-          className="svg "
+          className="svg"
           id="svg"
           data-name="Layer 1"
           viewBox="0 0 237.01 221.31"

@@ -1,7 +1,9 @@
+import AnimatedName from '../components/AnimatedComponents/AnimatedName';
 import HeroRollingBanner from '../components/HeroRollingBanner';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
 import Layout from '../components/Layouts/Layout';
 import React, { useMemo } from 'react';
+import useIntroductionQuery from '../hooks/useIntroductiontQuery';
 
 export function ExperienceComponent() {
   const experiences = useMemo(
@@ -39,8 +41,13 @@ export function ExperienceComponent() {
 }
 
 const Experience = (): JSX.Element => {
+  const { data: aboutData } = useIntroductionQuery();
+
   return (
     <Layout className="w-full  flex-col">
+      <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
+        <AnimatedName aboutData={aboutData} />
+      </div>
       <div className="w-full lg:py-24 h-full rounded-2xl flex justify-center items-center relative">
         <AnimatedFadeInContainer type="FadeInBottom">
           <ExperienceComponent />

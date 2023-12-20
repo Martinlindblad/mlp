@@ -4,12 +4,19 @@ import Layout from '../components/Layouts/Layout';
 import Link from 'next/link';
 import WorkShowcase from '../components/WorkShowcase';
 import { motion, useInView } from 'framer-motion';
+import AnimatedName from '../components/AnimatedComponents/AnimatedName';
+import useIntroductionQuery from '../hooks/useIntroductiontQuery';
 
 const AboutPage = (): JSX.Element => {
   const ref = useRef<HTMLDivElement | null>(null);
   const isInView = useInView(ref);
+  const { data: aboutData } = useIntroductionQuery();
+
   return (
     <Layout className="w-full flex flex-col justify-center align-center">
+      <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
+        <AnimatedName aboutData={aboutData} />
+      </div>
       <section className="text-gray-400 lg:h-screen  dark:text-gray-100 body-font ">
         <div className="px-5 mx-auto flex flex-col justify-center align-center h-full">
           <AnimatedFadeInContainer type="FadeInBottom ">
