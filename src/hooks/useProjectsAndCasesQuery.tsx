@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { useQuery } from 'react-query';
-import { ProjectsAndCases } from 'src/types/DBTypes';
+import { ProjectDetail } from 'src/types/DBTypes';
 
 const getProjectsAndCases = () =>
   axios
-    .get<ProjectsAndCases[]>(`/api/projectsAndCases`, {
+    .get<ProjectDetail[]>(`/api/projectsAndCases`, {
       headers: {
         accept: 'application/json',
       },

@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 
-export interface AboutType {
+export interface PersonalInfo {
   _id: ObjectId;
   title: string;
   info: string;
@@ -8,7 +8,7 @@ export interface AboutType {
   surname: string;
   key: 'introduction' | 'about' | 'more' | 'japanese';
 }
-export interface IntroductionType {
+export interface CareerSummary {
   _id: ObjectId;
   occupationType: string;
   description: string;
@@ -19,13 +19,13 @@ export interface IntroductionType {
   link: string;
 }
 
-export interface HobbyType {
+export interface Interest {
   _id: ObjectId;
   title: string;
   content: string;
   type: 'japanese';
 }
-export interface PageCardType {
+export interface InformationCard {
   _id: ObjectId;
   title: string;
   description: string;
@@ -34,12 +34,64 @@ export interface PageCardType {
   key: 'experience' | 'about' | 'contact';
   type: 'introdcution';
 }
+
+export const ProfessionalProfileKeys = {
+  about: 'about',
+  introduction: 'introduction',
+  japanese: 'japanese',
+} as const;
+
+export interface ProfessionalProfileBase {
+  _id: ObjectId;
+  title: string;
+  info: string;
+  name: string;
+  surname: string;
+  key: keyof typeof ProfessionalProfileKeys;
+}
+
+export interface ProfessionalProfileAbout extends ProfessionalProfileBase {
+  description: string[];
+  imageSource: string;
+  link: string;
+  linkText: string;
+  profileImage: string;
+}
+
+export interface ProfessionalProfileintroduction
+  extends ProfessionalProfileBase {
+  // Add specific properties for 'introduction'
+}
+
+export interface ProfessionalProfileContact extends ProfessionalProfileBase {
+  // Add specific properties for 'Contact'
+}
+
+export interface ProfessionalProfileJapanese extends ProfessionalProfileBase {
+  // Add specific properties for 'Japanese'
+}
+
+export interface ProfessionalProfileData {
+  about: ProfessionalProfileAbout;
+  introduction: ProfessionalProfileintroduction;
+  japanese: ProfessionalProfileJapanese;
+}
+
+export interface ProfessionalProfileKeysType {
+  [key: string]: keyof typeof ProfessionalProfileKeys;
+}
+
+export interface ProfessionalProfileDataByKey<
+  T extends keyof typeof ProfessionalProfileKeys,
+> {
+  data: ProfessionalProfileData[T];
+}
 export interface SocailMediaLink {
   _id: ObjectId;
   name: 'Facebook' | 'Instagram' | 'LinkedIn' | 'Github';
   link: string;
 }
-export interface ProjectsAndCases {
+export interface ProjectDetail {
   _id: ObjectId;
   title: string;
   description: string;
@@ -54,3 +106,14 @@ export interface Pursuit {
   leftImageSource: string;
   rightImageSource: string;
 }
+export interface ProfessionalTimeline {
+  _id: ObjectId;
+  company?: string;
+  institution?: string;
+  qualification?: string;
+  duration: string;
+  title: string;
+  description: string;
+}
+
+export type ProfessionalTimelineData = ProfessionalTimeline[];

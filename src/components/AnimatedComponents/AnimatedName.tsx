@@ -3,22 +3,22 @@ import Link from 'next/link';
 import AnimatedContainer from '../Layouts/AnimatedContainer';
 import Logo from '../SVG/Logo';
 import { useTheme } from 'next-themes';
-import { AboutType } from 'src/types/DBTypes';
+import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 import { useMemo } from 'react';
 
 type AnimatedNameProp = {
-  aboutData: void | AboutType | undefined;
+  personalInfo?: ProfessionalProfileintroduction;
 };
 
-const AnimatedName = ({ aboutData }: AnimatedNameProp) => {
+const AnimatedName = ({ personalInfo }: AnimatedNameProp) => {
   const CharacterString = useMemo(() => {
-    if (aboutData) {
-      const nameString = aboutData?.name + ' ' + aboutData?.surname;
+    if (personalInfo) {
+      const nameString = personalInfo?.name + ' ' + personalInfo?.surname;
       const stringArr = Array.from(nameString);
       return stringArr;
     }
     return [];
-  }, [aboutData]);
+  }, [personalInfo]);
 
   const container = useMemo(
     () => ({

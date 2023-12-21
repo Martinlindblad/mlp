@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { useQuery } from 'react-query';
-import { PageCardType } from 'src/types/DBTypes';
+import { InformationCard } from 'src/types/DBTypes';
 
 const getPageCards = () =>
   axios
-    .get<PageCardType[]>(`/api/pageCards`, {
+    .get<InformationCard[]>(`/api/pageCards`, {
       headers: {
         accept: 'application/json',
       },

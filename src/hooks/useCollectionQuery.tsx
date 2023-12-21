@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { useQuery } from 'react-query';
-import { AboutType } from 'src/types/DBTypes';
+import { PersonalInfo } from 'src/types/DBTypes';
 
 const getCollection = () =>
   axios
-    .get<AboutType[]>(`/api/introduction`, {
+    .get<PersonalInfo[]>(`/api/introduction`, {
       headers: {
         accept: 'application/json',
       },

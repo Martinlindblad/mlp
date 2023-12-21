@@ -1,0 +1,38 @@
+diff --git a/node_modules/react-youtube/dist/YouTube.esm.js b/node_modules/react-youtube/dist/YouTube.esm.js
+index ebb1e1f..8120fbb 100644
+--- a/node_modules/react-youtube/dist/YouTube.esm.js
++++ b/node_modules/react-youtube/dist/YouTube.esm.js
+@@ -186,6 +186,9 @@ var _YouTube = class extends React.Component {
+     this.updatePlayer = () => {
+       var _a;
+       (_a = this.internalPlayer) == null ? void 0 : _a.getIframe().then((iframe) => {
++        if (!iframe) {
++          return
++        }
+         if (this.props.id)
+           iframe.setAttribute("id", this.props.id);
+         else
+diff --git a/node_modules/react-youtube/dist/YouTube.js b/node_modules/react-youtube/dist/YouTube.js
+index 48ff958..5c7412d 100644
+--- a/node_modules/react-youtube/dist/YouTube.js
++++ b/node_modules/react-youtube/dist/YouTube.js
+@@ -202,6 +202,9 @@ var _YouTube = class extends import_react.default.Component {
+       this.internalPlayer.on("playbackQualityChange", this.onPlayerPlaybackQualityChange);
+       if (this.props.title || this.props.loading) {
+         this.internalPlayer.getIframe().then((iframe) => {
++          if (!iframe) {
++            return
++          }
+           if (this.props.title)
+             iframe.setAttribute("title", this.props.title);
+           if (this.props.loading)
+@@ -213,6 +216,9 @@ var _YouTube = class extends import_react.default.Component {
+     this.updatePlayer = () => {
+       var _a;
+       (_a = this.internalPlayer) == null ? void 0 : _a.getIframe().then((iframe) => {
++        if (!iframe) {
++          return;
++        }
+         if (this.props.id)
+           iframe.setAttribute("id", this.props.id);
+         else

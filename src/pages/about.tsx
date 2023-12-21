@@ -5,19 +5,24 @@ import Link from 'next/link';
 import WorkShowcase from '../components/WorkShowcase';
 import { motion, useInView } from 'framer-motion';
 import AnimatedName from '../components/AnimatedComponents/AnimatedName';
-import useIntroductionQuery from '../hooks/useIntroductiontQuery';
+import useAboutQuery from '../hooks/useAboutQuery';
+import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 
 const AboutPage = (): JSX.Element => {
   const ref = useRef<HTMLDivElement | null>(null);
   const isInView = useInView(ref);
-  const { data: aboutData } = useIntroductionQuery();
+  const { data: personalInfo } = useAboutQuery('introduction');
 
   return (
     <Layout className="w-full flex flex-col justify-center align-center">
       <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
-        <AnimatedName aboutData={aboutData} />
+        <AnimatedName
+          personalInfo={
+            personalInfo as unknown as ProfessionalProfileintroduction
+          }
+        />
       </div>
-      <section className="text-gray-400 lg:h-screen  dark:text-gray-100 body-font ">
+      <section className="text-gray-400 mb-10  dark:text-gray-100 body-font ">
         <div className="px-5 mx-auto flex flex-col justify-center align-center h-full">
           <AnimatedFadeInContainer type="FadeInBottom ">
             <div className="lg:w-4/6 mx-auto">
@@ -88,7 +93,7 @@ const AboutPage = (): JSX.Element => {
       <motion.div
         key="workShowCase"
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.2 }}
       >
         <WorkShowcase />
       </motion.div>

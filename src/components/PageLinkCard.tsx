@@ -5,7 +5,7 @@ import AnimatedItem from './Layouts/AnimatedItem';
 import ContactIcon from './SVG/Contact';
 import ExperienceIcon from './SVG/Experience';
 
-import { PageCardType } from 'src/types/DBTypes';
+import { InformationCard } from 'src/types/DBTypes';
 import Colors from '../sections/Navigation/Colors';
 import AboutIcon from './SVG/About';
 
@@ -13,7 +13,7 @@ const PageLinkCard = ({
   data,
   index,
 }: {
-  data: PageCardType;
+  data: InformationCard;
   index: number;
 }): JSX.Element => {
   const itemVariant = useMemo(() => {

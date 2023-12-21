@@ -1,17 +1,19 @@
 import AnimatedFadeInContainer from '../Layouts/AnimatedFadeInContainer';
 
 import SocialMediaLinks from '../SocialMediaLinks';
-import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
 
 import ContentLoader from '../AnimatedComponents/ContentLoader';
 
 import Link from 'next/link';
 import Image from 'next/image';
 import AnimatedName from '../AnimatedComponents/AnimatedName';
+import useAboutQuery from 'src/src/hooks/useAboutQuery';
+import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 
 export default function Hero() {
-  const { data: aboutData, isLoading } = useIntroductionQuery();
-
+  const { data: personalInfo, isLoading } = useAboutQuery('introduction');
+  const personalInfoData =
+    personalInfo as unknown as ProfessionalProfileintroduction;
   return isLoading ? (
     <ContentLoader />
   ) : (
@@ -26,7 +28,7 @@ export default function Hero() {
 
       <div className="col-span-10 col-start-2 lg:col-span-12">
         <div className="pt-60 sm:pt-6 lg:pb-0 sm:pl-32 lg:flex-row flex-col flex flex-wrap justify-center relative">
-          <AnimatedName aboutData={aboutData} />
+          <AnimatedName personalInfo={personalInfoData} />
         </div>
       </div>
       <div className="flex-col col-span-12">
@@ -45,7 +47,7 @@ export default function Hero() {
                   </h1>
                 </div>
                 <p className="text-sm sm:text-sm md:text-base lg:text-lg font-normal opacity-60 py-4 pr-4 md:pr-12 lg:pr-24">
-                  {aboutData?.info}
+                  {personalInfoData?.info}
                 </p>
                 <Link
                   href="/about"

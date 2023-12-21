@@ -11,7 +11,8 @@
     "lint:prettier": "NODE_ENV=production prettier -c 'src/**/*.{js,jsx,ts,tsx,json}'",
     "lint:eslint": "NODE_ENV=production eslint src --report-unused-disable-directives --color",
     "lint:tsc": "NODE_ENV=production tsc --noEmit --pretty",
-    "setup-db": "ts-node scripts/setupSchema.ts"
+    "setup-db": "ts-node scripts/setupSchema.ts",
+    "postinstall": "patch-package"
   },
   "nodemonConfig": {
     "ext": "js,jsx,ts,tsx,json,css,scss,svg",
@@ -40,6 +41,8 @@
     "mongodb": "^6.1.0",
     "next": "^13.5.3",
     "next-themes": "^0.2.1",
+    "patch-package": "^8.0.0",
+    "postinstall-postinstall": "^2.1.0",
     "react": "^18.2.0",
     "react-dayjs": "^0.3.2",
     "react-dom": "^18.2.0",

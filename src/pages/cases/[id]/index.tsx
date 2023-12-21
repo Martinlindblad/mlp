@@ -6,7 +6,10 @@ import AnimatedFadeInContainer from 'src/src/components/Layouts/AnimatedFadeInCo
 import Image from 'next/image';
 import YouTube, { YouTubeProps } from 'react-youtube';
 import AnimatedName from 'src/src/components/AnimatedComponents/AnimatedName';
-import useIntroductionQuery from 'src/src/hooks/useIntroductiontQuery';
+
+import useWindowDimensions from 'src/src/hooks/useWindowDimensions';
+import useAboutQuery from 'src/src/hooks/useAboutQuery';
+import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 
 interface ProjectDetail {
   title: string;
@@ -50,9 +53,8 @@ const ProjectDetailItem: React.FC<{
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            fill-rule="evenodd"
             d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z"
-            clip-rule="evenodd"
+            clipRule="evenodd"
           ></path>
         </svg>
       </div>
@@ -65,15 +67,27 @@ const ProjectDetailItem: React.FC<{
     </AnimatedFadeInContainer>
   );
 };
-
 const ProjectDetailVideoComponent: React.FC<{
   videoID: string;
   videoTitle: string;
   videoDescription: string;
 }> = ({ videoID, videoTitle, videoDescription }) => {
-  const onPlayerReady: YouTubeProps['onReady'] = (event) => {
+  const onPlayerReady: YouTubeProps['onReady'] = (event: {
+    target: { pauseVideo: () => void };
+  }) => {
     event.target.pauseVideo();
   };
+
+  const { width: windowWidth } = useWindowDimensions();
+  const maxVideoWidth = 640;
+  const maxVideoHeight = 390;
+
+  // Calculate dynamic width on mobile (90% of the window width)
+  const mobileWidth = windowWidth * 0.9;
+  const mobileHeight = mobileWidth * 0.609375; // Maintain aspect ratio
+
+  // Determine if it's a mobile device based on the window width
+  const isMobile = windowWidth < 640;
 
   const opts: YouTubeProps['opts'] = {
     playerVars: {
@@ -84,6 +98,8 @@ const ProjectDetailVideoComponent: React.FC<{
       modestbranding: 1,
       rel: 0,
     },
+    height: isMobile ? mobileHeight : maxVideoHeight,
+    width: isMobile ? mobileWidth : maxVideoWidth,
   };
 
   return (
@@ -97,12 +113,7 @@ const ProjectDetailVideoComponent: React.FC<{
         </p>
       </div>
       <div className="mx-auto border border-gray-200 rounded-lg dark:border-gray-700 overflow-hidden">
-        <YouTube
-          videoId={videoID}
-          opts={opts}
-          onReady={onPlayerReady}
-          className=" h-auto lg:h-full lg:w-full"
-        />
+        <YouTube videoId={videoID} opts={opts} onReady={onPlayerReady} />
       </div>
     </div>
   );
@@ -142,11 +153,12 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
 };
 
 const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
-  const { data: aboutData } = useIntroductionQuery();
+  const { data: personalInfo } = useAboutQuery('introduction');
 
   if (!caseData) {
     return <ContentLoader />;
   }
+
   const { imageSource, title, description, projectDetails } = caseData;
 
   const {
@@ -162,7 +174,11 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
     <>
       <div className="relative min-h-screen ">
         <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
-          <AnimatedName aboutData={aboutData} />
+          <AnimatedName
+            personalInfo={
+              personalInfo as unknown as ProfessionalProfileintroduction
+            }
+          />
         </div>
         <div className="relative w-full h-96">
           <Image
@@ -213,17 +229,17 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
               </p>
             </AnimatedFadeInContainer>
           </div>
-          {videoID && videoTitle && (
-            <AnimatedFadeInContainer
-              type="FadeInBottom"
-              className="relative w-full"
-            >
-              <ProjectDetailVideoComponent
-                videoID={videoID}
-                videoTitle={videoTitle}
-                videoDescription={videoDescription ?? ''}
-              />
-            </AnimatedFadeInContainer>
+          {videoID && (
+            // <AnimatedFadeInContainer
+            //   type="FadeInBottom"
+            //   className="relative w-full"
+            // >
+            <ProjectDetailVideoComponent
+              videoID={videoID}
+              videoTitle={videoTitle ?? ''}
+              videoDescription={videoDescription ?? ''}
+            />
+            // </AnimatedFadeInContainer>
           )}
           <section className="">
             <div className="py-8 px-4 mx-auto  sm:py-16 lg:px-6">
