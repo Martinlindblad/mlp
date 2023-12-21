@@ -91,13 +91,35 @@ export interface SocailMediaLink {
   name: 'Facebook' | 'Instagram' | 'LinkedIn' | 'Github';
   link: string;
 }
+
 export interface ProjectDetail {
+  title: string;
+  description: string;
+}
+
+export interface ProjectDetails {
+  headline: string;
+  description: string;
+  videoID?: string;
+  videoTitle?: string;
+  videoDescription?: string;
+  imageSources?: string[];
+  roleDetails: string[];
+  roleTitle: string;
+  details: ProjectDetail[];
+}
+export interface CaseData {
   _id: ObjectId;
   title: string;
   description: string;
   imageSource: string;
   from: string;
   to: string;
+  projectDetails: ProjectDetails;
+}
+
+export interface CasePageProps {
+  caseData: CaseData | null;
 }
 export interface Pursuit {
   _id: ObjectId;

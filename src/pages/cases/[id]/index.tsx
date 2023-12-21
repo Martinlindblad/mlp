@@ -9,35 +9,11 @@ import AnimatedName from 'src/src/components/AnimatedComponents/AnimatedName';
 
 import useWindowDimensions from 'src/src/hooks/useWindowDimensions';
 import useAboutQuery from 'src/src/hooks/useAboutQuery';
-import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
-
-interface ProjectDetail {
-  title: string;
-  description: string;
-}
-
-interface ProjectDetails {
-  headline: string;
-  description: string;
-  videoID?: string;
-  videoTitle?: string;
-  videoDescription?: string;
-  imageSources?: string[];
-  details: ProjectDetail[];
-}
-interface CaseData {
-  _id: ObjectId;
-  title: string;
-  description: string;
-  imageSource: string;
-  from: string;
-  to: string;
-  projectDetails: ProjectDetails;
-}
-
-interface CasePageProps {
-  caseData: CaseData | null;
-}
+import {
+  CasePageProps,
+  ProfessionalProfileintroduction,
+  ProjectDetail,
+} from 'src/types/DBTypes';
 
 const ProjectDetailItem: React.FC<{
   detail: ProjectDetail;
@@ -82,11 +58,9 @@ const ProjectDetailVideoComponent: React.FC<{
   const maxVideoWidth = 640;
   const maxVideoHeight = 390;
 
-  // Calculate dynamic width on mobile (90% of the window width)
   const mobileWidth = windowWidth * 0.9;
-  const mobileHeight = mobileWidth * 0.609375; // Maintain aspect ratio
+  const mobileHeight = mobileWidth * 0.609375;
 
-  // Determine if it's a mobile device based on the window width
   const isMobile = windowWidth < 640;
 
   const opts: YouTubeProps['opts'] = {
@@ -116,6 +90,38 @@ const ProjectDetailVideoComponent: React.FC<{
         <YouTube videoId={videoID} opts={opts} onReady={onPlayerReady} />
       </div>
     </div>
+  );
+};
+type ProjectRoleDetailProps = {
+  roleDetails: string[];
+  roleTitle: string;
+};
+const ProjectRoleDetail: React.FC<ProjectRoleDetailProps> = ({
+  roleDetails,
+  roleTitle,
+}) => {
+  return (
+    <section className="bg-dark-blue text-white">
+      <div className="max-w-screen-sm px-4 py-8 mx-auto lg:px-6 sm:pt-16 ">
+        <div className="max-w-3xl pb-10 mx-auto text-center">
+          <h2 className="text-4xl font-extrabold leading-tight tracking-tight">
+            {roleTitle}
+          </h2>
+        </div>
+
+        <div className="pl-6">
+          <ul className="list-disc list-outside space-y-2">
+            {roleDetails.map((detail, index) => (
+              <li key={index} className="text-lg font-semibold flex">
+                <AnimatedFadeInContainer type="FadeInLeft" delay={index * 0.3}>
+                  <span className="flex-grow">{detail}</span>
+                </AnimatedFadeInContainer>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
   );
 };
 
@@ -168,6 +174,8 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
     videoID,
     videoDescription,
     videoTitle,
+    roleDetails,
+    roleTitle,
   } = projectDetails;
 
   return (
@@ -193,7 +201,7 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
           {/* Optional dark overlay */}
           <AnimatedFadeInContainer type="FadeInTop" className="h-full">
             <div className="absolute inset-0 flex items-center justify-center">
-              <h1 className="text-3xl lg:text-5xl font-bold  ">{title}</h1>
+              <h1 className="text-3xl lg:text-6xl font-bold">{title}</h1>
             </div>
           </AnimatedFadeInContainer>
         </div>
@@ -219,9 +227,9 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
             </AnimatedFadeInContainer>
             <AnimatedFadeInContainer
               type="FadeInRight"
-              className="flex flex-col md:w-1/2 md:px-20 py-4"
+              className="flex flex-col md:w-1/2 md:px-20 pb-4"
             >
-              <h3 className="text-md md:text-lg lg:text-xl xl:text-2xl mb-2">
+              <h3 className="text-md md:text-lg lg:text-xl xl:text-2xl mb-8">
                 {headline}
               </h3>
               <p className="text-sm md:text-md lg:text-lg xl:text-xl mb-4 ">
@@ -229,17 +237,20 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
               </p>
             </AnimatedFadeInContainer>
           </div>
+
+          <ProjectRoleDetail roleDetails={roleDetails} roleTitle={roleTitle} />
+
           {videoID && (
-            // <AnimatedFadeInContainer
-            //   type="FadeInBottom"
-            //   className="relative w-full"
-            // >
-            <ProjectDetailVideoComponent
-              videoID={videoID}
-              videoTitle={videoTitle ?? ''}
-              videoDescription={videoDescription ?? ''}
-            />
-            // </AnimatedFadeInContainer>
+            <AnimatedFadeInContainer
+              type="FadeInBottom"
+              className="relative w-full"
+            >
+              <ProjectDetailVideoComponent
+                videoID={videoID}
+                videoTitle={videoTitle ?? ''}
+                videoDescription={videoDescription ?? ''}
+              />
+            </AnimatedFadeInContainer>
           )}
           <section className="">
             <div className="py-8 px-4 mx-auto  sm:py-16 lg:px-6">
