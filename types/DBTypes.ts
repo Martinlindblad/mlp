@@ -106,6 +106,10 @@ export interface ProjectDetails {
   imageSources?: string[];
   roleDetails: string[];
   roleTitle: string;
+  links: {
+    title: string;
+    path: string;
+  }[];
   details: ProjectDetail[];
 }
 export interface CaseData {

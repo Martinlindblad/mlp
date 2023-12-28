@@ -13,7 +13,9 @@ import {
   CasePageProps,
   ProfessionalProfileintroduction,
   ProjectDetail,
+  ProjectDetails,
 } from 'src/types/DBTypes';
+import Link from 'next/link';
 
 const ProjectDetailItem: React.FC<{
   detail: ProjectDetail;
@@ -79,7 +81,7 @@ const ProjectDetailVideoComponent: React.FC<{
   return (
     <div className="flex flex-col items-center justify-center my-10 lg:pt-20">
       <div className="py-8 px-4 mx-auto max-w-screen-xl text-center lg:py-16">
-        <h1 className="mb-4 text-4xl font-extrabold tracking-tight leading-none text-gray-900 md:text-4xl lg:text-5xl dark:text-white">
+        <h1 className="mb-4 text-4xl font-extrabold tracking-tight leading-none  md:text-4xl lg:text-5xl dark:text-white">
           {videoTitle}
         </h1>
         <p className="mb-8 text-lg font-normal text-gray-500 lg:text-xl sm:px-16 lg:px-48 dark:text-gray-400">
@@ -101,8 +103,8 @@ const ProjectRoleDetail: React.FC<ProjectRoleDetailProps> = ({
   roleTitle,
 }) => {
   return (
-    <section className="bg-dark-blue text-white">
-      <div className="max-w-screen-sm px-4 py-8 mx-auto lg:px-6 sm:pt-16 ">
+    <section className="">
+      <div className="max-w-screen-sm px-4 py-8  lg:px-6 sm:pt-16 ">
         <div className="max-w-3xl pb-10 mx-auto text-center">
           <h2 className="text-4xl font-extrabold leading-tight tracking-tight">
             {roleTitle}
@@ -122,6 +124,31 @@ const ProjectRoleDetail: React.FC<ProjectRoleDetailProps> = ({
         </div>
       </div>
     </section>
+  );
+};
+
+const ProjectDetailLinkList: React.FC<{
+  links: ProjectDetails['links'];
+}> = ({ links }) => {
+  return (
+    <div className="inline-flex rounded-md shadow-sm my-4" role="group">
+      {links?.map((link) => (
+        <button
+          type="button"
+          key={link.title}
+          onClick={() => window.open(link.path)}
+          className="px-5 py-3 text-base font-medium text-center hover:text-black mr-4 rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+        >
+          {link.title}
+        </button>
+      ))}
+      <Link
+        href="/showcases"
+        className="px-5 py-3 text-base font-medium text-center hover:text-black mr-4 rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+      >
+        Showcases
+      </Link>
+    </div>
   );
 };
 
@@ -176,6 +203,7 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
     videoTitle,
     roleDetails,
     roleTitle,
+    links,
   } = projectDetails;
 
   return (
@@ -214,7 +242,7 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
           <div className="flex flex-col md:flex-row">
             <AnimatedFadeInContainer
               type="FadeInLeft"
-              className="relative w-full md:w-1/3 h-96 "
+              className="relative w-full h-96 "
             >
               <Image
                 className="absolute w-full h-full object-cover rounded-xl "
@@ -227,7 +255,7 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
             </AnimatedFadeInContainer>
             <AnimatedFadeInContainer
               type="FadeInRight"
-              className="flex flex-col md:w-1/2 md:px-20 pb-4"
+              className="flex flex-col flex-grow md:px-20 pb-4"
             >
               <h3 className="text-md md:text-lg lg:text-xl xl:text-2xl mb-8">
                 {headline}
@@ -235,9 +263,9 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
               <p className="text-sm md:text-md lg:text-lg xl:text-xl mb-4 ">
                 {projectDescription}
               </p>
+              <ProjectDetailLinkList links={links} />
             </AnimatedFadeInContainer>
           </div>
-
           <ProjectRoleDetail roleDetails={roleDetails} roleTitle={roleTitle} />
 
           {videoID && (

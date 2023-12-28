@@ -1,11 +1,10 @@
-// ... other imports
-import useProjectDetail Query from 'src/src/hooks/useProjectDetail Query';
-import CaseItem from './CaseItem'; // Adjust the import path as needed
+import CaseItem from './CaseItem';
 import { useMemo } from 'react';
 import ContentLoader from 'src/src/components/AnimatedComponents/ContentLoader';
+import useProjectsAndCasesQuery from 'src/src/hooks/useProjectsAndCasesQuery';
 
 const CasesListPage = () => {
-  const { data, isLoading } = useProjectDetail Query();
+  const { data, isLoading } = useProjectsAndCasesQuery();
 
   const items = useMemo(() => {
     if (!data) return [];

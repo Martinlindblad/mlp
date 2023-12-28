@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { useMemo, useReducer } from 'react';
-import useProjectDetail Query from '../hooks/useProjectDetail Query';
 import PageLoader from '../components/AnimatedComponents/ContentLoader';
 import Link from 'next/link';
 import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
@@ -8,7 +7,9 @@ import AnimatedPreseceWrapper from '../components/Layouts/AnimatePresenceWrapper
 import useWindowDimensions from '../hooks/useWindowDimensions';
 import Image from 'next/image';
 import AnimatedName from '../components/AnimatedComponents/AnimatedName';
-import useIntroductionQuery from '../hooks/useIntroductiontQuery';
+import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
+import useAboutQuery from '../hooks/useAboutQuery';
+import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 
 interface CaseItem {
   _id: {
@@ -154,7 +155,7 @@ const ShowCaseItem = ({
 };
 
 const ShowCases = () => {
-  const { data, isLoading } = useProjectDetail Query();
+  const { data, isLoading } = useProjectsAndCasesQuery();
   const windowWidth = useWindowDimensions().width;
   const shouldReduceMotion = useReducedMotion();
 
@@ -198,12 +199,16 @@ const ShowCases = () => {
     caseDispatch({ type: 'toggle', id });
   };
 
-  const { data: personalInfo } = useIntroductionQuery();
+  const { data: personalInfo } = useAboutQuery('introduction');
 
   return (
     <AnimatedPreseceWrapper>
-      <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
-        <AnimatedName personalInfo as unknown as ProfessionalProfileintroduction } />
+      <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 lg:pb-0 justify-center align-center flex">
+        <AnimatedName
+          personalInfo={
+            personalInfo as unknown as ProfessionalProfileintroduction
+          }
+        />
       </div>
       {isLoading ? (
         <PageLoader />
