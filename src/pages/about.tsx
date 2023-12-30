@@ -9,14 +9,14 @@ import useAboutQuery from '../hooks/useAboutQuery';
 import { Languages, ProfessionalProfileintroduction } from 'src/types/DBTypes';
 import useLanguagesQuery from '../hooks/useLanguagesQuery';
 
-const StarRating = ({ rating }) => {
+const StarRating = ({ rating }: { rating: number }) => {
   const fullStars = Math.floor(rating);
   const emptyStars = 5 - fullStars;
 
   return (
     <div className="flex">
       {Array(fullStars)
-        .fill()
+        .fill(undefined)
         .map((_, i) => (
           <svg
             key={`full-${i}`}
@@ -30,7 +30,7 @@ const StarRating = ({ rating }) => {
           </svg>
         ))}
       {Array(emptyStars)
-        .fill()
+        .fill(undefined)
         .map((_, i) => (
           <svg
             key={`empty-${i}`}
