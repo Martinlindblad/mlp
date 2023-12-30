@@ -42,8 +42,6 @@ const WorkShowcase = (): JSX.Element => {
 
   if (isLoading) return <PageLoader />;
 
-  console.log(CareerEvents);
-
   return (
     <section className="text-gray-600 body-font overflow-hidden container lg:min-h-screen">
       <div className="container px-5 py-24 lg:py-0 mx-auto">

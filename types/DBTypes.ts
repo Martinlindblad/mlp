@@ -106,7 +106,7 @@ export interface ProjectDetails {
   imageSources?: string[];
   roleDetails: string[];
   roleTitle: string;
-  links: {
+  links?: {
     title: string;
     path: string;
   }[];
@@ -143,3 +143,12 @@ export interface ProfessionalTimeline {
 }
 
 export type ProfessionalTimelineData = ProfessionalTimeline[];
+
+export interface Language {
+  _id: ObjectId;
+  name: string;
+  spoken: string;
+  written: string;
+}
+
+export type Languages = Language[];

@@ -132,16 +132,18 @@ const ProjectDetailLinkList: React.FC<{
 }> = ({ links }) => {
   return (
     <div className="inline-flex rounded-md shadow-sm my-4" role="group">
-      {links?.map((link) => (
-        <button
-          type="button"
-          key={link.title}
-          onClick={() => window.open(link.path)}
-          className="px-5 py-3 text-base font-medium text-center hover:text-black mr-4 rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
-        >
-          {link.title}
-        </button>
-      ))}
+      {links
+        ? links.map((link) => (
+            <button
+              type="button"
+              key={link.title}
+              onClick={() => window.open(link.path)}
+              className="px-5 py-3 text-base font-medium text-center hover:text-black mr-4 rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+            >
+              {link.title}
+            </button>
+          ))
+        : null}
       <Link
         href="/showcases"
         className="px-5 py-3 text-base font-medium text-center hover:text-black mr-4 rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
@@ -263,7 +265,7 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
               <p className="text-sm md:text-md lg:text-lg xl:text-xl mb-4 ">
                 {projectDescription}
               </p>
-              <ProjectDetailLinkList links={links} />
+              {links && <ProjectDetailLinkList links={links} />}
             </AnimatedFadeInContainer>
           </div>
           <ProjectRoleDetail roleDetails={roleDetails} roleTitle={roleTitle} />

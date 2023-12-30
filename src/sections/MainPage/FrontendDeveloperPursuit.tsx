@@ -10,8 +10,6 @@ import { Pursuit } from 'src/types/DBTypes';
 const FrontendDeveloperPursuit = () => {
   const { data, isLoading } = usePursuitQuery();
 
-  console.log(data);
-
   const pursuitData = useMemo(() => {
     if (!data) return {} as Pursuit;
     return data[0];
