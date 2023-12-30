@@ -47,7 +47,15 @@ const StarRating = ({ rating }: { rating: number }) => {
   );
 };
 
-const LanguageRating = ({ language, spoken, written }) => (
+const LanguageRating = ({
+  language,
+  spoken,
+  written,
+}: {
+  language: string;
+  spoken: number;
+  written: number;
+}) => (
   <div className="flex flex-col shadow-black dark:shadow-white shadow-sm rounded-lg p-4 m-2">
     <div className="font-semibold text-lg text-gray-700 dark:text-gray-400">
       {language}
