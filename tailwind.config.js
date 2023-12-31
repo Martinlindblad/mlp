@@ -108,6 +108,13 @@ module.exports = {
       boxShadow: {
         right: '6px 1px 7px -3px rgb(0 0 0 / 20%)',
         left: '-6px 1px 7px -3px rgb(0 0 0 / 20%)',
+        custom:
+          '0 25px 200px -12px rgba(0, 0, 0, 0.25), 0 0 600px 0 rgba(124, 224, 195, 0.5)',
+        mobile:
+          '0 25px 200px -12px rgba(0, 0, 0, 0.25), 0 0 600px 0 rgba(29, 78, 216, 0.5)', // Blue glow for mobile
+        web: '0 25px 200px -12px rgba(0, 0, 0, 0.25), 0 0 600px 0 rgba(234, 88, 12, 0.5)', // Orange glow for web
+        other:
+          '0 25px 200px -12px rgba(0, 0, 0, 0.25), 0 0 600px 0 rgba(16, 185, 129, 0.5)', // Teal glow for other
       },
     },
   },
