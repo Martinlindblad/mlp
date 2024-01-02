@@ -45,7 +45,7 @@ const Footer = (): JSX.Element => {
         <span className="block text-sm text-gray-500 sm:text-center dark:text-gray-400">
           © 2023{' '}
           <Link href="#" className="hover:underline">
-            PM Lindblad AB™
+            PM Lindblad AB
           </Link>
           . All Rights Reserved.
         </span>
