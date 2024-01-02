@@ -8,7 +8,6 @@ import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 import { Icon } from '@iconify/react';
 import Image from 'next/image';
 import Link from 'next/link';
-import useWindowDimensions from '../hooks/useWindowDimensions';
 
 const ExperienceSectionData = [
   {
@@ -116,7 +115,6 @@ const ExperienceSectionIconByType = ({ id }: { id: string }): JSX.Element => {
 };
 
 const ExperienceHero = (): JSX.Element => {
-  const width = useWindowDimensions().width;
   return (
     <section className="bg-white dark:bg-gray-900">
       <AnimatedFadeInContainer type="FadeInBottom">
@@ -155,50 +153,38 @@ const ExperienceHero = (): JSX.Element => {
           <div className="px-4 mx-auto text-center md:max-w-screen-md lg:max-w-screen-lg lg:px-36">
             <span className="font-semibold text-gray-400 uppercase">Stack</span>
             <div className="flex flex-wrap justify-center items-center mt-8 text-gray-500 sm:justify-between">
-              <Link
-                href="#"
-                className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400"
-              >
+              <div className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400">
                 <div className={`h-full flex items-center justify-center`}>
                   <Icon
                     icon={'logos:react'}
                     className="h-12 w-full mx-10  p-1"
                   />
                 </div>
-              </Link>
-              <Link
-                href="#"
-                className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400"
-              >
+              </div>
+              <div className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400">
                 <div className={`h-full flex items-center justify-center`}>
                   <Icon
                     icon={'logos:nextjs-icon'}
                     className="h-12 w-full mx-10  p-1"
                   />
                 </div>
-              </Link>
-              <Link
-                href="#"
-                className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400"
-              >
+              </div>
+              <div className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400">
                 <div className={`h-full flex items-center justify-center`}>
                   <Icon
                     icon={'logos:typescript-icon'}
                     className="h-12 w-full mx-10  p-1"
                   />
                 </div>
-              </Link>
-              <Link
-                href="#"
-                className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400"
-              >
+              </div>
+              <div className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400">
                 <div className={`h-full flex items-center justify-center`}>
                   <Icon
                     icon={'logos:javascript'}
                     className="h-12 w-full mx-10  p-1"
                   />
                 </div>
-              </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -239,26 +225,30 @@ const ExperienceSection = ({
   return (
     <div
       key={id}
-      className="flex flex-col justify-center items-center p-16 lg:h-screen bg-slate-200 dark:bg-slate-900"
+      className="flex flex-col justify-center items-center p-16 bg-slate-200 dark:bg-slate-900"
     >
-      <AnimatedFadeInContainer className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-        <div className="space-y-4 overflow-hidden">
-          <h2 className="text-4xl font-semibold text-[#79ea86]">{title}</h2>
-          <p className="text-base text-">{description}</p>
-          <ExperienceSectionIconByType id={id} />
-        </div>
-        <div className="flex justify-center">
-          <GradientShadowDiv shadowClass={shadowClass}>
-            <Image
-              src={imagePath}
-              className="rounded-xl"
-              alt={title}
-              width={400}
-              height={400}
-            />
-          </GradientShadowDiv>
-        </div>
-      </AnimatedFadeInContainer>
+      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+        <AnimatedFadeInContainer type="FadeInLeft">
+          <div className="space-y-4 overflow-hidden">
+            <h2 className="text-4xl font-semibold text-[#79ea86]">{title}</h2>
+            <p className="text-base text-">{description}</p>
+            <ExperienceSectionIconByType id={id} />
+          </div>
+        </AnimatedFadeInContainer>
+        <AnimatedFadeInContainer type="FadeInRight">
+          <div className="flex justify-center">
+            <GradientShadowDiv shadowClass={shadowClass}>
+              <Image
+                src={imagePath}
+                className="rounded-xl"
+                alt={title}
+                width={350}
+                height={350}
+              />
+            </GradientShadowDiv>
+          </div>
+        </AnimatedFadeInContainer>
+      </div>
     </div>
   );
 };

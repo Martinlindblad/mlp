@@ -165,9 +165,14 @@ const AboutPage = (): JSX.Element => {
                     >
                       PiJa Media & Management AB
                     </Link>
-                    . I am passionate about developing products and improving
-                    myself because there is always another step ahead, a new
-                    goal to pursue, or a challenge to overcome. <br />
+                    <br />
+                    <br />
+                    Additionally, I provide SEO, maintenance, and project
+                    management services for Wordpress and Shopify sites through
+                    Neeko AB. <br />
+                    <br /> I am passionate about developing products and
+                    improving myself because there is always another step ahead,
+                    a new goal to pursue, or a challenge to overcome. <br />
                     <br />I firmly believe in the power of continuous learning
                     and remain an ever-curious student of life and the vast
                     digital world that surrounds us.

@@ -49,12 +49,20 @@ export default function Hero() {
                 <p className="text-sm sm:text-sm md:text-base lg:text-lg font-normal opacity-60 py-4 pr-4 md:pr-12 lg:pr-24">
                   {personalInfoData?.info}
                 </p>
-                <Link
-                  href="/about"
-                  className="flex items-center bg-transparent border  px-4 sm:px-6 md:px-10 mt-4 sm:mt-0 py-2 sm:py-0 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base hover:bg-[#desiredColor] hover:scale-105"
-                >
-                  About Me
-                </Link>
+                <div className="flex flex-row gap-6">
+                  <Link
+                    href="/about"
+                    className="flex items-center bg-transparent border-b-2   mt-4 sm:mt-0 py-2 sm:py-0 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base hover:bg-[#desiredColor] hover:scale-105"
+                  >
+                    About Me
+                  </Link>
+                  <Link
+                    href="/experience"
+                    className="flex items-center bg-transparent border-b-2   mt-4 sm:mt-0 py-2 sm:py-0 md:py-3 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base hover:bg-[#desiredColor] hover:scale-105"
+                  >
+                    My Experience
+                  </Link>
+                </div>
               </div>
               <SocialMediaLinks />
             </AnimatedFadeInContainer>

@@ -10,7 +10,11 @@ const getProfessionalTimeline = () =>
       },
     })
     .then(({ data }) => {
-      return data;
+      return data.sort((a, b) => {
+        if (a.index > b.index) {
+          return 1;
+        } else return -1;
+      });
     })
     .catch((err: unknown) => console.log(err));
 

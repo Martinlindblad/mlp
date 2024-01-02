@@ -140,6 +140,7 @@ export interface ProfessionalTimeline {
   duration: string;
   title: string;
   description: string;
+  index: number;
 }
 
 export type ProfessionalTimelineData = ProfessionalTimeline[];
