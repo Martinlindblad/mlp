@@ -55,7 +55,7 @@ const ContactMe = () => (
 
 // ContactForm.js
 const ContactForm = () => (
-  <div className="flex items-center justify-center pt-6 lg:pt-0 relative bg-cover bg-top min-h-screen w-full">
+  <div className="flex items-center justify-center pt-6 lg:pt-0 relative bg-cover bg-top  w-full">
     <div className="container mx-auto">
       <div className="relative z-10 px-4 sm:px-6 lg:px-8">
         <AnimatedFadeInContainer
