@@ -157,7 +157,7 @@ const ExperienceHero = (): JSX.Element => {
                 <div className={`h-full flex items-center justify-center`}>
                   <Icon
                     icon={'logos:react'}
-                    className="h-12 w-full mx-10  p-1"
+                    className="h-12 w-full mx-2 sm:mx-4 md:mx-8 lg:mx-10  p-1"
                   />
                 </div>
               </div>
@@ -165,7 +165,7 @@ const ExperienceHero = (): JSX.Element => {
                 <div className={`h-full flex items-center justify-center`}>
                   <Icon
                     icon={'logos:nextjs-icon'}
-                    className="h-12 w-full mx-10  p-1"
+                    className="h-12 w-full mx-2 sm:mx-4 md:mx-8 lg:mx-10  p-1"
                   />
                 </div>
               </div>
@@ -173,7 +173,7 @@ const ExperienceHero = (): JSX.Element => {
                 <div className={`h-full flex items-center justify-center`}>
                   <Icon
                     icon={'logos:typescript-icon'}
-                    className="h-12 w-full mx-10  p-1"
+                    className="h-12 w-full mx-2 sm:mx-4 md:mx-8 lg:mx-10  p-1"
                   />
                 </div>
               </div>
@@ -181,7 +181,7 @@ const ExperienceHero = (): JSX.Element => {
                 <div className={`h-full flex items-center justify-center`}>
                   <Icon
                     icon={'logos:javascript'}
-                    className="h-12 w-full mx-10  p-1"
+                    className="h-12 w-full mx-2 sm:mx-4 md:mx-8 lg:mx-10  p-1"
                   />
                 </div>
               </div>
@@ -225,7 +225,7 @@ const ExperienceSection = ({
   return (
     <div
       key={id}
-      className="flex flex-col justify-center items-center p-16 bg-slate-200 dark:bg-slate-900"
+      className="flex flex-col justify-center items-center px-4 py-16 sm:p-10 lg:p-16 bg-slate-200 dark:bg-slate-900"
     >
       <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
         <AnimatedFadeInContainer type="FadeInLeft">
