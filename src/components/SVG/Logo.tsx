@@ -2,7 +2,7 @@ import { motion, useAnimation } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 
 interface LogoProps {
-  containerStyle: any;
+  containerStyle: string;
 }
 
 const Logo: React.FC<LogoProps> = ({ containerStyle }) => {

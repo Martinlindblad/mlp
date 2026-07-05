@@ -8,6 +8,7 @@ import AnimatedName from '../components/AnimatedComponents/AnimatedName';
 import useAboutQuery from '../hooks/useAboutQuery';
 import { Languages, ProfessionalProfileintroduction } from 'src/types/DBTypes';
 import useLanguagesQuery from '../hooks/useLanguagesQuery';
+import Image from 'next/image';
 
 const StarRating = ({ rating }: { rating: number }) => {
   const fullStars = Math.floor(rating);
@@ -127,20 +128,24 @@ const AboutPage = (): JSX.Element => {
         <div className="px-5 mx-auto flex flex-col justify-center align-center h-full">
           <AnimatedFadeInContainer type="FadeInBottom ">
             <div className="lg:w-4/6 mx-auto">
-              <div className="rounded-lg h-64 overflow-hidden">
-                <img
+              <div className="rounded-lg h-64 overflow-hidden relative">
+                <Image
                   alt="content"
                   className="object-cover object-center h-full w-full shadow-lg"
                   src="/images/meeting.webp"
+                  fill
+                  sizes="(min-width: 1024px) 66vw, 100vw"
                 />
               </div>
               <div className="flex flex-col sm:flex-row mt-10">
                 <div className="sm:w-1/3 text-center sm:pr-8 sm:py-8">
                   <div className="w-28 h-28 rounded-full inline-flex items-center justify-center relative overflow-hidden">
-                    <img
+                    <Image
                       alt="content"
                       className="object-cover object-left h-full w-full opacity-85"
                       src="/images/profilbild2.webp"
+                      fill
+                      sizes="7rem"
                     />
                   </div>
                   <div className="flex flex-col items-center text-center justify-center">

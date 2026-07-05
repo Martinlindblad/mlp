@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion, useCycle } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import AnimatedPreseceWrapper from 'src/src/components/Layouts/AnimatePresenceWrapper';
+import AnimatedPreseceWrapper from '../../components/Layouts/AnimatePresenceWrapper';
 
 // Dynamic imports with Next.js
 const Navigation = dynamic(() => import('./Nav'));
 const MenuToggle = dynamic(() => import('./Toggle'));
-const ThemeButton = dynamic(() => import('src/src/components/ThemeButton'));
+const ThemeButton = dynamic(() => import('../../components/ThemeButton'));
 
 const sidebarVariants = {
   open: (height = 1000) => ({

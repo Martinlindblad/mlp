@@ -1,5 +1,5 @@
 import React from 'react';
-import CaseCarousel from 'src/src/components/CaseCarousel';
+import CaseCarousel from '../../components/CaseCarousel';
 
 export default function CaseCarouselBlock() {
   return (

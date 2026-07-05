@@ -3,7 +3,7 @@ import React from 'react';
 const BackgroundAndBorder = ({
   customStyle,
 }: {
-  customStyle?: any;
+  customStyle?: string;
 }): JSX.Element => {
   return (
     <>

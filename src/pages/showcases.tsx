@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { useMemo, useReducer } from 'react';
 import PageLoader from '../components/AnimatedComponents/ContentLoader';
 import Link from 'next/link';
@@ -26,10 +26,12 @@ interface ShowCaseItemProps {
   item: CaseItem;
   handleInteraction: (id: string) => void;
   caseState: { [key: string]: boolean };
-  enter: any;
-  exit: any;
+  enter: Variants;
+  exit: Variants;
   isMobile: boolean;
 }
+
+const emptyVariants: Variants = {};
 
 function caseReducer(
   state: { [key: string]: boolean },
@@ -168,22 +170,26 @@ const ShowCases = () => {
     return data.filter((item) => item != null);
   }, [data]);
 
-  const enter = useMemo(() => {
-    return shouldReduceMotion
-      ? {}
-      : {
-          hidden: { opacity: 1, y: 400, transition: { duration: 0.3 } },
-          visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-        };
+  const enter = useMemo<Variants>(() => {
+    if (shouldReduceMotion) {
+      return emptyVariants;
+    }
+
+    return {
+      hidden: { opacity: 1, y: 400, transition: { duration: 0.3 } },
+      visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+    };
   }, [shouldReduceMotion]);
 
-  const exit = useMemo(() => {
-    return shouldReduceMotion
-      ? {}
-      : {
-          hidden: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-          visible: { opacity: 1, y: -400, transition: { duration: 0.3 } },
-        };
+  const exit = useMemo<Variants>(() => {
+    if (shouldReduceMotion) {
+      return emptyVariants;
+    }
+
+    return {
+      hidden: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+      visible: { opacity: 1, y: -400, transition: { duration: 0.3 } },
+    };
   }, [shouldReduceMotion]);
 
   const initialCaseState = useMemo<{ [key: string]: boolean }>(() => {

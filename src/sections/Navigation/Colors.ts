@@ -1,7 +1,9 @@
-export default {
+const navColors = {
   1: '#f582ae',
   2: '#b8c1ec',
   3: 'rgb(139, 120, 230)',
   4: 'rgb(106, 176, 76)',
   5: 'rgb(247, 215, 148)',
 };
+
+export default navColors;

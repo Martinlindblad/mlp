@@ -12,7 +12,7 @@ const getLanguages = () =>
     .then(({ data }) => {
       return data;
     })
-    .catch((err: unknown) => console.log(err));
+    .catch((err: unknown) => console.error(err));
 
 const useLanguagesQuery = () => {
   return useQuery(['getLanguages'], () => getLanguages());

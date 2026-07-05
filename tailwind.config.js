@@ -50,7 +50,7 @@ const customColors = {
 
 module.exports = {
   mode: 'jit',
-  purge: [
+  content: [
     path.join(__dirname, 'src', 'components', '**', '*.{js,ts,jsx,tsx}'),
     path.join(__dirname, 'src', 'pages', '**', '*.{js,ts,jsx,tsx}'),
     path.join(__dirname, 'src', 'sections', '**', '*.{js,ts,jsx,tsx}'),

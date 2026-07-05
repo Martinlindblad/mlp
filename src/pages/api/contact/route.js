@@ -1,8 +1,8 @@
 import { connectToDatabase } from 'src/lib/mongodb';
 
 /**
- * @param {{ method: string; body: { fullName: string; email: string; subject: string; message: string; }; }} req
- * @param {{ status: (arg0: number) => { (): any; new (): any; json: { (arg0: { errorMessage?: string; success?: boolean; successMessage?: string; }): void; new (): any; }; }; }} res
+ * @param {import('next').NextApiRequest} req
+ * @param {import('next').NextApiResponse} res
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,8 +12,6 @@ export default async function handler(req, res) {
 
   try {
     const { fullName, email, subject, message } = req.body;
-
-    console.log('req.body:', req.body);
 
     if (!fullName || !email || !subject || !message) {
       res.status(400).json({

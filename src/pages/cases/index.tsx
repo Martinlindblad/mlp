@@ -1,7 +1,7 @@
 import CaseItem from './CaseItem';
 import { useMemo } from 'react';
-import ContentLoader from 'src/src/components/AnimatedComponents/ContentLoader';
-import useProjectsAndCasesQuery from 'src/src/hooks/useProjectsAndCasesQuery';
+import ContentLoader from '../../components/AnimatedComponents/ContentLoader';
+import useProjectsAndCasesQuery from '../../hooks/useProjectsAndCasesQuery';
 
 const CasesListPage = () => {
   const { data, isLoading } = useProjectsAndCasesQuery();

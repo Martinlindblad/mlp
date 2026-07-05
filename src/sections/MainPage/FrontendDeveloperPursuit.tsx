@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
-// import Stepper from 'src/src/components/Stepper';
 
 import Image from 'next/image';
-import AnimatedFadeInContainer from 'src/src/components/Layouts/AnimatedFadeInContainer';
-import usePursuitQuery from 'src/src/hooks/usePursuitQuery';
-import PageLoader from 'src/src/components/AnimatedComponents/ContentLoader';
+import AnimatedFadeInContainer from '../../components/Layouts/AnimatedFadeInContainer';
+import usePursuitQuery from '../../hooks/usePursuitQuery';
+import PageLoader from '../../components/AnimatedComponents/ContentLoader';
 import { Pursuit } from 'src/types/DBTypes';
 
 const FrontendDeveloperPursuit = () => {
@@ -42,11 +41,10 @@ const FrontendDeveloperPursuit = () => {
                   >
                     <Image
                       src={leftImageSource}
-                      className="rounded-lg"
+                      className="rounded-lg object-cover"
                       alt="Bussiness"
                       width={300}
                       height={500}
-                      objectFit="cover"
                     />
                   </AnimatedFadeInContainer>
                 </div>
@@ -57,7 +55,7 @@ const FrontendDeveloperPursuit = () => {
                       alt="Classy"
                       width={300}
                       height={500}
-                      objectFit="cover"
+                      className="object-cover"
                     />
                   </AnimatedFadeInContainer>
                 </div>

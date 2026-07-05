@@ -1,14 +1,14 @@
 import { ObjectId } from 'mongodb';
 import { GetStaticPaths, GetStaticProps } from 'next';
 import { connectToDatabase } from 'src/lib/mongodb';
-import ContentLoader from 'src/src/components/AnimatedComponents/ContentLoader';
-import AnimatedFadeInContainer from 'src/src/components/Layouts/AnimatedFadeInContainer';
+import ContentLoader from '../../../components/AnimatedComponents/ContentLoader';
+import AnimatedFadeInContainer from '../../../components/Layouts/AnimatedFadeInContainer';
 import Image from 'next/image';
 import YouTube, { YouTubeProps } from 'react-youtube';
-import AnimatedName from 'src/src/components/AnimatedComponents/AnimatedName';
+import AnimatedName from '../../../components/AnimatedComponents/AnimatedName';
 
-import useWindowDimensions from 'src/src/hooks/useWindowDimensions';
-import useAboutQuery from 'src/src/hooks/useAboutQuery';
+import useWindowDimensions from '../../../hooks/useWindowDimensions';
+import useAboutQuery from '../../../hooks/useAboutQuery';
 import {
   CasePageProps,
   ProfessionalProfileintroduction,
@@ -114,7 +114,7 @@ const ProjectRoleDetail: React.FC<ProjectRoleDetailProps> = ({
         <div className="pl-6">
           <ul className="list-disc list-outside space-y-2">
             {roleDetails.map((detail, index) => (
-              <li key={index} className="text-lg font-semibold flex">
+              <li key={detail} className="text-lg font-semibold flex">
                 <AnimatedFadeInContainer type="FadeInLeft" delay={index * 0.3}>
                   <span className="flex-grow">{detail}</span>
                 </AnimatedFadeInContainer>
@@ -154,18 +154,31 @@ const ProjectDetailLinkList: React.FC<{
   );
 };
 
+const isMissingDatabaseConfigError = (error: unknown) =>
+  error instanceof Error &&
+  (error.message.includes('Mongo URI') ||
+    error.message.includes('Mongo database'));
+
 export const getStaticPaths: GetStaticPaths = async () => {
-  const { database } = await connectToDatabase();
-  const cases = await database
-    .collection('projects_and_cases')
-    .find({}, { projection: { _id: 1 } })
-    .toArray();
+  try {
+    const { database } = await connectToDatabase();
+    const cases = await database
+      .collection('projects_and_cases')
+      .find({}, { projection: { _id: 1 } })
+      .toArray();
 
-  const paths = cases.map((caseDoc) => ({
-    params: { id: caseDoc._id.toString() },
-  }));
+    const paths = cases.map((caseDoc) => ({
+      params: { id: caseDoc._id.toString() },
+    }));
 
-  return { paths, fallback: 'blocking' };
+    return { paths, fallback: 'blocking' };
+  } catch (error) {
+    if (isMissingDatabaseConfigError(error)) {
+      return { paths: [], fallback: 'blocking' };
+    }
+
+    throw error;
+  }
 };
 
 export const getStaticProps: GetStaticProps = async ({ params }) => {
@@ -220,11 +233,11 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
         </div>
         <div className="relative w-full h-96">
           <Image
-            className="absolute w-full h-full object-cover"
+            className="absolute w-full h-full object-cover object-center"
             src={imageSource}
             alt={title}
-            layout="fill"
-            objectPosition="center"
+            fill
+            sizes="100vw"
             priority
           />
           <div className="absolute inset-0 dark:bg-slate-950 bg-slate-100 opacity-60"></div>
@@ -247,11 +260,11 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
               className="relative w-full h-96 "
             >
               <Image
-                className="absolute w-full h-full object-cover rounded-xl "
-                src={imageSource} // TODO: Change to imageSources[0] and create a carousel
+                className="absolute w-full h-full object-cover object-center rounded-xl "
+                src={imageSource}
                 alt={title}
-                layout="fill"
-                objectPosition="center"
+                fill
+                sizes="(min-width: 768px) 50vw, 100vw"
                 priority
               />
             </AnimatedFadeInContainer>

@@ -1,9 +1,7 @@
-/* eslint-disable jsx-a11y/anchor-is-valid */
-
 import Link from 'next/link';
 import React from 'react';
-import AnimatedName from 'src/src/components/AnimatedComponents/AnimatedName';
-import useAboutQuery from 'src/src/hooks/useAboutQuery';
+import AnimatedName from '../../components/AnimatedComponents/AnimatedName';
+import useAboutQuery from '../../hooks/useAboutQuery';
 import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 
 const Footer = (): JSX.Element => {
@@ -35,15 +33,13 @@ const Footer = (): JSX.Element => {
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
-                PM Lindblad AB
-              </Link>
+              <span className="hover:underline">PM Lindblad AB</span>
             </li>
           </ul>
         </div>
         <hr className="my-6 border-gray-200 sm:mx-auto dark:border-gray-700 lg:my-8" />
         <span className="block text-sm text-gray-500 sm:text-center dark:text-gray-400">
-          © 2023{' '}
+          &copy; 2023{' '}
           {/* <Link href="#" className="hover:underline">
             PM Lindblad AB
           </Link> */}

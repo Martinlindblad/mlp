@@ -22,7 +22,7 @@ const getpersonalInfo = (
       return dataByType;
     })
     .catch((err: unknown) => {
-      console.log(err);
+      console.error(err);
       return undefined;
     });
 

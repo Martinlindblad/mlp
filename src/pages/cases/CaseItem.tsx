@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb';
+import Image from 'next/image';
 import Link from 'next/link';
 
 interface CaseItemProps {
@@ -16,7 +17,13 @@ const CaseItem: React.FC<CaseItemProps> = ({
 }) => {
   return (
     <div className="flex bg-gray-800 rounded-lg overflow-hidden mb-4">
-      <img className="w-40 h-auto object-cover" src={imageUrl} alt={title} />
+      <Image
+        className="w-40 h-auto object-cover"
+        src={imageUrl}
+        alt={title}
+        width={160}
+        height={120}
+      />
       <div className="p-4 flex flex-col justify-between flex-grow">
         <div>
           <h2 className="text-white text-lg font-semibold">{title}</h2>
@@ -28,9 +35,6 @@ const CaseItem: React.FC<CaseItemProps> = ({
               View Case
             </span>
           </Link>
-          <button className="text-white bg-blue-600 hover:bg-blue-700 transition duration-300 ml-2 px-4 py-2 rounded text-sm font-semibold">
-            Other Action
-          </button>
         </div>
       </div>
     </div>

@@ -1,11 +1,11 @@
 import React, { useCallback } from 'react';
 import { Cycle, motion } from 'framer-motion';
 import Link from 'next/link';
-import AboutIcon from 'src/src/components/SVG/About';
-import ContactIcon from 'src/src/components/SVG/Contact';
-import ExperienceIcon from 'src/src/components/SVG/Experience';
+import AboutIcon from '../../components/SVG/About';
+import ContactIcon from '../../components/SVG/Contact';
+import ExperienceIcon from '../../components/SVG/Experience';
 
-import HomeIcon from 'src/src/components/SVG/Home';
+import HomeIcon from '../../components/SVG/Home';
 
 interface NavMenuItemProps {
   id: number;
@@ -58,7 +58,7 @@ const NavMenuItem: React.FC<NavMenuItemProps> = ({
   }, [id, text]);
 
   return (
-    <Link href={path} onClick={toggleIsOpen as any}>
+    <Link href={path} onClick={() => toggleIsOpen()}>
       <motion.li
         className={` items-center justify-center w-full list-none flex
        cursor-pointer lg:self-end shadow-xl hover:shadow-xl transition-shadow duration-300  `}

@@ -41,6 +41,7 @@ const Form = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    let wasSuccessful = false;
 
     try {
       const res = await fetch('/api/contact/route', {
@@ -70,6 +71,7 @@ const Form = () => {
         if (data.success) {
           setResponseMessage(data.successMessage);
           setSuccessful(true);
+          wasSuccessful = true;
           setFullName('');
           setEmail('');
           setSubject('');
@@ -79,15 +81,14 @@ const Form = () => {
           setSuccessful(false);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Network or other error', error);
-      // Update the state to reflect a network or other error
       setResponseMessage(
-        'A network error occurred, or the server’s response could not be processed.',
+        "A network error occurred, or the server's response could not be processed.",
       );
       setSuccessful(false);
     } finally {
-      if (successful) {
+      if (wasSuccessful) {
         setTimeout(() => {
           setResponseMessage('');
         }, 5000);

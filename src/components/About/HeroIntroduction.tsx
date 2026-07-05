@@ -7,7 +7,7 @@ import ContentLoader from '../AnimatedComponents/ContentLoader';
 import Link from 'next/link';
 import Image from 'next/image';
 import AnimatedName from '../AnimatedComponents/AnimatedName';
-import useAboutQuery from 'src/src/hooks/useAboutQuery';
+import useAboutQuery from '../../hooks/useAboutQuery';
 import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 
 export default function Hero() {
@@ -20,10 +20,11 @@ export default function Hero() {
     <main className="lg:container grid grid-cols-12 pb-12 lg:pb-0 h-screen">
       <Image
         alt="Profile Picture"
-        className="object-cover absolute z-0 object-right h-full dark:opacity-60 opacity-70 right-0 grayscale contrast-200 shadow-lg"
+        className="absolute z-0 object-right h-full dark:opacity-60 opacity-70 right-0 grayscale contrast-200 shadow-lg"
         src="/images/profilepicture.webp"
-        layout="fill"
-        objectFit="contain"
+        fill
+        sizes="100vw"
+        style={{ objectFit: 'contain' }}
       />
 
       <div className="col-span-10 col-start-2 lg:col-span-12">
