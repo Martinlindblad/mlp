@@ -16,6 +16,7 @@ import {
   ProjectDetails,
 } from 'src/types/DBTypes';
 import Link from 'next/link';
+import SEO from '../../../components/SEO';
 
 const ProjectDetailItem: React.FC<{
   detail: ProjectDetail;
@@ -131,22 +132,23 @@ const ProjectDetailLinkList: React.FC<{
   links: ProjectDetails['links'];
 }> = ({ links }) => {
   return (
-    <div className="inline-flex rounded-md shadow-sm my-4" role="group">
+    <div className="inline-flex flex-wrap gap-4 rounded-md shadow-sm my-4">
       {links
         ? links.map((link) => (
-            <button
-              type="button"
+            <a
               key={link.title}
-              onClick={() => window.open(link.path)}
-              className="px-5 py-3 text-base font-medium text-center hover:text-black mr-4 rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+              href={link.path}
+              target="_blank"
+              rel="noreferrer"
+              className="px-5 py-3 text-base font-medium text-center hover:text-black rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
             >
               {link.title}
-            </button>
+            </a>
           ))
         : null}
       <Link
         href="/showcases"
-        className="px-5 py-3 text-base font-medium text-center hover:text-black mr-4 rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+        className="px-5 py-3 text-base font-medium text-center hover:text-black rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
       >
         Showcases
       </Link>
@@ -223,6 +225,12 @@ const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
 
   return (
     <>
+      <SEO
+        title={title}
+        description={`${description} ${projectDescription}`.slice(0, 155)}
+        path={`/cases/${caseData._id}`}
+        image={imageSource}
+      />
       <div className="relative min-h-screen ">
         <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
           <AnimatedName

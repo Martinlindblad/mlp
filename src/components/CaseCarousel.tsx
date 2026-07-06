@@ -5,20 +5,59 @@ import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/effect-coverflow';
-import ContentLoader from '../components/AnimatedComponents/ContentLoader';
 import { EffectCoverflow, Pagination } from 'swiper/modules';
+import { ObjectId } from 'mongodb';
+
+type CarouselCase = {
+  _id: ObjectId | string | { toString: () => string };
+  title: string;
+  description: string;
+  imageSource: string;
+  href?: string;
+  from?: string;
+  to?: string;
+};
+
+const fallbackCases: CarouselCase[] = [
+  {
+    _id: 'imaginecare',
+    title: 'ImagineCare',
+    description:
+      'React Native healthcare interfaces with API integration and reliable mobile flows.',
+    imageSource: '/Images/Cases/imaginecare.webp',
+    from: '0,0,0',
+    to: '0,0,0',
+  },
+  {
+    _id: '657eed6741ee78bde91c1c3e',
+    title: 'Mackmyra',
+    description:
+      'React Native marketplace work for personalized whisky cask ordering.',
+    imageSource: '/Images/Cases/mackmyra.webp',
+    from: '0,0,0',
+    to: '0,0,0',
+  },
+  {
+    _id: '657eef1d41ee78bde91c1c42',
+    title: 'Livsstilsverktyget',
+    description:
+      'Mobile health research flows with recurring input and clear user feedback.',
+    imageSource: '/Images/Cases/livsstilsverktyget.webp',
+    from: '0,0,0',
+    to: '0,0,0',
+  },
+];
 
 export default function CaseCarousel() {
-  const { data, isLoading } = useProjectsAndCasesQuery();
+  const { data } = useProjectsAndCasesQuery();
 
   const items = useMemo(() => {
-    if (!data) return [];
-    return data?.filter((item) => item != null).slice(0, 6);
+    const apiItems = data?.filter((item) => item != null) ?? [];
+
+    return apiItems.length > 0 ? apiItems.slice(0, 6) : fallbackCases;
   }, [data]);
 
-  return isLoading || !items ? (
-    <ContentLoader />
-  ) : (
+  return (
     <AnimatedFadeInContainer type="FadeInBottom" className="h-full ">
       <div className="flex flex-col items-center justify-center w-full lg:h-screen  ">
         <Swiper

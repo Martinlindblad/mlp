@@ -1,238 +1,144 @@
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
-import { useMemo, useReducer } from 'react';
-import PageLoader from '../components/AnimatedComponents/ContentLoader';
-import Link from 'next/link';
-import AnimatedFadeInContainer from '../components/Layouts/AnimatedFadeInContainer';
-import AnimatedPreseceWrapper from '../components/Layouts/AnimatePresenceWrapper';
-import useWindowDimensions from '../hooks/useWindowDimensions';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useMemo } from 'react';
 import AnimatedName from '../components/AnimatedComponents/AnimatedName';
-import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
+import AnimatedPreseceWrapper from '../components/Layouts/AnimatePresenceWrapper';
+import SEO from '../components/SEO';
 import useAboutQuery from '../hooks/useAboutQuery';
+import useProjectsAndCasesQuery from '../hooks/useProjectsAndCasesQuery';
 import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 
 interface CaseItem {
-  _id: {
-    toString: () => string;
-  };
+  _id: string | { toString: () => string };
   title: string;
   imageSource: string;
-  from: string;
-  to: string;
   description: string;
+  href?: string;
 }
 
-interface ShowCaseItemProps {
-  item: CaseItem;
-  handleInteraction: (id: string) => void;
-  caseState: { [key: string]: boolean };
-  enter: Variants;
-  exit: Variants;
-  isMobile: boolean;
-}
+const fallbackIntroduction = {
+  name: 'Martin',
+  surname: 'Lindblad',
+  title: 'Front-end Developer',
+  info: 'Front-end developer based in Stockholm, Sweden.',
+  key: 'introduction',
+} as ProfessionalProfileintroduction;
 
-const emptyVariants: Variants = {};
+const fallbackCases: CaseItem[] = [
+  {
+    _id: 'imaginecare',
+    title: 'ImagineCare',
+    description:
+      'A healthcare product where I worked with React Native interfaces, API integration, and reliable mobile flows.',
+    imageSource: '/Images/Cases/imaginecare.webp',
+    href: '/cases',
+  },
+  {
+    _id: '657eed6741ee78bde91c1c3e',
+    title: 'Mackmyra',
+    description:
+      'A React Native marketplace experience for ordering personalized whisky casks.',
+    imageSource: '/Images/Cases/mackmyra.webp',
+  },
+  {
+    _id: '657eef1d41ee78bde91c1c42',
+    title: 'Livsstilsverktyget',
+    description:
+      'A health research app built around recurring user input, clear flows, and maintainable mobile UI.',
+    imageSource: '/Images/Cases/livsstilsverktyget.webp',
+  },
+];
 
-function caseReducer(
-  state: { [key: string]: boolean },
-  action: { type: 'toggle'; id: string },
-) {
-  switch (action.type) {
-    case 'toggle':
-      return { ...state, [action.id]: !state[action.id] };
-    default:
-      throw new Error('Unexpected action');
-  }
-}
+const mongoObjectIdPattern = /^[a-f\d]{24}$/i;
 
-const ShowCaseItem = ({
-  item,
-  handleInteraction,
-  caseState,
-  enter,
-  exit,
-  isMobile,
-}: ShowCaseItemProps) => {
-  const stringifiedID = item._id.toString();
-  const shouldReduceMotion = useReducedMotion();
+const getCaseId = (item: CaseItem) =>
+  typeof item._id === 'string' ? item._id : item._id.toString();
 
-  const handleClick = () => {
-    if (!isMobile) return;
-    handleInteraction(stringifiedID);
-  };
+const getCaseHref = (item: CaseItem) =>
+  item.href ??
+  (mongoObjectIdPattern.test(getCaseId(item))
+    ? `/cases/${getCaseId(item)}`
+    : undefined);
 
-  const titleAnimationProps = useMemo(
-    () =>
-      shouldReduceMotion
-        ? {
-            initial: 'hidden',
-            animate: 'visible',
-            exit: 'hidden',
-          }
-        : {
-            initial: 'hidden',
-            animate: caseState[stringifiedID] ? 'visible' : 'hidden',
-            variants: exit,
-          },
-    [shouldReduceMotion, caseState, stringifiedID, exit],
-  );
-
-  const descriptionAnimationProps = useMemo(
-    () =>
-      shouldReduceMotion
-        ? {
-            initial: 'hidden',
-            animate: 'visible',
-            exit: 'hidden',
-          }
-        : {
-            initial: 'hidden',
-            animate: caseState[stringifiedID] ? 'visible' : 'hidden',
-            variants: enter,
-          },
-    [shouldReduceMotion, caseState, stringifiedID, enter],
-  );
-
-  const extraProps = useMemo(() => {
-    const handleOnMouseOver = () => {
-      if (isMobile) return;
-      handleInteraction(stringifiedID);
-    };
-    if (!isMobile) {
-      return {
-        onMouseEnter: handleOnMouseOver,
-        onMouseLeave: handleOnMouseOver,
-      };
-    }
-    return {};
-  }, [isMobile, handleInteraction, stringifiedID]);
+const ShowCaseItem = ({ item }: { item: CaseItem }) => {
+  const href = getCaseHref(item);
 
   return (
-    <AnimatedFadeInContainer
-      type={isMobile ? 'Cancel' : 'FadeInBottom'}
-      className="lg:h-64 py-2 sm:p-4 overflow-hidden relative"
-      key={`${item._id}-Showcase-item`}
-      onClick={handleClick}
-      styleProp={{
-        background: `linear-gradient(rgba(${item.from}, 0.5), rgba(${item.to},0.5))`,
-      }}
-      {...extraProps}
-    >
+    <article className="group relative min-h-[18rem] overflow-hidden rounded-md bg-gray-950 shadow-lg">
       <Image
         src={item.imageSource}
-        alt={item.title}
+        alt={`${item.title} project preview`}
         fill
-        className="opacity-50"
-        sizes="(min-width: 808px) 50vw, 100vw"
-        style={{
-          objectFit: 'cover',
-        }}
+        className="object-cover opacity-65 transition duration-300 group-hover:scale-105 group-hover:opacity-45"
+        sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
       />
-      <motion.div
-        {...titleAnimationProps}
-        className="px-4 mx-auto max-w-screen-xl text-center py-24 lg:py-28 relative z-10"
-      >
-        <h1 className="mb-4 font-extrabold tracking-tight leading-none text-white text-xl md:text-2xl lg:text-3xl text-center">
-          <span className="inline-block mb-2 text-white">{item.title}</span>
-        </h1>
-      </motion.div>
-      <motion.div
-        {...descriptionAnimationProps}
-        className="flex flex-col items-center justify-center w-full h-full absolute top-0 left-0 z-10"
-      >
-        <div className="flex flex-col items-center">
-          <h1 className="text-xl md:text-2xl lg:text-3xl text-center font-bold">
-            {item.description}
-          </h1>
+      <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/70 to-gray-950/10" />
+      <div className="relative z-10 flex h-full min-h-[18rem] flex-col justify-end p-6">
+        <h2 className="text-2xl font-bold text-white">{item.title}</h2>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-gray-100">
+          {item.description}
+        </p>
+        {href && (
           <Link
-            href={`/cases/${item._id}`}
-            className="flex-grow sm:flex-grow-0 inline-flex cursor-pointer items-center justify-center mt-10 ring-offset-2 ring-2 rounded-lg px-4 py-2 outline outline-2 outline-offset-2 hover:animate-pulse"
+            href={href}
+            className="mt-6 inline-flex w-fit rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-950 transition hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-300"
           >
-            <span className="inline-block text-white">Go to case</span>
+            Read case study
           </Link>
-        </div>
-      </motion.div>
-    </AnimatedFadeInContainer>
+        )}
+      </div>
+    </article>
   );
 };
 
 const ShowCases = () => {
-  const { data, isLoading } = useProjectsAndCasesQuery();
-  const windowWidth = useWindowDimensions().width;
-  const shouldReduceMotion = useReducedMotion();
-
-  const isMobile = useMemo(() => {
-    return windowWidth < 768;
-  }, [windowWidth]);
+  const { data } = useProjectsAndCasesQuery();
+  const { data: personalInfo } = useAboutQuery('introduction');
 
   const cases = useMemo(() => {
-    if (!data) return [];
-    return data.filter((item) => item != null);
+    const apiCases = data?.filter((item) => item != null) ?? [];
+
+    return apiCases.length > 0 ? apiCases : fallbackCases;
   }, [data]);
 
-  const enter = useMemo<Variants>(() => {
-    if (shouldReduceMotion) {
-      return emptyVariants;
-    }
-
-    return {
-      hidden: { opacity: 1, y: 400, transition: { duration: 0.3 } },
-      visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-    };
-  }, [shouldReduceMotion]);
-
-  const exit = useMemo<Variants>(() => {
-    if (shouldReduceMotion) {
-      return emptyVariants;
-    }
-
-    return {
-      hidden: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-      visible: { opacity: 1, y: -400, transition: { duration: 0.3 } },
-    };
-  }, [shouldReduceMotion]);
-
-  const initialCaseState = useMemo<{ [key: string]: boolean }>(() => {
-    return cases.reduce((state, item) => {
-      state[item._id.toString()] = false;
-      return state;
-    }, {} as { [key: string]: boolean });
-  }, [cases]);
-
-  const [caseState, caseDispatch] = useReducer(caseReducer, initialCaseState);
-
-  const handleInteraction = (id: string) => {
-    caseDispatch({ type: 'toggle', id });
-  };
-
-  const { data: personalInfo } = useAboutQuery('introduction');
+  const personalInfoData =
+    (personalInfo as unknown as ProfessionalProfileintroduction | undefined) ??
+    fallbackIntroduction;
 
   return (
     <AnimatedPreseceWrapper>
-      <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 lg:pb-0 justify-center align-center flex">
-        <AnimatedName
-          personalInfo={
-            personalInfo as unknown as ProfessionalProfileintroduction
-          }
-        />
-      </div>
-      {isLoading ? (
-        <PageLoader />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 py-20 sm:py-16 lg:py-28">
-          {cases.map((item) => (
-            <ShowCaseItem
-              key={item._id.toString()}
-              item={item}
-              handleInteraction={handleInteraction}
-              caseState={caseState}
-              exit={exit}
-              enter={enter}
-              isMobile={isMobile}
-            />
-          ))}
+      <SEO
+        title="Showcases"
+        description="Selected front-end and mobile projects by Martin Lindblad, including React Native apps, user interfaces, API integrations, and product delivery work."
+        path="/showcases"
+      />
+      <main className="min-h-screen bg-gray-100 px-4 py-20 text-gray-950 dark:bg-gray-950 dark:text-white sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-10">
+          <AnimatedName personalInfo={personalInfoData} />
+          <section className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+              Selected work
+            </p>
+            <h1 className="mt-3 text-4xl font-extrabold tracking-tight md:text-5xl">
+              Case studies with product context, delivery work, and technical
+              decisions.
+            </h1>
+            <p className="mt-5 text-base leading-7 text-gray-700 dark:text-gray-200 md:text-lg">
+              A focused selection of mobile and web projects where I contributed
+              to interface implementation, API integration, debugging,
+              performance, and maintainable user flows.
+            </p>
+          </section>
+          <section
+            aria-label="Selected project case studies"
+            className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
+          >
+            {cases.map((item) => (
+              <ShowCaseItem key={getCaseId(item)} item={item} />
+            ))}
+          </section>
         </div>
-      )}
+      </main>
     </AnimatedPreseceWrapper>
   );
 };

@@ -1,20 +1,49 @@
-import CaseItem from './CaseItem';
+import CaseItem from '../../components/CaseItem';
 import { useMemo } from 'react';
-import ContentLoader from '../../components/AnimatedComponents/ContentLoader';
 import useProjectsAndCasesQuery from '../../hooks/useProjectsAndCasesQuery';
+import SEO from '../../components/SEO';
+
+type FallbackCase = {
+  _id: string;
+  title: string;
+  imageSource: string;
+  description: string;
+  href?: string;
+};
+
+const fallbackCases: FallbackCase[] = [
+  {
+    _id: '657eed6741ee78bde91c1c3e',
+    title: 'Mackmyra',
+    imageSource: '/Images/Cases/mackmyra.webp',
+    description:
+      'React Native marketplace work for personalized whisky cask ordering.',
+  },
+  {
+    _id: '657eef1d41ee78bde91c1c42',
+    title: 'Livsstilsverktyget',
+    imageSource: '/Images/Cases/livsstilsverktyget.webp',
+    description:
+      'Mobile health research flows with recurring input and clear user feedback.',
+  },
+];
 
 const CasesListPage = () => {
-  const { data, isLoading } = useProjectsAndCasesQuery();
+  const { data } = useProjectsAndCasesQuery();
 
   const items = useMemo(() => {
-    if (!data) return [];
-    return data?.filter((item) => item != null);
+    const apiItems = data?.filter((item) => item != null) ?? [];
+
+    return apiItems.length > 0 ? apiItems : fallbackCases;
   }, [data]);
 
-  return isLoading ? (
-    <ContentLoader />
-  ) : (
-    <div>
+  return (
+    <main className="min-h-screen bg-gray-950 px-4 py-24">
+      <SEO
+        title="Cases"
+        description="Browse Martin Lindblad's case studies and selected work across React Native, React, API integrations, and user interface delivery."
+        path="/cases"
+      />
       <h1 className="text-2xl font-bold text-white mb-6">All Cases</h1>
       <div>
         {items.map((c) => (
@@ -24,10 +53,11 @@ const CasesListPage = () => {
             title={c.title}
             imageUrl={c.imageSource}
             description={c.description}
+            href={'href' in c ? c.href : undefined}
           />
         ))}
       </div>
-    </div>
+    </main>
   );
 };
 
