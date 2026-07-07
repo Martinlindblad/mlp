@@ -39,11 +39,11 @@ const Footer = (): JSX.Element => {
         </div>
         <hr className="my-6 border-gray-200 sm:mx-auto dark:border-gray-700 lg:my-8" />
         <span className="block text-sm text-gray-500 sm:text-center dark:text-gray-400">
-          &copy; 2023{' '}
+          &copy; {new Date().getFullYear()}{' '}
           {/* <Link href="#" className="hover:underline">
             PM Lindblad AB
           </Link> */}
-          All Rights Reserved.
+          Martin Lindblad. Built for accessible, useful product experiences.
         </span>
       </div>
     </footer>

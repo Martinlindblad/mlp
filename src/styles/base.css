@@ -9,14 +9,15 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
-    font-family: Comfortaa;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', sans-serif;
     height: 100%;
   }
   h1 {
-    font-family: Montserrat;
+    font-family: inherit;
   }
   h2 {
-    font-family: Righteous;
+    font-family: inherit;
   }
   .custom-border {
     background-image: linear-gradient(

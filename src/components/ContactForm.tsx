@@ -1,19 +1,17 @@
 import React from 'react';
-import Image from 'next/image';
 import Form from './Form';
 import AnimatedFadeInContainer from './Layouts/AnimatedFadeInContainer';
 import SocialMediaLinks from './SocialMediaLinks';
+import { Icon } from '@iconify/react';
 
 const ContactDetails = () => (
   <div className="space-y-4">
     {/* Phone */}
     <div className="flex items-center">
-      <Image
-        src={'/images/phone-icon.png'}
-        alt="Phone Icon"
-        width={45}
-        height={45}
-        className="rounded-full bg-[#6AB04C] p-0.5"
+      <Icon
+        icon="heroicons:phone"
+        aria-hidden="true"
+        className="h-11 w-11 rounded-full bg-[#6AB04C] p-2 text-white"
       />
       <div className="ml-4">
         <h3 className="text-sm font-semibold text-gray-400">Phone Number</h3>
@@ -23,12 +21,10 @@ const ContactDetails = () => (
 
     {/* Email */}
     <div className="flex items-center">
-      <Image
-        src={'/images/mail-icon.png'}
-        alt="Email Icon"
-        width={45}
-        height={45}
-        className="rounded-full bg-[#6AB04C] p-0.5"
+      <Icon
+        icon="heroicons:envelope"
+        aria-hidden="true"
+        className="h-11 w-11 rounded-full bg-[#6AB04C] p-2 text-white"
       />
       <div className="ml-4">
         <h3 className="text-sm font-semibold text-gray-400">Email Address</h3>
@@ -64,11 +60,10 @@ const ContactForm = () => (
         >
           <div className="lg:col-span-1 flex flex-col justify-center">
             <h2 className="text-4xl font-bold mb-4">Get in touch</h2>
-            <p className="mb-4 text-lg text-gray-600">
-              Looking for a developer? Use the contcat form to get in touch with
-              me. I will get back to you as soon as possible. I am looking for a
-              new challenge and I am open to new opportunities. I am also open
-              to freelance work. I am looking forward to hearing from you!
+            <p className="mb-4 text-lg text-gray-700 dark:text-gray-200">
+              Looking for a front-end developer? Send a short message about the
+              role, project, or collaboration and I will get back to you as soon
+              as possible.
             </p>
             <ContactMe />
           </div>

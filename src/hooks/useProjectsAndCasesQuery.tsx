@@ -12,7 +12,7 @@ const getProjectsAndCases = () =>
     .then(({ data }) => {
       return data;
     })
-    .catch((err: unknown) => console.error(err));
+    .catch(() => undefined);
 
 const useProjectsAndCasesQuery = () => {
   return useQuery(['getProjectsAndCases'], () => getProjectsAndCases());

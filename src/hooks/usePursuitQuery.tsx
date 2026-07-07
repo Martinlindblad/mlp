@@ -12,7 +12,7 @@ const getPursuit = () =>
     .then(({ data }) => {
       return data;
     })
-    .catch((err: unknown) => console.error(err));
+    .catch(() => undefined);
 
 const usePursuitQuery = () => {
   return useQuery(['getPursuit'], () => getPursuit());

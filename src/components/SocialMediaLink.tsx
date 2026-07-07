@@ -74,7 +74,9 @@ const SocialMediaLink: FC<Props> = ({ socialmedia: { name, link }, index }) => {
       }}
     >
       <div className="bg-gradient-to-tr to-transparent rounded-full flex justify-center items-center">
-        <Link href={link}>{renderImage()}</Link>
+        <Link href={link} aria-label={`Open Martin Lindblad on ${name}`}>
+          {renderImage()}
+        </Link>
       </div>
     </AnimatedStaggerItem>
   );

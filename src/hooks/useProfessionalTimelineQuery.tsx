@@ -16,7 +16,7 @@ const getProfessionalTimeline = () =>
         } else return -1;
       });
     })
-    .catch((err: unknown) => console.error(err));
+    .catch(() => undefined);
 
 const useProfessionalTimeline = () => {
   return useQuery(['getProfessionalTimeline'], () => getProfessionalTimeline());

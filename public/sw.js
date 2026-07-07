@@ -13,7 +13,7 @@ const urlsToCache = [
   '/images/linkedin.webp',
   '/images/movie.webp',
   '/images/porche.webp',
-  '/images/profilepicture.webp',
+  '/Images/profilepicture.webp',
   '/images/singapore.webp',
   '/images/socail-media.webp',
   '/images/wallpaper.webp',

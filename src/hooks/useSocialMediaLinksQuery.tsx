@@ -12,7 +12,7 @@ const getSocialMediaLinks = () =>
     .then(({ data }) => {
       return data;
     })
-    .catch((err: unknown) => console.error(err));
+    .catch(() => undefined);
 
 const useSocialMediaLinksQuery = () => {
   return useQuery(['getSocialMediaLinks'], () => getSocialMediaLinks());

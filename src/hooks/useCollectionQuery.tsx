@@ -12,7 +12,7 @@ const getCollection = () =>
     .then(({ data }) => {
       return data[0];
     })
-    .catch((err: unknown) => console.error(err));
+    .catch(() => undefined);
 
 const useCollectionQuery = () => {
   return useQuery(['getCollection'], () => getCollection());

@@ -12,7 +12,7 @@ const getPageCards = () =>
     .then(({ data }) => {
       return data;
     })
-    .catch((err: unknown) => console.error(err));
+    .catch(() => undefined);
 
 const usePageCardsQuery = () => {
   return useQuery(['getPageCards'], () => getPageCards());

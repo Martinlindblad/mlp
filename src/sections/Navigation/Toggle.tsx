@@ -12,6 +12,8 @@ const MenuToggle: React.FC<MenuToggleProps> = ({ toggle, isOpen }) => {
   return (
     <motion.button
       onClick={() => toggle()}
+      aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
+      aria-expanded={isOpen}
       whileHover={{
         transition: { duration: 0.2 },
         // Add glow effect with box-shadow and blur
@@ -21,7 +23,6 @@ const MenuToggle: React.FC<MenuToggleProps> = ({ toggle, isOpen }) => {
             : '0 0 0 1px rgba(0, 0, 0, 0.7)',
         borderRadius: '100%',
       }}
-      role="button"
       className="outline-none cursor-pointer fixed top-5 right-10 h-12 w-12 rounded-full bg-transparent z-50 p-3.5 dark:gradientContainerDarkMode gradientContainer animate-[gradient_16s_ease-in-out_infinite]"
     >
       <div className="relative">

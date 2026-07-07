@@ -9,6 +9,7 @@ import useAboutQuery from '../hooks/useAboutQuery';
 import { Languages, ProfessionalProfileintroduction } from 'src/types/DBTypes';
 import useLanguagesQuery from '../hooks/useLanguagesQuery';
 import Image from 'next/image';
+import SEO from '../components/SEO';
 
 const StarRating = ({ rating }: { rating: number }) => {
   const fullStars = Math.floor(rating);
@@ -117,6 +118,11 @@ const AboutPage = (): JSX.Element => {
 
   return (
     <Layout className="w-full flex flex-col justify-center align-center">
+      <SEO
+        title="About"
+        description="Learn about Martin Lindblad, a Stockholm-based front-end developer with experience in React, React Native, Next.js, TypeScript, SEO, and product delivery."
+        path="/about"
+      />
       <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
         <AnimatedName
           personalInfo={

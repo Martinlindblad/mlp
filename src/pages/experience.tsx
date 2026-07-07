@@ -7,6 +7,7 @@ import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
 import { Icon } from '@iconify/react';
 import Image from 'next/image';
 import Link from 'next/link';
+import SEO from '../components/SEO';
 
 const ExperienceSectionData = [
   {
@@ -121,7 +122,6 @@ const ExperienceHero = (): JSX.Element => {
           <Link
             href="/showcases"
             className="inline-flex justify-between items-center py-1 px-1 pr-4 mb-7 text-sm text-gray-700 bg-gray-100 rounded-full dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
-            role="alert"
           >
             <span className="text-xs bg-primary-600 rounded-full text-white px-4 py-1.5 mr-3">
               Cases
@@ -273,6 +273,11 @@ const Experience = (): JSX.Element => {
 
   return (
     <Layout className="flex-col ">
+      <SEO
+        title="Experience"
+        description="Explore Martin Lindblad's front-end development experience across React, React Native, Next.js, TypeScript, APIs, accessibility, and product delivery."
+        path="/experience"
+      />
       <div className="pt-20 sm:pt-10 pb-6 sm:pb-10 justify-center align-center flex">
         <AnimatedName personalInfo={personalInfoData} />
       </div>

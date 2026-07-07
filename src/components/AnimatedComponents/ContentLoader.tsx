@@ -40,7 +40,11 @@ const PageLoader = (): JSX.Element => {
   //   className="h-1 w-full bg-gray-900 dark:bg-gray-100 mb-8"
   // />
   return (
-    <div className="fixed top-0 left-0 w-full h-screen flex flex-col justify-center items-center dark:bg-gray-900 bg-gray-100 z-50">
+    <div
+      className="flex min-h-[16rem] w-full flex-col items-center justify-center bg-gray-100 dark:bg-gray-900"
+      aria-label="Loading content"
+      role="status"
+    >
       <AnimatedPreseceWrapper>
         <motion.div
           variants={loadingContainerVariants}

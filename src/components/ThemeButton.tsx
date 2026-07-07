@@ -25,7 +25,9 @@ const ThemeButton = ({ incomingClassName }: { incomingClassName?: string }) => {
       className={`w-10 h-10 relative ${incomingClassName} ${
         currentTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
       } `}
-      role="button"
+      aria-label={`Switch to ${
+        currentTheme === 'light' ? 'dark' : 'light'
+      } mode`}
       onClick={handleChangeColorTheme}
     >
       <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">

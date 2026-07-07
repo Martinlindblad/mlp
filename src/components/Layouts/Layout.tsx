@@ -1,21 +1,12 @@
-import { motion } from 'framer-motion';
-import { Props } from 'next/script';
+import React from 'react';
 
-const Layout: React.FC<Props> = ({ children, className }) => {
-  return (
-    <motion.div
-      className={className}
-      initial={{ x: 300, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 300, opacity: 0 }}
-      transition={{
-        type: 'spring',
-        stiffness: 260,
-        damping: 25,
-      }}
-    >
-      {children}
-    </motion.div>
-  );
+type LayoutProps = {
+  children?: React.ReactNode;
+  className?: string;
 };
+
+const Layout = ({ children, className }: LayoutProps): JSX.Element => {
+  return <div className={className}>{children}</div>;
+};
+
 export default Layout;

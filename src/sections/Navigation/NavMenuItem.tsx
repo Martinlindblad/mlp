@@ -58,13 +58,17 @@ const NavMenuItem: React.FC<NavMenuItemProps> = ({
   }, [id, text]);
 
   return (
-    <Link href={path} onClick={() => toggleIsOpen()}>
-      <motion.li
-        className={` items-center justify-center w-full list-none flex
-       cursor-pointer lg:self-end shadow-xl hover:shadow-xl transition-shadow duration-300  `}
-        variants={variants}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+    <motion.li
+      className={`items-center justify-center w-full list-none flex
+       cursor-pointer lg:self-end shadow-xl hover:shadow-xl transition-shadow duration-300`}
+      variants={variants}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <Link
+        href={path}
+        onClick={() => toggleIsOpen()}
+        className="flex w-full items-center justify-center"
       >
         <div className="w-12 h-12 rounded-3xl flex items-center justify-center mr-6 shadow-md">
           {renderIcon()}
@@ -74,8 +78,8 @@ const NavMenuItem: React.FC<NavMenuItemProps> = ({
             {text}
           </h2>
         </div>
-      </motion.li>
-    </Link>
+      </Link>
+    </motion.li>
   );
 };
 

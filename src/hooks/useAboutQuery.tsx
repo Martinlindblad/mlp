@@ -21,8 +21,7 @@ const getpersonalInfo = (
       ) as unknown as ProfessionalProfileDataByKey<typeof informationType>;
       return dataByType;
     })
-    .catch((err: unknown) => {
-      console.error(err);
+    .catch(() => {
       return undefined;
     });
 
