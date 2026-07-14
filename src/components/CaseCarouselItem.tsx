@@ -1,11 +1,10 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import React from 'react';
-import { ObjectId } from 'mongodb';
 import Image from 'next/image';
 
 type CaseCarouselItemProp = {
-  id: ObjectId | string | { toString: () => string };
+  id: string;
   title: string;
   description: string;
   imageSource: string;
@@ -25,10 +24,8 @@ export default function CaseCarouselItem({
   from,
   to,
 }: CaseCarouselItemProp): JSX.Element {
-  const idString = id.toString();
   const caseHref =
-    href ??
-    (mongoObjectIdPattern.test(idString) ? `/cases/${idString}` : undefined);
+    href ?? (mongoObjectIdPattern.test(id) ? `/cases/${id}` : undefined);
 
   return (
     <motion.div className="relative flex justify-center items-center h-full shadow-xl py-20 md:py-10">

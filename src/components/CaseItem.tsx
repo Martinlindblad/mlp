@@ -1,9 +1,8 @@
-import { ObjectId } from 'mongodb';
 import Image from 'next/image';
 import Link from 'next/link';
 
 interface CaseItemProps {
-  id: ObjectId | string | { toString: () => string };
+  id: string;
   title: string;
   imageUrl: string;
   description: string;
@@ -19,10 +18,8 @@ const CaseItem: React.FC<CaseItemProps> = ({
   description,
   href,
 }) => {
-  const idString = id.toString();
   const caseHref =
-    href ??
-    (mongoObjectIdPattern.test(idString) ? `/cases/${idString}` : undefined);
+    href ?? (mongoObjectIdPattern.test(id) ? `/cases/${id}` : undefined);
 
   return (
     <div className="flex bg-gray-800 rounded-lg overflow-hidden mb-4">

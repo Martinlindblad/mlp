@@ -1,7 +1,7 @@
-import { ObjectId } from 'mongodb';
+export type LegacyId = string;
 
 export interface PersonalInfo {
-  _id: ObjectId;
+  _id: LegacyId;
   title: string;
   info: string;
   name: string;
@@ -9,7 +9,7 @@ export interface PersonalInfo {
   key: 'introduction' | 'about' | 'more' | 'japanese';
 }
 export interface CareerSummary {
-  _id: ObjectId;
+  _id: LegacyId;
   occupationType: string;
   description: string;
   from: string;
@@ -20,13 +20,13 @@ export interface CareerSummary {
 }
 
 export interface Interest {
-  _id: ObjectId;
+  _id: LegacyId;
   title: string;
   content: string;
   type: 'japanese';
 }
 export interface InformationCard {
-  _id: ObjectId;
+  _id: LegacyId;
   title: string;
   description: string;
   link: string;
@@ -42,7 +42,7 @@ export const ProfessionalProfileKeys = {
 } as const;
 
 export interface ProfessionalProfileBase {
-  _id: ObjectId;
+  _id: LegacyId;
   title: string;
   info: string;
   name: string;
@@ -87,7 +87,7 @@ export interface ProfessionalProfileDataByKey<
   data: ProfessionalProfileData[T];
 }
 export interface SocailMediaLink {
-  _id: ObjectId;
+  _id: LegacyId;
   name: 'Facebook' | 'Instagram' | 'LinkedIn' | 'Github';
   link: string;
 }
@@ -113,7 +113,7 @@ export interface ProjectDetails {
   details: ProjectDetail[];
 }
 export interface CaseData {
-  _id: ObjectId;
+  _id: LegacyId;
   title: string;
   description: string;
   imageSource: string;
@@ -126,14 +126,14 @@ export interface CasePageProps {
   caseData: CaseData | null;
 }
 export interface Pursuit {
-  _id: ObjectId;
+  _id: LegacyId;
   title: string;
   description: string;
   leftImageSource: string;
   rightImageSource: string;
 }
 export interface ProfessionalTimeline {
-  _id: ObjectId;
+  _id: LegacyId;
   company?: string;
   institution?: string;
   qualification?: string;
@@ -146,7 +146,7 @@ export interface ProfessionalTimeline {
 export type ProfessionalTimelineData = ProfessionalTimeline[];
 
 export interface Language {
-  _id: ObjectId;
+  _id: LegacyId;
   name: string;
   spoken: string;
   written: string;

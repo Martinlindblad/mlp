@@ -6,10 +6,9 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/effect-coverflow';
 import { EffectCoverflow, Pagination } from 'swiper/modules';
-import { ObjectId } from 'mongodb';
 
 type CarouselCase = {
-  _id: ObjectId | string | { toString: () => string };
+  _id: string;
   title: string;
   description: string;
   imageSource: string;
@@ -77,7 +76,7 @@ export default function CaseCarousel() {
           className="mySwiper w-full h-full  xl:h-4/6 xl:w-4/6  bg-cover bg-center "
         >
           {items.map((item) => (
-            <SwiperSlide key={item._id.toString()}>
+            <SwiperSlide key={item._id}>
               <CaseItem {...item} id={item._id} />
             </SwiperSlide>
           ))}
