@@ -334,6 +334,14 @@ describe('canonical hashes', () => {
     expect(canonicalHash([row])).toBe(expected);
   });
 
+  it('serializes integer-like object keys in Unicode code-point order', () => {
+    const expected = createHash('sha256')
+      .update('[{"10":"ten","2":"two","_id":"a"}]')
+      .digest('hex');
+
+    expect(canonicalHash([{ _id: 'a', 2: 'two', 10: 'ten' }])).toBe(expected);
+  });
+
   it('is order-independent even when duplicate row ids differ', () => {
     const first = [
       { _id: 'same', value: 'beta' },

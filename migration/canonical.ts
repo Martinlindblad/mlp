@@ -166,27 +166,48 @@ function compareCodePoints(left: string, right: string): number {
   return leftPoints.length - rightPoints.length;
 }
 
-function normalize(value: unknown): unknown {
-  if (value instanceof Date) return value.toISOString();
-  if (Array.isArray(value)) return value.map(normalize);
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .sort(([left], [right]) => compareCodePoints(left, right))
-        .map(([key, item]) => [key, normalize(item)]),
-    );
+function canonicalJson(
+  value: unknown,
+  ancestors: Set<object> = new Set(),
+): string | undefined {
+  if (value instanceof Date) return JSON.stringify(value.toJSON());
+  if (!value || typeof value !== 'object') return JSON.stringify(value);
+  if (ancestors.has(value)) {
+    throw new TypeError('Cannot canonicalize a circular JSON value');
   }
-  return value;
+
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) {
+      const items = Array.from({ length: value.length }, (_, index) =>
+        canonicalJson(value[index], ancestors),
+      );
+      return `[${items.map((item) => item ?? 'null').join(',')}]`;
+    }
+
+    const record = value as Record<string, unknown>;
+    const members = Object.keys(record)
+      .sort(compareCodePoints)
+      .flatMap((key) => {
+        const item = canonicalJson(record[key], ancestors);
+        return item === undefined ? [] : [`${JSON.stringify(key)}:${item}`];
+      });
+    return `{${members.join(',')}}`;
+  } finally {
+    ancestors.delete(value);
+  }
 }
 
 export function canonicalHash<T extends object>(rows: readonly T[]): string {
   const ordered = rows
     .map((row) => {
-      const normalized = normalize(row) as Record<string, unknown>;
+      const serialized = canonicalJson(row);
+      if (serialized === undefined) {
+        throw new TypeError('Canonical rows must be JSON objects');
+      }
       return {
-        id: String(normalized._id),
-        normalized,
-        serialized: JSON.stringify(normalized),
+        id: String((row as Record<string, unknown>)._id),
+        serialized,
       };
     })
     .sort((left, right) => {
@@ -194,8 +215,10 @@ export function canonicalHash<T extends object>(rows: readonly T[]): string {
       return idOrder === 0
         ? compareCodePoints(left.serialized, right.serialized)
         : idOrder;
-    })
-    .map(({ normalized }) => normalized);
+    });
 
-  return createHash('sha256').update(JSON.stringify(ordered)).digest('hex');
+  const canonicalRows = `[${ordered
+    .map(({ serialized }) => serialized)
+    .join(',')}]`;
+  return createHash('sha256').update(canonicalRows).digest('hex');
 }
