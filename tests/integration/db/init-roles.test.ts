@@ -7,6 +7,9 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const commandTimeoutMs = 10_000;
+const pgCtlExitConfirmationMs = 250;
+const processExitPollMs = 25;
+const signalExitConfirmationMs = 2_000;
 const postgresBinaries = [
   'initdb',
   'pg_ctl',
@@ -35,6 +38,14 @@ interface CommandOptions {
 interface PostgresAvailability {
   available: boolean;
   reason: string;
+}
+
+interface PostgresCleanupOptions {
+  data: string;
+  pgCtlCommand?: string;
+  postmasterPid: number | undefined;
+  runtime: string;
+  serverStarted: boolean;
 }
 
 function run(
@@ -257,6 +268,94 @@ function createLateFailurePsqlWrapper(directory: string): void {
   );
 }
 
+function readPostmasterPid(data: string): number | undefined {
+  try {
+    const firstLine = fs
+      .readFileSync(path.join(data, 'postmaster.pid'), 'utf8')
+      .split(/\r?\n/, 1)[0];
+    if (!firstLine || !/^[1-9]\d*$/.test(firstLine)) return undefined;
+    const pid = Number(firstLine);
+    return Number.isSafeInteger(pid) ? pid : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== 'ESRCH';
+  }
+}
+
+async function waitForProcessExit(
+  pid: number,
+  timeoutMs: number,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (isProcessAlive(pid)) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) return false;
+    await new Promise((resolve) => {
+      setTimeout(resolve, Math.min(processExitPollMs, remainingMs));
+    });
+  }
+  return true;
+}
+
+function signalPostmaster(pid: number, signal: NodeJS.Signals): void {
+  try {
+    process.kill(pid, signal);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
+      // The final liveness check decides whether cleanup can proceed.
+    }
+  }
+}
+
+async function cleanupPostgresRuntime({
+  data,
+  pgCtlCommand = 'pg_ctl',
+  postmasterPid,
+  runtime,
+  serverStarted,
+}: PostgresCleanupOptions): Promise<void> {
+  if (serverStarted || postmasterPid !== undefined) {
+    if (postmasterPid === undefined || !Number.isSafeInteger(postmasterPid)) {
+      throw new Error('PostgreSQL bootstrap cleanup failed');
+    }
+
+    if (isProcessAlive(postmasterPid)) {
+      for (const mode of ['fast', 'immediate'] as const) {
+        run(pgCtlCommand, ['-D', data, '-m', mode, '-t', '2', '-w', 'stop']);
+        if (await waitForProcessExit(postmasterPid, pgCtlExitConfirmationMs)) {
+          break;
+        }
+      }
+    }
+
+    if (isProcessAlive(postmasterPid)) {
+      signalPostmaster(postmasterPid, 'SIGTERM');
+      await waitForProcessExit(postmasterPid, signalExitConfirmationMs);
+    }
+    if (isProcessAlive(postmasterPid)) {
+      signalPostmaster(postmasterPid, 'SIGKILL');
+      await waitForProcessExit(postmasterPid, signalExitConfirmationMs);
+    }
+    if (isProcessAlive(postmasterPid)) {
+      throw new Error('PostgreSQL bootstrap cleanup failed');
+    }
+  }
+
+  try {
+    fs.rmSync(runtime, { force: true, recursive: true });
+  } catch {
+    throw new Error('PostgreSQL bootstrap cleanup failed');
+  }
+}
+
 const availability = detectPostgres18();
 const postgresDescribe = availability.available ? describe : describe.skip;
 
@@ -265,6 +364,94 @@ postgresDescribe(
     ? 'PostgreSQL 18 role bootstrap'
     : `PostgreSQL 18 role bootstrap (skipped: ${availability.reason})`,
   () => {
+    it('kills the postmaster before removing runtime when pg_ctl cleanup fails', async () => {
+      const port = await reserveLoopbackPort();
+      const runtime = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'mlp-pg18-cleanup-'),
+      );
+      const data = path.join(runtime, 'data');
+      const serverLog = path.join(runtime, 'postgres.log');
+      const failingPgCtl = path.join(runtime, 'pg_ctl-fail');
+      let postmasterPid: number | undefined;
+      let serverStarted = false;
+
+      try {
+        requireSuccess(
+          run('initdb', [
+            '-D',
+            data,
+            '-U',
+            'postgres',
+            '--auth-local=trust',
+            '--auth-host=trust',
+            '--no-locale',
+          ]),
+          'cleanup regression initialization',
+        );
+        const startResult = run('pg_ctl', [
+          '-D',
+          data,
+          '-l',
+          serverLog,
+          '-o',
+          `-h 127.0.0.1 -p ${port}`,
+          '-w',
+          'start',
+        ]);
+        postmasterPid = readPostmasterPid(data);
+        serverStarted =
+          startResult.status === 0 ||
+          postmasterPid !== undefined ||
+          fs.existsSync(path.join(data, 'postmaster.pid'));
+        requireSuccess(startResult, 'cleanup regression startup');
+        fs.writeFileSync(failingPgCtl, '#!/bin/sh\nexit 1\n', {
+          mode: 0o700,
+        });
+
+        await cleanupPostgresRuntime({
+          data,
+          pgCtlCommand: failingPgCtl,
+          postmasterPid,
+          runtime,
+          serverStarted,
+        });
+
+        expect(fs.existsSync(runtime)).toBe(false);
+        expect(isProcessAlive(postmasterPid as number)).toBe(false);
+      } finally {
+        if (fs.existsSync(runtime)) {
+          await cleanupPostgresRuntime({
+            data,
+            postmasterPid,
+            runtime,
+            serverStarted,
+          });
+        }
+      }
+    }, 30_000);
+
+    it('retains runtime when postmaster death cannot be confirmed', async () => {
+      const runtime = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'mlp-pg18-cleanup-unknown-'),
+      );
+      const data = path.join(runtime, 'data');
+      fs.mkdirSync(data);
+
+      try {
+        await expect(
+          cleanupPostgresRuntime({
+            data,
+            postmasterPid: undefined,
+            runtime,
+            serverStarted: true,
+          }),
+        ).rejects.toThrow('PostgreSQL bootstrap cleanup failed');
+        expect(fs.existsSync(runtime)).toBe(true);
+      } finally {
+        fs.rmSync(runtime, { force: true, recursive: true });
+      }
+    });
+
     it('rolls back failures and creates leak-free least-privilege roles', async () => {
       const port = await reserveLoopbackPort();
       const runtime = fs.mkdtempSync(
@@ -276,6 +463,9 @@ postgresDescribe(
       const sqlDirectory = path.join(runtime, 'sql');
       const wrapperDirectory = path.join(runtime, 'bin');
       let serverStarted = false;
+      let postmasterPid: number | undefined;
+      let testError: unknown;
+      let testFailed = false;
 
       try {
         fs.mkdirSync(secretDirectory, { mode: 0o700 });
@@ -342,8 +532,10 @@ postgresDescribe(
           '-w',
           'start',
         ]);
+        postmasterPid = readPostmasterPid(data);
         serverStarted =
           startResult.status === 0 ||
+          postmasterPid !== undefined ||
           fs.existsSync(path.join(data, 'postmaster.pid'));
         requireSuccess(startResult, 'startup');
         requireSuccess(
@@ -442,18 +634,32 @@ postgresDescribe(
           'portfolio_migrator|CREATE|f|portfolio_migrator',
           'portfolio_migrator|TEMPORARY|f|portfolio_migrator',
         ]);
-      } finally {
-        try {
-          if (serverStarted) {
-            requireSuccess(
-              run('pg_ctl', ['-D', data, '-m', 'fast', '-w', 'stop']),
-              'shutdown',
-            );
-          }
-        } finally {
-          fs.rmSync(runtime, { force: true, recursive: true });
-        }
+      } catch (error) {
+        testError = error;
+        testFailed = true;
       }
+
+      let cleanupError: unknown;
+      let cleanupFailed = false;
+      try {
+        await cleanupPostgresRuntime({
+          data,
+          postmasterPid,
+          runtime,
+          serverStarted,
+        });
+      } catch (error) {
+        cleanupError = error;
+        cleanupFailed = true;
+      }
+
+      if (testFailed && cleanupFailed) {
+        throw new Error('PostgreSQL bootstrap test and cleanup failed', {
+          cause: { cleanupError, testError },
+        });
+      }
+      if (cleanupFailed) throw cleanupError;
+      if (testFailed) throw testError;
     }, 30_000);
   },
 );
