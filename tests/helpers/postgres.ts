@@ -16,6 +16,12 @@ function decodeUrlPart(value: string): string {
   return decodeURIComponent(value);
 }
 
+function asError(error: unknown): Error {
+  return error instanceof Error
+    ? error
+    : new Error('PostgreSQL cleanup failed', { cause: error });
+}
+
 export function createIsolatedDatabase(): IsolatedDatabase {
   const connectionString = process.env.TEST_DATABASE_URL?.trim();
   if (!connectionString) throw new Error('TEST_DATABASE_URL is required');
@@ -52,14 +58,65 @@ export function createIsolatedDatabase(): IsolatedDatabase {
 
   async function destroyDatabase(): Promise<void> {
     if (!databaseCreated) return;
-    await maintenance.query(
-      `select pg_terminate_backend(pid)
-       from pg_stat_activity
-       where datname = $1 and pid <> pg_backend_pid()`,
-      [databaseName],
-    );
-    await maintenance.query(`drop database if exists ${quotedDatabaseName}`);
-    databaseCreated = false;
+
+    let firstError: Error | undefined;
+    try {
+      await maintenance.query(
+        `select pg_terminate_backend(pid)
+         from pg_stat_activity
+         where datname = $1 and pid <> pg_backend_pid()`,
+        [databaseName],
+      );
+    } catch (error) {
+      firstError = asError(error);
+    }
+
+    try {
+      await maintenance.query(`drop database if exists ${quotedDatabaseName}`);
+      databaseCreated = false;
+    } catch (error) {
+      firstError ??= asError(error);
+    }
+
+    if (firstError) throw firstError;
+  }
+
+  async function cleanup(
+    initialError?: unknown,
+    hasInitialError = false,
+  ): Promise<void> {
+    let firstError = hasInitialError ? asError(initialError) : undefined;
+    const remember = (error: unknown): void => {
+      firstError ??= asError(error);
+    };
+
+    if (db) {
+      const activeDatabase = db;
+      db = undefined;
+      try {
+        await activeDatabase.destroy();
+      } catch (error) {
+        remember(error);
+      }
+    }
+
+    if (maintenanceConnected) {
+      try {
+        await destroyDatabase();
+      } catch (error) {
+        remember(error);
+      }
+
+      try {
+        await maintenance.end();
+      } catch (error) {
+        remember(error);
+      } finally {
+        maintenanceConnected = false;
+      }
+    }
+
+    if (firstError) throw firstError;
   }
 
   return {
@@ -96,25 +153,13 @@ export function createIsolatedDatabase(): IsolatedDatabase {
           connectionTimeoutMillis: 5_000,
         });
       } catch (error) {
-        await destroyDatabase();
-        await maintenance.end();
-        maintenanceConnected = false;
+        await cleanup(error, true);
         throw error;
       }
     },
 
     async stop(): Promise<void> {
-      if (db) {
-        await db.destroy();
-        db = undefined;
-      }
-      if (!maintenanceConnected) return;
-      try {
-        await destroyDatabase();
-      } finally {
-        await maintenance.end();
-        maintenanceConnected = false;
-      }
+      await cleanup();
     },
   };
 }

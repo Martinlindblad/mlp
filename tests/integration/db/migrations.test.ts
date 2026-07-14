@@ -47,4 +47,18 @@ describe('database migrations', () => {
     `.execute(isolated.db);
     expect(migrations.rows[0]?.name).toBe('002_runtime_grants');
   });
+
+  it('grants backup access to migration lock state', async () => {
+    await migrateToLatest(isolated.db);
+
+    const privilege = await sql<{ can_select: boolean }>`
+      select has_table_privilege(
+        'portfolio_backup',
+        'public.kysely_migration_lock',
+        'select'
+      ) as can_select
+    `.execute(isolated.db);
+
+    expect(privilege.rows[0]?.can_select).toBe(true);
+  });
 });

@@ -16,6 +16,7 @@ const backupTables = [
   ...contentTables,
   'contact_messages',
   'kysely_migration',
+  'kysely_migration_lock',
 ] as const;
 
 export async function up(db: Kysely<Database>): Promise<void> {
