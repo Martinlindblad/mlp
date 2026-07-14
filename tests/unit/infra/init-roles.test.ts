@@ -1,8 +1,10 @@
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+const commandTimeoutMs = 5_000;
 const ttyError = 'PostgreSQL role bootstrap requires a non-interactive session';
 
 interface PtyInvocation {
@@ -11,6 +13,7 @@ interface PtyInvocation {
 }
 
 interface ChildResult {
+  error?: Error;
   status: number | null;
   stderr: string;
   stdout: string;
@@ -20,6 +23,7 @@ function runWithoutControllingTerminal(
   command: string,
   args: string[],
   env: NodeJS.ProcessEnv,
+  timeoutMs = commandTimeoutMs,
 ): Promise<ChildResult> {
   return new Promise((resolve) => {
     const child = spawn(command, args, {
@@ -29,6 +33,8 @@ function runWithoutControllingTerminal(
     });
     let stdout = '';
     let stderr = '';
+    let childError: Error | undefined;
+    let timedOut = false;
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
     child.stdout.on('data', (chunk: string) => {
@@ -37,11 +43,34 @@ function runWithoutControllingTerminal(
     child.stderr.on('data', (chunk: string) => {
       stderr += chunk;
     });
-    child.once('error', () => {
-      resolve({ status: null, stderr, stdout });
+    child.once('error', (error) => {
+      childError = error;
     });
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      if (child.pid === undefined) return;
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
+          childError =
+            error instanceof Error
+              ? error
+              : new Error('Unable to terminate PostgreSQL bootstrap child');
+          child.kill('SIGKILL');
+        }
+      }
+    }, timeoutMs);
     child.once('close', (status) => {
-      resolve({ status, stderr, stdout });
+      clearTimeout(timeout);
+      resolve({
+        error: timedOut
+          ? new Error('PostgreSQL bootstrap child timed out')
+          : childError,
+        status,
+        stderr,
+        stdout,
+      });
     });
   });
 }
@@ -57,7 +86,11 @@ function ptyInvocation(scriptPath: string): PtyInvocation | undefined {
   if (process.platform === 'linux') {
     const command = ['/usr/bin/script', '/bin/script'].find(fs.existsSync);
     const version = command
-      ? spawnSync(command, ['--version'], { encoding: 'utf8' })
+      ? spawnSync(command, ['--version'], {
+          encoding: 'utf8',
+          killSignal: 'SIGKILL',
+          timeout: commandTimeoutMs,
+        })
       : undefined;
     if (
       command &&
@@ -181,6 +214,32 @@ describe('PostgreSQL role bootstrap', () => {
     );
   });
 
+  it('bounds detached children and kills their process groups', async () => {
+    const runtime = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'mlp-process-group-'),
+    );
+    const orphanMarker = path.join(runtime, 'orphaned');
+
+    try {
+      const result = await runWithoutControllingTerminal(
+        '/bin/sh',
+        ['-c', '(sleep 1; : >"$ORPHAN_MARKER") & sleep 2'],
+        { ...process.env, ORPHAN_MARKER: orphanMarker },
+        100,
+      );
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1_100);
+      });
+
+      expect(result.error?.message).toBe(
+        'PostgreSQL bootstrap child timed out',
+      );
+      expect(fs.existsSync(orphanMarker)).toBe(false);
+    } finally {
+      fs.rmSync(runtime, { force: true, recursive: true });
+    }
+  }, 4_000);
+
   const pty = ptyInvocation(scriptPath);
   const controllingTerminalTest = pty ? it : it.skip;
   controllingTerminalTest(
@@ -200,6 +259,7 @@ describe('PostgreSQL role bootstrap', () => {
           POSTGRES_USER: 'postgres',
         },
         stdio: ['ignore', 'pipe', 'pipe'],
+        killSignal: 'SIGKILL',
         timeout: 5_000,
       });
       const output = `${result.stdout}${result.stderr}`;
@@ -221,6 +281,8 @@ describe('PostgreSQL role bootstrap', () => {
           POSTGRES_SECRET_DIR: '/does/not/exist',
           POSTGRES_USER: postgresUser,
         },
+        killSignal: 'SIGKILL',
+        timeout: commandTimeoutMs,
       });
 
       expect(result.status).toBe(1);
