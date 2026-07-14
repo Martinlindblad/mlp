@@ -3,7 +3,12 @@ import { captureSnapshot } from '../../migration/inventory';
 import { withSourceDatabase } from '../../migration/mongo-client';
 import { reportPath, writeReport } from '../../migration/report';
 import { verifySnapshot } from '../../migration/verification';
-import { runId, runOperator, withMigrationTarget } from './operator-runtime';
+import {
+  migrationPublicRoot,
+  runId,
+  runOperator,
+  withMigrationTarget,
+} from './operator-runtime';
 
 async function main(): Promise<void> {
   if (process.env.CONTACT_TRAFFIC_DRAINED !== 'yes') {
@@ -16,7 +21,9 @@ async function main(): Promise<void> {
       const migrated = await importSnapshot(target, snapshot);
       // Verification reads the complete destination contact table; there is no
       // implicit or undefined preload boundary.
-      const validated = await verifySnapshot(target, snapshot);
+      const validated = await verifySnapshot(target, snapshot, {
+        publicRoot: migrationPublicRoot(),
+      });
       await writeReport(reportPath(`${id}-contacts-migration.json`), migrated);
       await writeReport(
         reportPath(`${id}-contacts-validation.json`),

@@ -1,5 +1,11 @@
 import type { Kysely } from 'kysely';
+import path from 'node:path';
 import type { Database } from '../server/db/database.types';
+import {
+  collectDatabaseAssetReferences,
+  findMissingAssetReferences,
+  type DatabaseAssetReference,
+} from './asset-paths.mjs'; // eslint-disable-line import/extensions
 import {
   canonicalDestinationRow,
   canonicalHash,
@@ -25,6 +31,10 @@ export interface ValidationReport {
   valid: true;
   generatedAt: string;
   collections: Partial<Record<SourceCollection, ValidationCollectionResult>>;
+}
+
+export interface VerificationOptions {
+  publicRoot: string;
 }
 
 const sourceCollections = Object.keys(SOURCE_COLLECTIONS) as SourceCollection[];
@@ -132,6 +142,9 @@ function validateCollection<K extends SourceCollection>(
 export async function verifySnapshot(
   db: Kysely<Database>,
   snapshot: Partial<SourceSnapshot>,
+  options: VerificationOptions = {
+    publicRoot: path.resolve(process.cwd(), 'public'),
+  },
 ): Promise<ValidationReport> {
   const prepared = prepareSnapshot(snapshot);
   const collections: ValidationReport['collections'] = {};
@@ -176,6 +189,33 @@ export async function verifySnapshot(
       },
     ]);
   }
+
+  const assetReferences: DatabaseAssetReference[] = [];
+  for (const collection of sourceCollections) {
+    const source = prepared[collection];
+    if (source === undefined) continue;
+    for (const document of source) {
+      assetReferences.push(
+        ...collectDatabaseAssetReferences(collection, document.source),
+      );
+    }
+  }
+  const collectionOrder = new Map(
+    sourceCollections.map((collection, index) => [collection, index]),
+  );
+  assetReferences.sort((left, right) => {
+    const collectionDifference =
+      (collectionOrder.get(left.collection) ?? Number.MAX_SAFE_INTEGER) -
+      (collectionOrder.get(right.collection) ?? Number.MAX_SAFE_INTEGER);
+    if (collectionDifference !== 0) return collectionDifference;
+    const idDifference = compareCodePoints(left.id, right.id);
+    return idDifference === 0
+      ? compareCodePoints(left.path, right.path)
+      : idDifference;
+  });
+  issues.push(
+    ...(await findMissingAssetReferences(options.publicRoot, assetReferences)),
+  );
 
   if (issues.length > 0) throw new MigrationValidationError(issues);
   return { valid: true, generatedAt: new Date().toISOString(), collections };

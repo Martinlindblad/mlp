@@ -30,7 +30,7 @@ const fallbackCases: CaseItem[] = [
     title: 'ImagineCare',
     description:
       'A healthcare product where I worked with React Native interfaces, API integration, and reliable mobile flows.',
-    imageSource: '/Images/Cases/imaginecare.webp',
+    imageSource: '/images/cases/imaginecare.webp',
     href: '/cases',
   },
   {
@@ -38,14 +38,14 @@ const fallbackCases: CaseItem[] = [
     title: 'Mackmyra',
     description:
       'A React Native marketplace experience for ordering personalized whisky casks.',
-    imageSource: '/Images/Cases/mackmyra.webp',
+    imageSource: '/images/cases/mackmyra.webp',
   },
   {
     _id: '657eef1d41ee78bde91c1c42',
     title: 'Livsstilsverktyget',
     description:
       'A health research app built around recurring user input, clear flows, and maintainable mobile UI.',
-    imageSource: '/Images/Cases/livsstilsverktyget.webp',
+    imageSource: '/images/cases/livsstilsverktyget.webp',
   },
 ];
 

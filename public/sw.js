@@ -1,65 +1,97 @@
-// sw.js
-const CACHE_NAME = 'v1_cache';
-const urlsToCache = [
-  '/',
-  '/_next/static/css/styles.chunk.css',
-  '/images/background.webp',
-  '/images/background2.webp',
-  '/images/beach.webp',
-  '/images/cm.webp',
-  '/images/facebook.webp',
-  '/images/github.webp',
-  '/images/instagram.webp',
-  '/images/linkedin.webp',
-  '/images/movie.webp',
-  '/images/porche.webp',
-  '/Images/profilepicture.webp',
-  '/images/singapore.webp',
-  '/images/socail-media.webp',
-  '/images/wallpaper.webp',
-  '/images/Cases/artv.webp',
-  '/images/Cases/imaginecare.webp',
-  '/images/Cases/libra.webp',
-  '/images/Cases/mackmyra.webp',
-  '/images/Cases/pactplanet.webp',
-  '/images/Cases/livsstilsverktyget.webp',
-  // ... any other URLs you want to cache up front
-];
+const CACHE_NAME = 'mlp-shell-v2';
+const PRECACHE_MANIFEST = '/sw-manifest.json';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache)),
+    (async () => {
+      const manifestResponse = await fetch(PRECACHE_MANIFEST, {
+        cache: 'no-store',
+      });
+      if (manifestResponse.status !== 200) {
+        throw new Error('service-worker manifest unavailable');
+      }
+      const manifestForCache = manifestResponse.clone();
+      const urls = await manifestResponse.json();
+      if (!Array.isArray(urls) || urls.some((url) => typeof url !== 'string')) {
+        throw new Error('service-worker manifest invalid');
+      }
+
+      const resources = [];
+      for (const url of urls) {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (response.status !== 200) {
+          throw new Error('service-worker precache resource unavailable');
+        }
+        resources.push([url, response]);
+      }
+
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(PRECACHE_MANIFEST, manifestForCache);
+      for (const [url, response] of resources) {
+        await cache.put(url, response);
+      }
+      await self.skipWaiting();
+    })(),
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
+        names
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name)),
+      );
+      await self.clients.claim();
+    })(),
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
-        return response; // if valid response is found in cache return it
-      }
-      return fetch(event.request).then((res) => {
-        // You may want to add dynamic caching for new content found
-        let responseToCache = res.clone();
-        void caches.open(CACHE_NAME).then((cache) => {
-          void cache.put(event.request, responseToCache);
-        });
-        return res;
-      });
-    }),
-  );
-});
-self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
+  const request = event.request;
+  const url = new URL(request.url);
+  if (
+    request.method !== 'GET' ||
+    url.origin !== self.location.origin ||
+    url.pathname === '/api' ||
+    url.pathname.startsWith('/api/') ||
+    request.headers.get('Range') !== null
+  ) {
+    return;
+  }
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          const response = await fetch(request);
+          if (response.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(request, response.clone());
           }
-        }),
-      );
-    }),
+          return response;
+        } catch (error) {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          throw error;
+        }
+      })(),
+    );
+    return;
+  }
+
+  event.respondWith(
+    (async () => {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      const response = await fetch(request);
+      if (response.status === 200) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      }
+      return response;
+    })(),
   );
 });

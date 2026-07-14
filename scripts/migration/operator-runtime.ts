@@ -1,4 +1,5 @@
 import type { Kysely } from 'kysely';
+import path from 'node:path';
 import { createDatabase } from '../../server/db/client';
 import { loadDatabaseConfig } from '../../server/db/config';
 import type { Database } from '../../server/db/database.types';
@@ -32,4 +33,11 @@ export function runOperator(
 
 export function runId(now = new Date()): string {
   return now.toISOString().replace(/\D/g, '').slice(0, 14);
+}
+
+// Task 8's one-shot operator image must copy the normalized public tree into
+// `<operator workdir>/public`; verification intentionally has no remote or
+// host-mounted asset fallback.
+export function migrationPublicRoot(cwd = process.cwd()): string {
+  return path.resolve(cwd, 'public');
 }

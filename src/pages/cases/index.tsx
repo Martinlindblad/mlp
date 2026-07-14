@@ -15,14 +15,14 @@ const fallbackCases: FallbackCase[] = [
   {
     _id: '657eed6741ee78bde91c1c3e',
     title: 'Mackmyra',
-    imageSource: '/Images/Cases/mackmyra.webp',
+    imageSource: '/images/cases/mackmyra.webp',
     description:
       'React Native marketplace work for personalized whisky cask ordering.',
   },
   {
     _id: '657eef1d41ee78bde91c1c42',
     title: 'Livsstilsverktyget',
-    imageSource: '/Images/Cases/livsstilsverktyget.webp',
+    imageSource: '/images/cases/livsstilsverktyget.webp',
     description:
       'Mobile health research flows with recurring input and clear user feedback.',
   },

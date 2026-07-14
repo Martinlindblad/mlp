@@ -7,7 +7,12 @@ import {
   type SourceCollection,
 } from '../../migration/source-collections';
 import { verifySnapshot } from '../../migration/verification';
-import { runId, runOperator, withMigrationTarget } from './operator-runtime';
+import {
+  migrationPublicRoot,
+  runId,
+  runOperator,
+  withMigrationTarget,
+} from './operator-runtime';
 
 async function main(): Promise<void> {
   const id = runId();
@@ -19,7 +24,9 @@ async function main(): Promise<void> {
       const inventory = await inventorySource(source);
       const snapshot = await captureSnapshot(source, collections);
       const migrated = await importSnapshot(target, snapshot);
-      const validated = await verifySnapshot(target, snapshot);
+      const validated = await verifySnapshot(target, snapshot, {
+        publicRoot: migrationPublicRoot(),
+      });
       await writeReport(reportPath(`${id}-inventory.json`), inventory);
       await writeReport(reportPath(`${id}-migration.json`), migrated);
       await writeReport(reportPath(`${id}-validation.json`), validated);

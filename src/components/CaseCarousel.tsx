@@ -23,7 +23,7 @@ const fallbackCases: CarouselCase[] = [
     title: 'ImagineCare',
     description:
       'React Native healthcare interfaces with API integration and reliable mobile flows.',
-    imageSource: '/Images/Cases/imaginecare.webp',
+    imageSource: '/images/cases/imaginecare.webp',
     from: '0,0,0',
     to: '0,0,0',
   },
@@ -32,7 +32,7 @@ const fallbackCases: CarouselCase[] = [
     title: 'Mackmyra',
     description:
       'React Native marketplace work for personalized whisky cask ordering.',
-    imageSource: '/Images/Cases/mackmyra.webp',
+    imageSource: '/images/cases/mackmyra.webp',
     from: '0,0,0',
     to: '0,0,0',
   },
@@ -41,7 +41,7 @@ const fallbackCases: CarouselCase[] = [
     title: 'Livsstilsverktyget',
     description:
       'Mobile health research flows with recurring input and clear user feedback.',
-    imageSource: '/Images/Cases/livsstilsverktyget.webp',
+    imageSource: '/images/cases/livsstilsverktyget.webp',
     from: '0,0,0',
     to: '0,0,0',
   },

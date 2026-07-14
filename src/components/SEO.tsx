@@ -16,7 +16,7 @@ const SEO = ({
   title = siteName,
   description = defaultDescription,
   path = '/',
-  image = '/Images/profilepicture.webp',
+  image = '/images/profilepicture.webp',
 }: SEOProps): JSX.Element => {
   const pageTitle = title === siteName ? title : `${title} | ${siteName}`;
   const canonicalUrl = `${siteUrl}${path}`;

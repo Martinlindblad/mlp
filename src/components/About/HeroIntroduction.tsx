@@ -24,7 +24,7 @@ export default function Hero() {
       <Image
         alt="Portrait of Martin Lindblad"
         className="absolute bottom-0 right-0 z-0 h-full object-contain object-bottom opacity-20 sm:opacity-35 lg:opacity-75"
-        src="/Images/profilepicture.webp"
+        src="/images/profilepicture.webp"
         fill
         priority
         sizes="(min-width: 1024px) 55vw, 100vw"
