@@ -1,7 +1,10 @@
 import {
   Binary,
+  BSON,
   BSONRegExp,
+  BSONSymbol,
   Code,
+  DBRef,
   Decimal128,
   Double,
   Int32,
@@ -10,6 +13,7 @@ import {
   MinKey,
   ObjectId,
   Timestamp,
+  UUID,
 } from 'mongodb';
 import { describe, expect, it } from 'vitest';
 import { captureSnapshot, inventorySource } from '../../../migration/inventory';
@@ -26,14 +30,21 @@ function fakeDatabase(
   data: Partial<Record<keyof typeof SOURCE_COLLECTIONS, FakeCollectionData>>,
 ) {
   const calls: string[] = [];
+  const findCalls: Array<{
+    collection: keyof typeof SOURCE_COLLECTIONS;
+    filter: unknown;
+    options: unknown;
+  }> = [];
   return {
     databaseName: 'must-not-enter-reports',
     calls,
+    findCalls,
     collection(name: keyof typeof SOURCE_COLLECTIONS) {
       calls.push(name);
       const collection = data[name] ?? { documents: [] };
       return {
-        find() {
+        find(filter: unknown = {}, options?: unknown) {
+          findCalls.push({ collection: name, filter, options });
           return {
             async toArray() {
               return collection.documents;
@@ -231,6 +242,7 @@ describe('source inventory', () => {
               new MinKey(),
               new MaxKey(),
             ],
+            profileImage: new UUID('00112233-4455-6677-8899-aabbccddeeff'),
           },
         ],
       },
@@ -247,6 +259,7 @@ describe('source inventory', () => {
       name: ['long'],
       surname: ['timestamp'],
       description: ['array'],
+      profileImage: ['binData'],
       'description[]': [
         'double',
         'int',
@@ -275,6 +288,61 @@ describe('source inventory', () => {
     expect(JSON.stringify(inventory)).not.toContain('private-pattern');
   });
 
+  it('inventories real BSON decoding with promotion disabled and keeps every scalar opaque', async () => {
+    const id = new ObjectId('64b000000000000000000006');
+    const encoded = BSON.serialize({
+      _id: id,
+      key: 'about',
+      title: new Int32(7),
+      info: new Double(1.25),
+      name: Long.fromNumber(42),
+      surname: new BSONSymbol('private-symbol-value'),
+      link: new DBRef('private-collection', id, 'private-database'),
+    });
+    const decoded = BSON.deserialize(encoded, { promoteValues: false });
+    const db = fakeDatabase({ about: { documents: [decoded] } });
+
+    const inventory = await inventorySource(
+      db as unknown as Parameters<typeof inventorySource>[0],
+    );
+    const about = inventory.collections.about;
+
+    expect(about.bsonTypes).toMatchObject({
+      title: ['int'],
+      info: ['double'],
+      name: ['long'],
+      surname: ['symbol'],
+      link: ['dbRef'],
+    });
+    expect(db.findCalls).toHaveLength(10);
+    expect(db.findCalls).toEqual(
+      Object.keys(SOURCE_COLLECTIONS).map((collection) => ({
+        collection,
+        filter: {},
+        options: { promoteValues: false },
+      })),
+    );
+    const reportedPaths = [...about.keys, ...Object.keys(about.bsonTypes)].join(
+      '\n',
+    );
+    for (const internalName of [
+      'collection',
+      'db',
+      'fields',
+      'high',
+      'low',
+      'oid',
+      'unsigned',
+      'value',
+    ]) {
+      expect(reportedPaths).not.toContain(internalName);
+    }
+    const output = JSON.stringify(inventory);
+    expect(output).not.toContain('private-symbol-value');
+    expect(output).not.toContain('private-collection');
+    expect(output).not.toContain('private-database');
+  });
+
   it('preserves BSON documents and source order in snapshots', async () => {
     const first = {
       _id: new ObjectId('64b00000000000000000000f'),
@@ -297,6 +365,9 @@ describe('source inventory', () => {
     ]);
     expect(snapshot.contact?.[0]?.value).toBe(first);
     expect(snapshot.contact?.[1]?.value).toBe(second);
+    expect(db.findCalls).toEqual([
+      { collection: 'contact', filter: {}, options: undefined },
+    ]);
   });
 
   it('collects every uncovered top-level key without exposing values', async () => {

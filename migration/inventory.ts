@@ -1,7 +1,9 @@
 import {
   Binary,
   BSONRegExp,
+  BSONSymbol,
   Code,
+  DBRef,
   Decimal128,
   Double,
   Int32,
@@ -72,6 +74,8 @@ function taggedBsonScalarType(value: unknown): string | undefined {
   if (tag === 'Timestamp' && value instanceof Timestamp) return 'timestamp';
   if (tag === 'Long' && value instanceof Long) return 'long';
   if (tag === 'BSONRegExp' && value instanceof BSONRegExp) return 'regex';
+  if (tag === 'BSONSymbol' && value instanceof BSONSymbol) return 'symbol';
+  if (tag === 'DBRef' && value instanceof DBRef) return 'dbRef';
   if (tag === 'Double' && value instanceof Double) return 'double';
   if (tag === 'Int32' && value instanceof Int32) return 'int';
   if (tag === 'Code' && value instanceof Code) {
@@ -220,7 +224,9 @@ export async function inventorySource(
 
   for (const collection of sourceCollections) {
     const sourceCollection = db.collection(collection);
-    const rows = await sourceCollection.find({}).toArray();
+    const rows = await sourceCollection
+      .find({}, { promoteValues: false })
+      .toArray();
     const keys = new Set<string>();
     const types = new Map<string, Set<string>>();
     const ids: string[] = [];
