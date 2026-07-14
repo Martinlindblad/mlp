@@ -1,6 +1,10 @@
-import { ObjectId } from 'mongodb';
-import { GetStaticPaths, GetStaticProps } from 'next';
-import { connectToDatabase } from 'src/lib/mongodb';
+import type { GetStaticPaths, GetStaticProps } from 'next';
+import { getDatabase } from '../../../../server/db/client';
+import {
+  buildCaseStaticPaths,
+  buildCaseStaticProps,
+} from '../../../../server/pages/case-data';
+import { createProjectRepository } from '../../../../server/repositories/project-repository';
 import ContentLoader from '../../../components/AnimatedComponents/ContentLoader';
 import AnimatedFadeInContainer from '../../../components/Layouts/AnimatedFadeInContainer';
 import Image from 'next/image';
@@ -156,51 +160,14 @@ const ProjectDetailLinkList: React.FC<{
   );
 };
 
-const isMissingDatabaseConfigError = (error: unknown) =>
-  error instanceof Error &&
-  (error.message.includes('Mongo URI') ||
-    error.message.includes('Mongo database'));
+export const getStaticPaths: GetStaticPaths = async () =>
+  buildCaseStaticPaths(() => createProjectRepository(getDatabase()));
 
-export const getStaticPaths: GetStaticPaths = async () => {
-  try {
-    const { database } = await connectToDatabase();
-    const cases = await database
-      .collection('projects_and_cases')
-      .find({}, { projection: { _id: 1 } })
-      .toArray();
-
-    const paths = cases.map((caseDoc) => ({
-      params: { id: caseDoc._id.toString() },
-    }));
-
-    return { paths, fallback: 'blocking' };
-  } catch (error) {
-    if (isMissingDatabaseConfigError(error)) {
-      return { paths: [], fallback: 'blocking' };
-    }
-
-    throw error;
-  }
-};
-
-export const getStaticProps: GetStaticProps = async ({ params }) => {
-  const { database } = await connectToDatabase();
-
-  const caseData = await database
-    .collection('projects_and_cases')
-    .findOne({ _id: new ObjectId(params?.id as string) });
-
-  if (!caseData) {
-    return { notFound: true };
-  }
-
-  return {
-    props: {
-      caseData: JSON.parse(JSON.stringify(caseData)),
-    },
-    revalidate: 5,
-  };
-};
+export const getStaticProps: GetStaticProps = async ({ params }) =>
+  buildCaseStaticProps(
+    createProjectRepository(getDatabase()),
+    String(params?.id ?? ''),
+  );
 
 const CasePage: React.FC<CasePageProps> = ({ caseData }) => {
   const { data: personalInfo } = useAboutQuery('introduction');
