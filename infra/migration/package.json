@@ -1,0 +1,12 @@
+{
+  "name": "mlp-migration-operator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "kysely": "0.29.3",
+    "mongodb": "6.21.0",
+    "pg": "8.22.0",
+    "zod": "4.4.3"
+  }
+}

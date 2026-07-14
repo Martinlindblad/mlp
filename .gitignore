@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/infra/migration/node_modules/
 /.pnp
 .pnp.js
 
@@ -14,6 +15,8 @@
 
 # production
 /build
+/dist/
+/operator-dist/
 
 # misc
 .DS_Store

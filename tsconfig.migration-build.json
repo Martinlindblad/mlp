@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "operator-dist",
+    "module": "commonjs",
+    "target": "ES2022",
+    "noEmit": false,
+    "noEmitOnError": true,
+    "incremental": false
+  },
+  "include": [
+    "migration/**/*.ts",
+    "scripts/migration/**/*.ts",
+    "server/api/serializers.ts",
+    "server/db/client.ts",
+    "server/db/config.ts",
+    "server/db/database.types.ts",
+    "types/DBTypes.ts"
+  ]
+}

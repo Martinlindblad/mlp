@@ -3,9 +3,12 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2022",
+    "rootDir": ".",
     "outDir": "dist",
     "noEmit": false,
+    "noEmitOnError": true,
+    "incremental": false,
     "declaration": false
   },
-  "include": ["server/**/*.ts", "scripts/db/**/*.ts"]
+  "include": ["scripts/db/**/*.ts", "server/db/**/*.ts"]
 }
