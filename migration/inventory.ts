@@ -1,4 +1,17 @@
-import { ObjectId, type Db } from 'mongodb';
+import {
+  Binary,
+  BSONRegExp,
+  Code,
+  Decimal128,
+  Double,
+  Int32,
+  Long,
+  MaxKey,
+  MinKey,
+  ObjectId,
+  Timestamp,
+  type Db,
+} from 'mongodb';
 import { canonicalHash } from './canonical';
 import { MigrationValidationError, type MigrationIssue } from './errors';
 import {
@@ -50,8 +63,30 @@ function compareCodePoints(left: string, right: string): number {
   return leftPoints.length - rightPoints.length;
 }
 
+function taggedBsonScalarType(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const tag = Reflect.get(value, '_bsontype') as unknown;
+  if (tag === 'ObjectId' && value instanceof ObjectId) return 'objectId';
+  if (tag === 'Binary' && value instanceof Binary) return 'binData';
+  if (tag === 'Decimal128' && value instanceof Decimal128) return 'decimal';
+  if (tag === 'Timestamp' && value instanceof Timestamp) return 'timestamp';
+  if (tag === 'Long' && value instanceof Long) return 'long';
+  if (tag === 'BSONRegExp' && value instanceof BSONRegExp) return 'regex';
+  if (tag === 'Double' && value instanceof Double) return 'double';
+  if (tag === 'Int32' && value instanceof Int32) return 'int';
+  if (tag === 'Code' && value instanceof Code) {
+    return value.scope === undefined || value.scope === null
+      ? 'javascript'
+      : 'javascriptWithScope';
+  }
+  if (tag === 'MinKey' && value instanceof MinKey) return 'minKey';
+  if (tag === 'MaxKey' && value instanceof MaxKey) return 'maxKey';
+  return undefined;
+}
+
 function bsonType(value: unknown): string {
-  if (value instanceof ObjectId) return 'objectId';
+  const scalarType = taggedBsonScalarType(value);
+  if (scalarType) return scalarType;
   if (value instanceof Date) return 'date';
   if (Buffer.isBuffer(value) || value instanceof Uint8Array) return 'binData';
   if (Array.isArray(value)) return 'array';
@@ -90,8 +125,8 @@ function inspectValue(
   if (
     !value ||
     typeof value !== 'object' ||
+    taggedBsonScalarType(value) !== undefined ||
     value instanceof Date ||
-    value instanceof ObjectId ||
     Buffer.isBuffer(value) ||
     value instanceof Uint8Array
   ) {
@@ -125,10 +160,15 @@ function invalidIndexIssue(
   };
 }
 
+interface NormalizedIndexes {
+  indexes: InventoryIndex[];
+  issues: MigrationIssue[];
+}
+
 function normalizedIndexes(
   collection: SourceCollection,
   indexes: readonly unknown[],
-): InventoryIndex[] {
+): NormalizedIndexes {
   const issues: MigrationIssue[] = [];
   const normalized = indexes
     .map((value, index): InventoryIndex | undefined => {
@@ -168,8 +208,7 @@ function normalizedIndexes(
     })
     .filter((value): value is InventoryIndex => value !== undefined)
     .sort((left, right) => compareCodePoints(left.name, right.name));
-  if (issues.length > 0) throw new MigrationValidationError(issues);
-  return normalized;
+  return { indexes: normalized, issues };
 }
 
 export async function inventorySource(
@@ -232,10 +271,11 @@ export async function inventorySource(
       collectionInfo && 'options' in collectionInfo
         ? collectionInfo.options?.validator ?? {}
         : {};
-    const indexes = normalizedIndexes(
+    const normalized = normalizedIndexes(
       collection,
       await sourceCollection.indexes(),
     );
+    structuralIssues.push(...normalized.issues);
     const bsonTypes = Object.fromEntries(
       Array.from(types.entries())
         .sort(([left], [right]) => compareCodePoints(left, right))
@@ -252,7 +292,7 @@ export async function inventorySource(
         ids: ids.sort(compareCodePoints),
         keys: Array.from(keys).sort(compareCodePoints),
         bsonTypes,
-        indexes,
+        indexes: normalized.indexes,
         validatorHash: canonicalHash([{ _id: 'validator', validator }]),
       },
     ]);

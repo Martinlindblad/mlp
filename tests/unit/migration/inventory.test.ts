@@ -1,4 +1,16 @@
-import { ObjectId } from 'mongodb';
+import {
+  Binary,
+  BSONRegExp,
+  Code,
+  Decimal128,
+  Double,
+  Int32,
+  Long,
+  MaxKey,
+  MinKey,
+  ObjectId,
+  Timestamp,
+} from 'mongodb';
 import { describe, expect, it } from 'vitest';
 import { captureSnapshot, inventorySource } from '../../../migration/inventory';
 import { MigrationValidationError } from '../../../migration/errors';
@@ -150,9 +162,18 @@ describe('source inventory', () => {
     }
   });
 
-  it('fails redacted when an index definition cannot be represented', async () => {
+  it('accumulates redacted unknown-field and invalid-index issues across all ten collections', async () => {
+    const unsafeFieldName = 'PII_UNKNOWN_martin@example.test';
     const unsafeIndexName = 'PII_INDEX_martin@example.test';
     const db = fakeDatabase({
+      about: {
+        documents: [
+          {
+            _id: new ObjectId('64b000000000000000000004'),
+            [unsafeFieldName]: 'PII_UNKNOWN_FIELD_VALUE',
+          },
+        ],
+      },
       languages: {
         documents: [],
         indexes: [{ name: unsafeIndexName, key: { name: 2 } }],
@@ -172,13 +193,86 @@ describe('source inventory', () => {
       name: 'MigrationValidationError',
       issues: [
         expect.objectContaining({
+          collection: 'about',
+          code: 'unknown_field',
+          path: '<unknown:1>',
+        }),
+        expect.objectContaining({
           collection: 'languages',
           code: 'invalid_value',
           path: '<index:1>',
         }),
       ],
     });
-    expect(JSON.stringify(failure)).not.toContain(unsafeIndexName);
+    expect(db.calls).toEqual(Object.keys(SOURCE_COLLECTIONS));
+    const output = JSON.stringify(failure);
+    expect(output).not.toContain(unsafeFieldName);
+    expect(output).not.toContain('PII_UNKNOWN_FIELD_VALUE');
+    expect(output).not.toContain(unsafeIndexName);
+  });
+
+  it('classifies BSON scalar wrappers without recursing into their internals', async () => {
+    const db = fakeDatabase({
+      about: {
+        documents: [
+          {
+            _id: new ObjectId('64b000000000000000000005'),
+            key: 'about',
+            title: new Binary(Buffer.from([1, 2, 3])),
+            info: Decimal128.fromString('123.45'),
+            name: Long.fromString('9007199254740993'),
+            surname: new Timestamp({ t: 10, i: 2 }),
+            description: [
+              new BSONRegExp('private-pattern', 'i'),
+              new Double(1.25),
+              new Int32(7),
+              new Code('return 1'),
+              new Code('return privateValue', { privateScope: true }),
+              new MinKey(),
+              new MaxKey(),
+            ],
+          },
+        ],
+      },
+    });
+
+    const inventory = await inventorySource(
+      db as unknown as Parameters<typeof inventorySource>[0],
+    );
+    const about = inventory.collections.about;
+
+    expect(about.bsonTypes).toMatchObject({
+      title: ['binData'],
+      info: ['decimal'],
+      name: ['long'],
+      surname: ['timestamp'],
+      description: ['array'],
+      'description[]': [
+        'double',
+        'int',
+        'javascript',
+        'javascriptWithScope',
+        'maxKey',
+        'minKey',
+        'regex',
+      ],
+    });
+    const reportedPaths = [...about.keys, ...Object.keys(about.bsonTypes)];
+    for (const internalName of [
+      'buffer',
+      'bytes',
+      'high',
+      'low',
+      'position',
+      'pattern',
+      'scope',
+      'unsigned',
+      'value',
+    ]) {
+      expect(reportedPaths.join('\n')).not.toContain(internalName);
+    }
+    expect(JSON.stringify(inventory)).not.toContain('privateScope');
+    expect(JSON.stringify(inventory)).not.toContain('private-pattern');
   });
 
   it('preserves BSON documents and source order in snapshots', async () => {

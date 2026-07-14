@@ -1,8 +1,10 @@
 import {
   lstat,
+  mkdir,
   mkdtemp,
   open,
   readFile,
+  realpath,
   rm,
   stat,
   symlink,
@@ -28,9 +30,15 @@ afterEach(async () => {
   temporaryRoots.clear();
 });
 
+async function temporaryDirectory(prefix: string): Promise<string> {
+  const created = await mkdtemp(path.join(os.tmpdir(), prefix));
+  const canonical = await realpath(created);
+  temporaryRoots.add(canonical);
+  return canonical;
+}
+
 async function reportRoot(): Promise<string> {
-  const parent = await mkdtemp(path.join(os.tmpdir(), 'mlp-report-test-'));
-  temporaryRoots.add(parent);
+  const parent = await temporaryDirectory('mlp-report-test-');
   const root = path.join(parent, 'reports');
   process.env.MIGRATION_REPORT_ROOT = root;
   return root;
@@ -82,10 +90,7 @@ describe('migration reports', () => {
 
   it('rejects symlinks and paths whose resolved parent escapes the root', async () => {
     const root = await reportRoot();
-    const outside = await mkdtemp(
-      path.join(os.tmpdir(), 'mlp-report-outside-'),
-    );
-    temporaryRoots.add(outside);
+    const outside = await temporaryDirectory('mlp-report-outside-');
     await symlink(outside, root);
 
     const output = path.join(root, 'linked.json');
@@ -93,6 +98,23 @@ describe('migration reports', () => {
       'report path rejected',
     );
     expect((await lstat(root)).isSymbolicLink()).toBe(true);
+  });
+
+  it('rejects a symlink in an existing ancestor before creating the root', async () => {
+    const base = await temporaryDirectory('mlp-report-ancestor-');
+    const actualParent = path.join(base, 'actual-parent');
+    const linkedParent = path.join(base, 'linked-parent');
+    await mkdir(actualParent, { mode: 0o700 });
+    await symlink(actualParent, linkedParent);
+    const root = path.join(linkedParent, 'reports');
+    process.env.MIGRATION_REPORT_ROOT = root;
+
+    await expect(
+      writeReport(reportPath('ancestor.json'), validMigrationReport),
+    ).rejects.toThrow('report path rejected');
+    await expect(
+      lstat(path.join(actualParent, 'reports')),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it.each([
@@ -190,5 +212,62 @@ describe('migration reports', () => {
 
     expect(unlinkCalls).toBe(1);
     await expect(lstat(output)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('accepts valid:true validation DTOs only when every comparison is true', async () => {
+    await reportRoot();
+    const base = {
+      valid: true,
+      generatedAt: '2026-07-14T12:00:00.000Z',
+      collections: {
+        contact: {
+          sourceCount: 2,
+          destinationCount: 2,
+          idsMatch: true,
+          timestampsMatch: true,
+          hashMatch: true,
+        },
+      },
+    } as const;
+    await writeReport(reportPath('valid-validation.json'), base);
+
+    const invalidReports = [
+      {
+        ...base,
+        collections: {
+          contact: { ...base.collections.contact, idsMatch: false },
+        },
+      },
+      {
+        ...base,
+        collections: {
+          contact: { ...base.collections.contact, timestampsMatch: false },
+        },
+      },
+      {
+        ...base,
+        collections: {
+          contact: { ...base.collections.contact, hashMatch: false },
+        },
+      },
+      {
+        ...base,
+        collections: {
+          contact: {
+            ...base.collections.contact,
+            destinationCount: 1,
+          },
+        },
+      },
+    ];
+
+    for (let index = 0; index < invalidReports.length; index += 1) {
+      await expect(
+        writeReport(
+          reportPath(`invalid-validation-${index}.json`),
+          invalidReports[index] as never,
+        ),
+      ).rejects.toThrow('invalid report payload');
+    }
   });
 });

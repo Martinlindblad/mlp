@@ -108,11 +108,21 @@ const validationCollection = z
   .object({
     sourceCount: z.number().int().nonnegative(),
     destinationCount: z.number().int().nonnegative(),
-    idsMatch: z.boolean(),
-    timestampsMatch: z.boolean(),
-    hashMatch: z.boolean(),
+    idsMatch: z.literal(true),
+    timestampsMatch: z.literal(true),
+    hashMatch: z.literal(true),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.sourceCount !== value.destinationCount) {
+      context.addIssue({
+        code: 'custom',
+        message: 'invalid validation comparison',
+        path: ['destinationCount'],
+        input: value.destinationCount,
+      });
+    }
+  });
 const validationSchema = z
   .object({
     valid: z.literal(true),
@@ -171,26 +181,58 @@ export function reportPath(fileName: string): string {
   return path.join(rootPath(), fileName);
 }
 
+function isMissingPath(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'code' in error &&
+    error.code === 'ENOENT'
+  );
+}
+
+async function assertDirectoryPathHasNoSymlinks(
+  target: string,
+  allowMissing: boolean,
+): Promise<void> {
+  const parsed = path.parse(target);
+  const segments = target
+    .slice(parsed.root.length)
+    .split(path.sep)
+    .filter(Boolean);
+  let current = parsed.root;
+  const paths = [current];
+  for (const segment of segments) {
+    current = path.join(current, segment);
+    paths.push(current);
+  }
+
+  for (const candidate of paths) {
+    let details;
+    try {
+      details = await lstat(candidate);
+    } catch (error) {
+      if (allowMissing && isMissingPath(error)) return;
+      throw error;
+    }
+    if (details.isSymbolicLink() || !details.isDirectory()) {
+      throw new Error('unsafe report directory');
+    }
+  }
+}
+
 async function ensureSafeRoot(root: string): Promise<void> {
   try {
-    const existing = await lstat(root).catch((error: unknown) => {
-      if (
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        error.code === 'ENOENT'
-      ) {
-        return undefined;
-      }
-      throw error;
-    });
-    if (existing?.isSymbolicLink()) throw new Error('unsafe root');
+    await assertDirectoryPathHasNoSymlinks(root, true);
     await mkdir(root, { recursive: true, mode: 0o700 });
-    const created = await lstat(root);
-    if (!created.isDirectory() || created.isSymbolicLink()) {
-      throw new Error('unsafe root');
+    await assertDirectoryPathHasNoSymlinks(root, false);
+    if ((await realpath(root)) !== root) {
+      throw new Error('non-canonical report root');
     }
     await chmod(root, 0o700);
+    await assertDirectoryPathHasNoSymlinks(root, false);
+    if ((await realpath(root)) !== root) {
+      throw new Error('non-canonical report root');
+    }
   } catch {
     throw new Error('report path rejected');
   }
@@ -218,7 +260,9 @@ export async function writeReport(
       realpath(root),
       realpath(path.dirname(resolved)),
     ]);
-    if (actualRoot !== actualParent) throw new Error('outside root');
+    if (actualRoot !== root || actualRoot !== actualParent) {
+      throw new Error('outside root');
+    }
     handle = await fileOperations.open(resolved, 'wx', 0o600);
     targetCreated = true;
     await handle.writeFile(json);
