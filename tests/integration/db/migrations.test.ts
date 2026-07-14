@@ -3,8 +3,7 @@ import { sql } from 'kysely';
 import { createIsolatedDatabase } from '../../helpers/postgres';
 import { migrateToLatest } from '../../../server/db/migrator';
 
-const expectedTables = [
-  'contact_messages',
+const contentTables = [
   'current_occupations',
   'hobbies',
   'languages',
@@ -14,7 +13,15 @@ const expectedTables = [
   'projects',
   'pursuits',
   'social_links',
-];
+] as const;
+const expectedTables = ['contact_messages', ...contentTables];
+const backupTables = [
+  ...contentTables,
+  'contact_messages',
+  'kysely_migration',
+  'kysely_migration_lock',
+] as const;
+const contentTableSet = new Set<string>(contentTables);
 
 describe('database migrations', () => {
   const isolated = createIsolatedDatabase();
@@ -48,7 +55,7 @@ describe('database migrations', () => {
     expect(migrations.rows[0]?.name).toBe('002_runtime_grants');
   });
 
-  it('enforces runtime database and backup privileges', async () => {
+  it('enforces complete runtime and backup privilege matrices', async () => {
     await migrateToLatest(isolated.db);
 
     const privileges = await sql<{
@@ -58,8 +65,6 @@ describe('database migrations', () => {
       backup_temporary: boolean;
       public_connect: boolean;
       public_temporary: boolean;
-      app_lock_select: boolean;
-      backup_all_select: boolean;
     }>`
       select
         has_database_privilege(
@@ -79,32 +84,7 @@ describe('database migrations', () => {
         ) as public_connect,
         has_database_privilege(
           0::oid, current_database(), 'temporary'
-        ) as public_temporary,
-        has_table_privilege(
-          'portfolio_app', 'public.kysely_migration_lock', 'select'
-        ) as app_lock_select,
-        (
-          select bool_and(
-            has_table_privilege(
-              'portfolio_backup', 'public.' || table_name, 'select'
-            )
-          )
-          from (
-            values
-              ('profile_sections'),
-              ('current_occupations'),
-              ('hobbies'),
-              ('languages'),
-              ('page_cards'),
-              ('professional_timeline'),
-              ('projects'),
-              ('pursuits'),
-              ('social_links'),
-              ('contact_messages'),
-              ('kysely_migration'),
-              ('kysely_migration_lock')
-          ) as backup_tables(table_name)
-        ) as backup_all_select
+        ) as public_temporary
     `.execute(isolated.db);
 
     expect(privileges.rows[0]).toEqual({
@@ -114,9 +94,70 @@ describe('database migrations', () => {
       backup_temporary: false,
       public_connect: false,
       public_temporary: false,
-      app_lock_select: false,
-      backup_all_select: true,
     });
+
+    const tablePrivileges = await sql<{
+      role_name: 'portfolio_app' | 'portfolio_backup';
+      table_name: string;
+      can_select: boolean;
+      can_insert: boolean;
+      can_update: boolean;
+      can_delete: boolean;
+    }>`
+      select
+        roles.role_name,
+        tables.table_name,
+        has_table_privilege(
+          roles.role_name, 'public.' || tables.table_name, 'select'
+        ) as can_select,
+        has_table_privilege(
+          roles.role_name, 'public.' || tables.table_name, 'insert'
+        ) as can_insert,
+        has_table_privilege(
+          roles.role_name, 'public.' || tables.table_name, 'update'
+        ) as can_update,
+        has_table_privilege(
+          roles.role_name, 'public.' || tables.table_name, 'delete'
+        ) as can_delete
+      from (
+        values ('portfolio_app'), ('portfolio_backup')
+      ) as roles(role_name)
+      cross join (
+        values
+          ('profile_sections'),
+          ('current_occupations'),
+          ('hobbies'),
+          ('languages'),
+          ('page_cards'),
+          ('professional_timeline'),
+          ('projects'),
+          ('pursuits'),
+          ('social_links'),
+          ('contact_messages'),
+          ('kysely_migration'),
+          ('kysely_migration_lock')
+      ) as tables(table_name)
+    `.execute(isolated.db);
+
+    expect(tablePrivileges.rows).toHaveLength(backupTables.length * 2);
+    for (const roleName of ['portfolio_app', 'portfolio_backup'] as const) {
+      for (const tableName of backupTables) {
+        const actual = tablePrivileges.rows.find(
+          (row) => row.role_name === roleName && row.table_name === tableName,
+        );
+        const isApplication = roleName === 'portfolio_app';
+        expect(actual).toEqual({
+          role_name: roleName,
+          table_name: tableName,
+          can_select: isApplication
+            ? contentTableSet.has(tableName) || tableName === 'kysely_migration'
+            : true,
+          can_insert: isApplication && tableName === 'contact_messages',
+          can_update: false,
+          can_delete: false,
+        });
+      }
+    }
   });
 
   it('matches nullable legacy read fields and the required occupation title', async () => {

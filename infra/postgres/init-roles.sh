@@ -22,6 +22,12 @@ case "${POSTGRES_USER:-}" in
     ;;
 esac
 
+if (: </dev/tty) 2>/dev/null; then
+  printf '%s\n' \
+    'PostgreSQL role bootstrap requires a non-interactive session' >&2
+  exit 1
+fi
+
 migrator_password="$(tr -d '\n' <"$secret_dir/postgres-migrator-password")"
 app_password="$(tr -d '\n' <"$secret_dir/postgres-app-password")"
 backup_password="$(tr -d '\n' <"$secret_dir/postgres-backup-password")"

@@ -1,7 +1,84 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+
+const ttyError = 'PostgreSQL role bootstrap requires a non-interactive session';
+
+interface PtyInvocation {
+  command: string;
+  args: string[];
+}
+
+interface ChildResult {
+  status: number | null;
+  stderr: string;
+  stdout: string;
+}
+
+function runWithoutControllingTerminal(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+): Promise<ChildResult> {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, {
+      detached: true,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on('data', (chunk: string) => {
+      stderr += chunk;
+    });
+    child.once('error', () => {
+      resolve({ status: null, stderr, stdout });
+    });
+    child.once('close', (status) => {
+      resolve({ status, stderr, stdout });
+    });
+  });
+}
+
+function ptyInvocation(scriptPath: string): PtyInvocation | undefined {
+  if (process.platform === 'darwin' && fs.existsSync('/usr/bin/script')) {
+    return {
+      command: '/usr/bin/script',
+      args: ['-q', '-e', '/dev/null', '/bin/sh', scriptPath],
+    };
+  }
+
+  if (process.platform === 'linux') {
+    const command = ['/usr/bin/script', '/bin/script'].find(fs.existsSync);
+    const version = command
+      ? spawnSync(command, ['--version'], { encoding: 'utf8' })
+      : undefined;
+    if (
+      command &&
+      version?.status === 0 &&
+      /util-linux/i.test(`${version.stdout}${version.stderr}`)
+    ) {
+      return {
+        command,
+        args: [
+          '-q',
+          '-e',
+          '-c',
+          'exec /bin/sh "$INIT_ROLES_TEST_SCRIPT"',
+          '/dev/null',
+        ],
+      };
+    }
+  }
+
+  return undefined;
+}
 
 describe('PostgreSQL role bootstrap', () => {
   const scriptPath = path.resolve(
@@ -74,6 +151,64 @@ describe('PostgreSQL role bootstrap', () => {
     expect(script).not.toContain('--set=app_password');
     expect(script).not.toContain('--set=backup_password');
   });
+
+  it('checks for a controlling terminal before reading secrets', () => {
+    const ttyProbe = script.indexOf('(: </dev/tty) 2>/dev/null');
+    const firstSecretRead = script.indexOf('postgres-migrator-password');
+
+    expect(ttyProbe).toBeGreaterThanOrEqual(0);
+    expect(firstSecretRead).toBeGreaterThan(ttyProbe);
+    expect(script).toContain(ttyError);
+    expect(script).not.toContain('setsid');
+  });
+
+  it('continues to secret reads without a controlling terminal', async () => {
+    const result = await runWithoutControllingTerminal(
+      '/bin/sh',
+      [scriptPath],
+      {
+        ...process.env,
+        POSTGRES_DB: 'portfolio',
+        POSTGRES_SECRET_DIR: '/does/not/exist',
+        POSTGRES_USER: 'postgres',
+      },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).not.toContain(ttyError);
+    expect(result.stderr).toContain(
+      '/does/not/exist/postgres-migrator-password',
+    );
+  });
+
+  const pty = ptyInvocation(scriptPath);
+  const controllingTerminalTest = pty ? it : it.skip;
+  controllingTerminalTest(
+    pty
+      ? 'rejects a controlling terminal before reading secrets'
+      : 'rejects a controlling terminal (skipped: no supported script utility)',
+    () => {
+      if (!pty) return;
+
+      const result = spawnSync(pty.command, pty.args, {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          INIT_ROLES_TEST_SCRIPT: scriptPath,
+          POSTGRES_DB: 'portfolio',
+          POSTGRES_SECRET_DIR: '/does/not/exist',
+          POSTGRES_USER: 'postgres',
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 5_000,
+      });
+      const output = `${result.stdout}${result.stderr}`;
+
+      expect(result.status).toBe(1);
+      expect(output).toContain(ttyError);
+      expect(output).not.toContain('/does/not/exist');
+    },
+  );
 
   it.each(['portfolio_migrator', 'portfolio_app', 'portfolio_backup'])(
     'rejects reserved bootstrap role %s before reading secrets',
