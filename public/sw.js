@@ -1,6 +1,21 @@
 const CACHE_NAME = 'mlp-shell-v2';
 const PRECACHE_MANIFEST = '/sw-manifest.json';
 
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.status === 200) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    throw error;
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
@@ -62,23 +77,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      (async () => {
-        try {
-          const response = await fetch(request);
-          if (response.status === 200) {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.put(request, response.clone());
-          }
-          return response;
-        } catch (error) {
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          throw error;
-        }
-      })(),
-    );
+  const isNextData =
+    url.pathname === '/_next/data' || url.pathname.startsWith('/_next/data/');
+  if (request.mode === 'navigate' || isNextData) {
+    event.respondWith(networkFirst(request));
     return;
   }
 

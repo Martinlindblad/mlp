@@ -631,6 +631,70 @@ test('failed navigation fetches fall back to the cache', async () => {
   assert.deepEqual(harness.calls.globalMatch, [eventRequest.url]);
 });
 
+test('Next-data GETs revalidate seeded cache and await exact-200 writes', async () => {
+  const eventRequest = request(
+    '/_next/data/build-123/cases/64b000000000000000000006.json',
+  );
+  const putGate = deferred();
+  const harness = await createWorkerHarness({
+    onPut: ({ key }) =>
+      key === eventRequest.url ? putGate.promise : Promise.resolve(),
+    routes: new Map([[eventRequest.url, response('fresh Next data')]]),
+    seed: [
+      {
+        cacheName: currentCacheName,
+        key: eventRequest.url,
+        response: response('stale Next data'),
+      },
+    ],
+  });
+  const dispatched = harness.dispatchFetch(eventRequest);
+  let settled = false;
+  dispatched.promise.finally(() => {
+    settled = true;
+  });
+
+  await nextTurn();
+  const beforeRelease = {
+    fetches: harness.calls.fetch.map(({ key }) => key),
+    puts: [...harness.calls.put],
+    settled,
+  };
+  putGate.resolve();
+  const result = await dispatched.promise;
+
+  assert.deepEqual(beforeRelease.fetches, [eventRequest.url]);
+  assert.deepEqual(beforeRelease.puts, [
+    { cacheName: currentCacheName, key: eventRequest.url, status: 200 },
+  ]);
+  assert.equal(beforeRelease.settled, false);
+  assert.equal(await result.text(), 'fresh Next data');
+});
+
+test('failed exact Next-data fetches fall back to the cache', async () => {
+  const eventRequest = request('/_next/data');
+  const harness = await createWorkerHarness({
+    fetch: async () => {
+      throw new Error('offline');
+    },
+    seed: [
+      {
+        cacheName: currentCacheName,
+        key: eventRequest.url,
+        response: response('cached Next data'),
+      },
+    ],
+  });
+  const result = await harness.dispatchFetch(eventRequest).promise;
+
+  assert.equal(await result.text(), 'cached Next data');
+  assert.deepEqual(
+    harness.calls.fetch.map(({ key }) => key),
+    [eventRequest.url],
+  );
+  assert.deepEqual(harness.calls.globalMatch, [eventRequest.url]);
+});
+
 test('static GET cache hits avoid the network', async () => {
   const eventRequest = request('/images/profilepicture.webp');
   const harness = await createWorkerHarness({
