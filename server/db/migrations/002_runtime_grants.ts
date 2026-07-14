@@ -19,7 +19,23 @@ const backupTables = [
   'kysely_migration_lock',
 ] as const;
 
+async function currentDatabaseName(db: Kysely<Database>): Promise<string> {
+  const result = await sql<{ name: string }>`
+    select current_database() as name
+  `.execute(db);
+  const name = result.rows[0]?.name;
+  if (!name) throw new Error('Unable to determine the current database');
+  return name;
+}
+
 export async function up(db: Kysely<Database>): Promise<void> {
+  const databaseName = await currentDatabaseName(db);
+  await sql`revoke connect, temporary on database ${sql.id(
+    databaseName,
+  )} from public`.execute(db);
+  await sql`grant connect on database ${sql.id(
+    databaseName,
+  )} to portfolio_app, portfolio_backup`.execute(db);
   await sql`grant usage on schema public to portfolio_app, portfolio_backup`.execute(
     db,
   );
@@ -42,6 +58,7 @@ export async function up(db: Kysely<Database>): Promise<void> {
 }
 
 export async function down(db: Kysely<Database>): Promise<void> {
+  const databaseName = await currentDatabaseName(db);
   for (const table of backupTables) {
     await sql
       .raw(`revoke select on table "${table}" from portfolio_backup`)
@@ -61,4 +78,10 @@ export async function down(db: Kysely<Database>): Promise<void> {
   await sql`revoke usage on schema public from portfolio_app, portfolio_backup`.execute(
     db,
   );
+  await sql`revoke connect on database ${sql.id(
+    databaseName,
+  )} from portfolio_app, portfolio_backup`.execute(db);
+  await sql`grant connect, temporary on database ${sql.id(
+    databaseName,
+  )} to public`.execute(db);
 }

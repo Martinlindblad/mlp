@@ -48,18 +48,75 @@ describe('database migrations', () => {
     expect(migrations.rows[0]?.name).toBe('002_runtime_grants');
   });
 
-  it('grants backup access to migration lock state', async () => {
+  it('enforces runtime database and backup privileges', async () => {
     await migrateToLatest(isolated.db);
 
-    const privilege = await sql<{ can_select: boolean }>`
-      select has_table_privilege(
-        'portfolio_backup',
-        'public.kysely_migration_lock',
-        'select'
-      ) as can_select
+    const privileges = await sql<{
+      app_connect: boolean;
+      app_temporary: boolean;
+      backup_connect: boolean;
+      backup_temporary: boolean;
+      public_connect: boolean;
+      public_temporary: boolean;
+      app_lock_select: boolean;
+      backup_all_select: boolean;
+    }>`
+      select
+        has_database_privilege(
+          'portfolio_app', current_database(), 'connect'
+        ) as app_connect,
+        has_database_privilege(
+          'portfolio_app', current_database(), 'temporary'
+        ) as app_temporary,
+        has_database_privilege(
+          'portfolio_backup', current_database(), 'connect'
+        ) as backup_connect,
+        has_database_privilege(
+          'portfolio_backup', current_database(), 'temporary'
+        ) as backup_temporary,
+        has_database_privilege(
+          0::oid, current_database(), 'connect'
+        ) as public_connect,
+        has_database_privilege(
+          0::oid, current_database(), 'temporary'
+        ) as public_temporary,
+        has_table_privilege(
+          'portfolio_app', 'public.kysely_migration_lock', 'select'
+        ) as app_lock_select,
+        (
+          select bool_and(
+            has_table_privilege(
+              'portfolio_backup', 'public.' || table_name, 'select'
+            )
+          )
+          from (
+            values
+              ('profile_sections'),
+              ('current_occupations'),
+              ('hobbies'),
+              ('languages'),
+              ('page_cards'),
+              ('professional_timeline'),
+              ('projects'),
+              ('pursuits'),
+              ('social_links'),
+              ('contact_messages'),
+              ('kysely_migration'),
+              ('kysely_migration_lock')
+          ) as backup_tables(table_name)
+        ) as backup_all_select
     `.execute(isolated.db);
 
-    expect(privilege.rows[0]?.can_select).toBe(true);
+    expect(privileges.rows[0]).toEqual({
+      app_connect: true,
+      app_temporary: false,
+      backup_connect: true,
+      backup_temporary: false,
+      public_connect: false,
+      public_temporary: false,
+      app_lock_select: false,
+      backup_all_select: true,
+    });
   });
 
   it('matches nullable legacy read fields and the required occupation title', async () => {
