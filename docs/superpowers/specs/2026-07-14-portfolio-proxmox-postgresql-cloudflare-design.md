@@ -178,8 +178,10 @@ The sequence is:
 5. Set the application-record TTL to 300 seconds at least 24 hours before
    cutover.
 6. Change registrar nameservers to Cloudflare.
-7. Verify DNS through multiple public resolvers while Vercel still serves the
-   application.
+7. Keep the cloned application records pointed at Vercel for at least 48 hours,
+   because the observed registry-delegation NS TTL is 172800 seconds. Verify
+   Cloudflare authority through multiple public resolvers throughout that
+   interval while Vercel still serves the application.
 8. Create one remotely managed production tunnel named `mlp-prod`.
 9. Configure the temporary hostname `migration.martin-lindblad.com` to route
    to Caddy and protect it with Cloudflare Access for the operator identity.
@@ -267,22 +269,32 @@ ObjectId strings are preserved exactly. New contact rows use
 `crypto.randomUUID()` serialized as text. API adapters map `id` back to `_id`
 where existing clients expect `_id`.
 
+Each of the nine read-only content tables also has an internal
+`source_order integer not null` column. The migration records the exact order
+returned by the source snapshot, repositories use it before applying their
+legacy limits, and serializers never expose it. This preserves the current
+MongoDB `find({}).limit(...)` presentation order without relying on
+PostgreSQL's unspecified row order. `contact_messages` does not need this
+column because no public endpoint lists contact messages.
+
 The tables contain these domain columns:
 
-- `profile_sections`: `id`, `key`, `title`, `info`, `name`, `surname`,
-  `description text[]`, `image_source`, `link`, `link_text`, `profile_image`.
-- `current_occupations`: `id`, `occupation_type`, `description`, `from_label`,
-  `to_label`, `introduction`, `name`, `link`.
-- `hobbies`: `id`, `title`, `content`, `type`.
-- `languages`: `id`, `name`, `spoken`, `written`.
-- `page_cards`: `id`, `title`, `description`, `link`, `content`, `key`, `type`.
+- `profile_sections`: `id`, `source_order`, `key`, `title`, `info`, `name`,
+  `surname`, `description text[]`, `image_source`, `link`, `link_text`,
+  `profile_image`.
+- `current_occupations`: `id`, `source_order`, `occupation_type`,
+  `description`, `from_label`, `to_label`, `introduction`, `name`, `link`.
+- `hobbies`: `id`, `source_order`, `title`, `content`, `type`.
+- `languages`: `id`, `source_order`, `name`, `spoken`, `written`.
+- `page_cards`: `id`, `source_order`, `title`, `description`, `link`, `content`,
+  `key`, `type`.
 - `professional_timeline`: `id`, `company`, `institution`, `qualification`,
-  `duration`, `title`, `description`, `sort_index`.
-- `projects`: `id`, `title`, `description`, `image_source`, `from_label`,
-  `to_label`, `project_details jsonb`.
-- `pursuits`: `id`, `title`, `description`, `left_image_source`,
-  `right_image_source`.
-- `social_links`: `id`, `name`, `link`.
+  `duration`, `title`, `description`, `sort_index`, `source_order`.
+- `projects`: `id`, `source_order`, `title`, `description`, `image_source`,
+  `from_label`, `to_label`, `project_details jsonb`.
+- `pursuits`: `id`, `source_order`, `title`, `description`,
+  `left_image_source`, `right_image_source`.
+- `social_links`: `id`, `source_order`, `name`, `link`.
 - `contact_messages`: `id`, `full_name`, `email`, `subject`, `message`,
   `created_at timestamptz`.
 
