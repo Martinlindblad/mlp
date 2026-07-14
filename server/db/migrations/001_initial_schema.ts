@@ -22,6 +22,7 @@ export async function up(db: Kysely<Database>): Promise<void> {
     .createTable('current_occupations')
     .addColumn('id', 'text', (column) => column.primaryKey())
     .addColumn('source_order', 'integer', (column) => column.notNull())
+    .addColumn('title', 'text', (column) => column.notNull())
     .addColumn('occupation_type', 'text', (column) => column.notNull())
     .addColumn('description', 'text', (column) => column.notNull())
     .addColumn('from_label', 'text', (column) => column.notNull())
@@ -56,7 +57,7 @@ export async function up(db: Kysely<Database>): Promise<void> {
     .addColumn('title', 'text', (column) => column.notNull())
     .addColumn('description', 'text', (column) => column.notNull())
     .addColumn('link', 'text', (column) => column.notNull())
-    .addColumn('content', 'text', (column) => column.notNull())
+    .addColumn('content', 'text')
     .addColumn('key', 'text', (column) => column.notNull())
     .addColumn('type', 'text', (column) => column.notNull())
     .execute();
@@ -81,8 +82,8 @@ export async function up(db: Kysely<Database>): Promise<void> {
     .addColumn('title', 'text', (column) => column.notNull())
     .addColumn('description', 'text', (column) => column.notNull())
     .addColumn('image_source', 'text', (column) => column.notNull())
-    .addColumn('from_label', 'text', (column) => column.notNull())
-    .addColumn('to_label', 'text', (column) => column.notNull())
+    .addColumn('from_label', 'text')
+    .addColumn('to_label', 'text')
     .addColumn('project_details', 'jsonb', (column) => column.notNull())
     .execute();
 

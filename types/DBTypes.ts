@@ -7,9 +7,15 @@ export interface PersonalInfo {
   name: string;
   surname: string;
   key: 'introduction' | 'about' | 'more' | 'japanese';
+  description?: string[];
+  imageSource?: string;
+  link?: string;
+  linkText?: string;
+  profileImage?: string;
 }
 export interface CareerSummary {
   _id: LegacyId;
+  title: string;
   occupationType: string;
   description: string;
   from: string;
@@ -30,7 +36,7 @@ export interface InformationCard {
   title: string;
   description: string;
   link: string;
-  content: string;
+  content?: string;
   key: 'experience' | 'about' | 'contact';
   type: 'introdcution';
 }
@@ -104,6 +110,7 @@ export interface ProjectDetails {
   videoTitle?: string;
   videoDescription?: string;
   imageSources?: string[];
+  imagesSources?: string[];
   roleDetails: string[];
   roleTitle: string;
   links?: {
@@ -117,8 +124,8 @@ export interface CaseData {
   title: string;
   description: string;
   imageSource: string;
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
   projectDetails: ProjectDetails;
 }
 

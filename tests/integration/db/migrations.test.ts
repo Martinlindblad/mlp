@@ -61,4 +61,47 @@ describe('database migrations', () => {
 
     expect(privilege.rows[0]?.can_select).toBe(true);
   });
+
+  it('matches nullable legacy read fields and the required occupation title', async () => {
+    await migrateToLatest(isolated.db);
+
+    const columns = await sql<{
+      table_name: string;
+      column_name: string;
+      is_nullable: 'YES' | 'NO';
+    }>`
+      select table_name, column_name, is_nullable
+      from information_schema.columns
+      where table_schema = 'public'
+      and (
+        (table_name = 'current_occupations' and column_name = 'title')
+        or (table_name = 'page_cards' and column_name = 'content')
+        or (table_name = 'projects' and column_name in ('from_label', 'to_label'))
+      )
+      order by table_name, column_name
+    `.execute(isolated.db);
+
+    expect(columns.rows).toEqual([
+      {
+        table_name: 'current_occupations',
+        column_name: 'title',
+        is_nullable: 'NO',
+      },
+      {
+        table_name: 'page_cards',
+        column_name: 'content',
+        is_nullable: 'YES',
+      },
+      {
+        table_name: 'projects',
+        column_name: 'from_label',
+        is_nullable: 'YES',
+      },
+      {
+        table_name: 'projects',
+        column_name: 'to_label',
+        is_nullable: 'YES',
+      },
+    ]);
+  });
 });

@@ -17,6 +17,7 @@ export interface ProfileSectionsTable extends Imported {
 }
 
 export interface CurrentOccupationsTable extends Imported {
+  title: string;
   occupation_type: string;
   description: string;
   from_label: string;
@@ -42,7 +43,7 @@ export interface PageCardsTable extends Imported {
   title: string;
   description: string;
   link: string;
-  content: string;
+  content: string | null;
   key: string;
   type: string;
 }
@@ -61,8 +62,8 @@ export interface ProjectsTable extends Imported {
   title: string;
   description: string;
   image_source: string;
-  from_label: string;
-  to_label: string;
+  from_label: string | null;
+  to_label: string | null;
   project_details: JSONColumnType<ProjectDetails>;
 }
 
