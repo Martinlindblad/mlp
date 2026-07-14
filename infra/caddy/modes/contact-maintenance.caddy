@@ -1,0 +1,6 @@
+@contact_maintenance {
+	method POST
+	path /api/contact/route
+}
+header @contact_maintenance Retry-After 300
+respond @contact_maintenance "Contact form temporarily unavailable" 503

@@ -1,0 +1,309 @@
+name: mlp-prod
+
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '5'
+
+x-harden: &harden
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  postgres:
+    <<: *harden
+    image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+    user: '70:70'
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: portfolio
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-bootstrap-password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - source: postgres-bootstrap-password
+        target: postgres-bootstrap-password
+        uid: '70'
+        gid: '70'
+        mode: 0400
+      - source: postgres-migrator-password
+        target: postgres-migrator-password
+        uid: '70'
+        gid: '70'
+        mode: 0400
+      - source: postgres-app-password
+        target: postgres-app-password
+        uid: '70'
+        gid: '70'
+        mode: 0400
+      - source: postgres-backup-password
+        target: postgres-backup-password
+        uid: '70'
+        gid: '70'
+        mode: 0400
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./infra/postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-init-roles.sh:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,uid=70,gid=70,mode=1770
+      - /var/run/postgresql:rw,noexec,nosuid,nodev,uid=70,gid=70,mode=0770
+    networks:
+      database: {}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          PGPASSWORD="$$(cat /run/secrets/postgres-migrator-password)"
+          exec psql -h 127.0.0.1 -w -X -qAt -U portfolio_migrator -d portfolio -c 'select 1' >/dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging: *bounded-logging
+
+  migrator:
+    <<: *harden
+    image: ${APP_IMAGE:?APP_IMAGE must be an immutable digest}
+    user: '1000:1000'
+    restart: 'no'
+    command:
+      - node
+      - /app/dist/scripts/db/migrate.js
+    environment:
+      PGHOST: ${MIGRATOR_PGHOST:?MIGRATOR_PGHOST is required}
+      PGPORT: ${MIGRATOR_PGPORT:?MIGRATOR_PGPORT is required}
+      PGDATABASE: ${MIGRATOR_PGDATABASE:?MIGRATOR_PGDATABASE is required}
+      PGUSER: ${MIGRATOR_PGUSER:?MIGRATOR_PGUSER is required}
+      PGPASSWORD_FILE: /run/secrets/postgres-migrator-password
+      PGPOOL_MAX: ${MIGRATOR_PGPOOL_MAX:?MIGRATOR_PGPOOL_MAX is required}
+      PGCONNECT_TIMEOUT_MS: ${MIGRATOR_PGCONNECT_TIMEOUT_MS:?MIGRATOR_PGCONNECT_TIMEOUT_MS is required}
+    secrets:
+      - source: postgres-migrator-password
+        target: postgres-migrator-password
+        uid: '1000'
+        gid: '1000'
+        mode: 0400
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=1770
+    networks:
+      database: {}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    logging: *bounded-logging
+
+  app:
+    <<: *harden
+    image: ${APP_IMAGE:?APP_IMAGE must be an immutable digest}
+    user: '1000:1000'
+    restart: unless-stopped
+    environment:
+      PGHOST: ${APP_PGHOST:?APP_PGHOST is required}
+      PGPORT: ${APP_PGPORT:?APP_PGPORT is required}
+      PGDATABASE: ${APP_PGDATABASE:?APP_PGDATABASE is required}
+      PGUSER: ${APP_PGUSER:?APP_PGUSER is required}
+      PGPASSWORD_FILE: /run/secrets/postgres-app-password
+      PGPOOL_MAX: ${APP_PGPOOL_MAX:?APP_PGPOOL_MAX is required}
+      PGCONNECT_TIMEOUT_MS: ${APP_PGCONNECT_TIMEOUT_MS:?APP_PGCONNECT_TIMEOUT_MS is required}
+    secrets:
+      - source: postgres-app-password
+        target: postgres-app-password
+        uid: '1000'
+        gid: '1000'
+        mode: 0400
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=1770
+      - /app/.next/cache:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700
+    networks:
+      web: {}
+      database: {}
+      egress:
+        gw_priority: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3000/api/health/ready',{signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    logging: *bounded-logging
+
+  caddy:
+    <<: *harden
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    user: '65532:65532'
+    restart: unless-stopped
+    environment:
+      CONTACT_MODE: ${APP_CONTACT_MODE:?APP_CONTACT_MODE is required}
+    volumes:
+      - ./infra/caddy:/etc/caddy:ro
+    tmpfs:
+      - /config:rw,noexec,nosuid,nodev,uid=65532,gid=65532,mode=0700
+      - /data:rw,noexec,nosuid,nodev,uid=65532,gid=65532,mode=0700
+      - /tmp:rw,noexec,nosuid,nodev,uid=65532,gid=65532,mode=1770
+    networks:
+      tunnel: {}
+      web: {}
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - --header=Host:martin-lindblad.com
+        - --header=CF-Connecting-IP:127.0.0.1
+        - --spider
+        - http://127.0.0.1:8080/api/health/live
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 10s
+    logging: *bounded-logging
+
+  cloudflared-a: &cloudflared
+    <<: *harden
+    image: cloudflare/cloudflared:2026.7.1@sha256:188bb03589a32affed3cf4d0590565ffe67b78866e6b5582574afab2b705bafe
+    user: '65532:65532'
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --metrics
+      - 127.0.0.1:2000
+      - run
+      - --token-file
+      - /run/secrets/cloudflare-tunnel-token
+    secrets:
+      - source: cloudflare-tunnel-token
+        target: cloudflare-tunnel-token
+        uid: '65532'
+        gid: '65532'
+        mode: 0400
+    networks:
+      tunnel: {}
+      egress:
+        gw_priority: 1
+    ulimits:
+      nofile:
+        soft: 70000
+        hard: 70000
+    depends_on:
+      caddy:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - cloudflared
+        - tunnel
+        - --metrics
+        - 127.0.0.1:2000
+        - ready
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    logging: *bounded-logging
+
+  cloudflared-b:
+    <<: *cloudflared
+    secrets:
+      - source: cloudflare-tunnel-token
+        target: cloudflare-tunnel-token
+        uid: '65532'
+        gid: '65532'
+        mode: 0400
+
+  db-backup:
+    <<: *harden
+    image: ${BACKUP_IMAGE:?BACKUP_IMAGE must be an immutable digest}
+    user: '10001:10001'
+    profiles:
+      - jobs
+    restart: 'no'
+    environment:
+      PGHOST: ${BACKUP_PGHOST:?BACKUP_PGHOST is required}
+      PGPORT: ${BACKUP_PGPORT:?BACKUP_PGPORT is required}
+      PGDATABASE: ${BACKUP_PGDATABASE:?BACKUP_PGDATABASE is required}
+      PGUSER: ${BACKUP_PGUSER:?BACKUP_PGUSER is required}
+      PGPASSWORD_FILE: /run/secrets/postgres-backup-password
+      RESTIC_PASSWORD_FILE: /run/secrets/restic-password
+      RESTIC_S3_ACCESS_KEY_ID_FILE: /run/secrets/restic-s3-access-key-id
+      RESTIC_S3_SECRET_ACCESS_KEY_FILE: /run/secrets/restic-s3-secret-access-key
+      RESTIC_REPOSITORY: ${BACKUP_RESTIC_REPOSITORY:?BACKUP_RESTIC_REPOSITORY is required}
+    secrets:
+      - source: postgres-backup-password
+        target: postgres-backup-password
+        uid: '10001'
+        gid: '10001'
+        mode: 0400
+      - source: restic-password
+        target: restic-password
+        uid: '10001'
+        gid: '10001'
+        mode: 0400
+      - source: restic-s3-access-key-id
+        target: restic-s3-access-key-id
+        uid: '10001'
+        gid: '10001'
+        mode: 0400
+      - source: restic-s3-secret-access-key
+        target: restic-s3-secret-access-key
+        uid: '10001'
+        gid: '10001'
+        mode: 0400
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,uid=10001,gid=10001,mode=1770
+    networks:
+      database: {}
+      egress:
+        gw_priority: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *bounded-logging
+
+networks:
+  tunnel:
+    internal: true
+  web:
+    internal: true
+  database:
+    internal: true
+  egress: {}
+
+volumes:
+  postgres-data: {}
+
+secrets:
+  postgres-bootstrap-password:
+    environment: MLP_POSTGRES_BOOTSTRAP_PASSWORD
+  postgres-migrator-password:
+    environment: MLP_POSTGRES_MIGRATOR_PASSWORD
+  postgres-app-password:
+    environment: MLP_POSTGRES_APP_PASSWORD
+  postgres-backup-password:
+    environment: MLP_POSTGRES_BACKUP_PASSWORD
+  cloudflare-tunnel-token:
+    environment: MLP_CLOUDFLARE_TUNNEL_TOKEN
+  restic-password:
+    environment: MLP_RESTIC_PASSWORD
+  restic-s3-access-key-id:
+    environment: MLP_RESTIC_S3_ACCESS_KEY_ID
+  restic-s3-secret-access-key:
+    environment: MLP_RESTIC_S3_SECRET_ACCESS_KEY

@@ -1,0 +1,52 @@
+services:
+  app:
+    image: ${MLP_NODE_IMAGE:?MLP_NODE_IMAGE is required}
+    command: ['node', '/home/node/echo-server.mjs']
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    tmpfs:
+      - /tmp:mode=1777,uid=1000,gid=1000
+    volumes:
+      - type: bind
+        source: ${MLP_REPOSITORY_ROOT:?MLP_REPOSITORY_ROOT is required}/tests/infra/fixtures/echo-server.mjs
+        target: /home/node/echo-server.mjs
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [fixture]
+
+  caddy-enabled: &caddy
+    image: ${MLP_CADDY_IMAGE:?MLP_CADDY_IMAGE is required}
+    entrypoint: ['/usr/bin/caddy']
+    command:
+      ['run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile']
+    environment:
+      CONTACT_MODE: contact-enabled
+    user: '65532:65532'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    tmpfs:
+      - /config:mode=0700,uid=65532,gid=65532
+      - /data:mode=0700,uid=65532,gid=65532
+      - /tmp:mode=1777,uid=65532,gid=65532
+    volumes:
+      - type: bind
+        source: ${MLP_REPOSITORY_ROOT:?MLP_REPOSITORY_ROOT is required}/infra/caddy
+        target: /etc/caddy
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [fixture]
+    depends_on: [app]
+
+  caddy-maintenance:
+    <<: *caddy
+    environment:
+      CONTACT_MODE: contact-maintenance
+
+networks:
+  fixture:
+    internal: true

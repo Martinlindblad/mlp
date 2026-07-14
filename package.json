@@ -25,6 +25,7 @@
     "test:assets:node": "node --test tests/assets/local-assets.test.mjs tests/assets/service-worker.test.mjs",
     "test:assets:verification": "vitest run tests/unit/migration/verification-assets.test.ts",
     "test:images": "node --test tests/infra/docker-image.test.mjs tests/infra/migration-image.test.mjs",
+    "test:compose": "node --test tests/infra/compose.test.mjs tests/infra/compose-wrapper.test.mjs tests/infra/caddy.test.mjs",
     "migration:rehearsal": "tsx scripts/migration/run-rehearsal.ts",
     "migration:preload": "tsx scripts/migration/preload-content.ts",
     "migration:contacts": "tsx scripts/migration/finalize-contacts.ts",
@@ -94,6 +95,7 @@
     "tailwindcss-rtl": "^0.9.0",
     "tsx": "4.23.1",
     "typescript": "^5.2.2",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "yaml": "2.9.0"
   }
 }
