@@ -18,6 +18,11 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration --no-file-parallelism",
     "test:e2e": "playwright test",
+    "migration:rehearsal": "tsx scripts/migration/run-rehearsal.ts",
+    "migration:preload": "tsx scripts/migration/preload-content.ts",
+    "migration:contacts": "tsx scripts/migration/finalize-contacts.ts",
+    "migration:remove-synthetic": "tsx scripts/migration/remove-synthetic-contact.ts",
+    "migration:typecheck": "tsc --project tsconfig.migration.json",
     "typecheck": "tsc --noEmit --pretty",
     "setup-db": "ts-node scripts/setupSchema.ts",
     "postinstall": "patch-package"

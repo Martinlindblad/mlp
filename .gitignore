@@ -40,3 +40,4 @@ next-env.d.ts
 # codex local workspaces and execution ledger
 /.worktrees/
 /.superpowers/
+/migration-artifacts/
