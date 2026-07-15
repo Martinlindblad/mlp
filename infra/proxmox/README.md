@@ -70,11 +70,14 @@ exit status 2, `degraded done`, no errors, and exactly this deprecation:
 'user' of type string is deprecated in 22.2 and scheduled to be removed in 27.2. Use 'users' list instead.
 ```
 
-Any other exit status, malformed or incomplete JSON, real error, recoverable
-category, or recoverable message fails closed before apt. This repeat gate is
-needed because `ciupgrade=1` can still hold apt and dpkg locks after SSH becomes
-available. Choose all four exact package versions during the reviewed deployment
-change. Do not copy version examples from this runbook.
+The degraded JSON must contain two identical top-level copies because it
+aggregates exactly one copy from each of `init` and `modules-config`;
+`init-local` and `modules-final` must have no recoverable errors. An extra copy,
+a copy in another stage, any other exit status, malformed or incomplete JSON,
+real error, recoverable category, or recoverable message fails closed before
+apt. This repeat gate is needed because `ciupgrade=1` can still hold apt and dpkg
+locks after SSH becomes available. Choose all four exact package versions during
+the reviewed deployment change. Do not copy version examples from this runbook.
 
 ```bash
 export MANAGEMENT_CIDR='10.23.0.0/24'

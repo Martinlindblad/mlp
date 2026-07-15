@@ -60,6 +60,36 @@ function cloudInitStatus(overrides = {}) {
   });
 }
 
+function liveDegradedCloudInitPayload() {
+  const reviewedStageDeprecation = () => ({
+    DEPRECATED: [reviewedCloudInitDeprecation],
+  });
+  const completedStage = (recoverableErrors) => ({
+    errors: [],
+    finished: 1,
+    recoverable_errors: recoverableErrors,
+    start: 0,
+  });
+
+  return {
+    boot_status_code: 'enabled-by-generator',
+    datasource: 'nocloud',
+    detail: 'DataSourceNoCloud',
+    errors: [],
+    extended_status: 'degraded done',
+    init: completedStage(reviewedStageDeprecation()),
+    'init-local': completedStage({}),
+    last_update: 'Thu, 16 Jul 2026 00:00:00 +0000',
+    'modules-config': completedStage(reviewedStageDeprecation()),
+    'modules-final': completedStage({}),
+    recoverable_errors: {
+      DEPRECATED: [reviewedCloudInitDeprecation, reviewedCloudInitDeprecation],
+    },
+    stage: null,
+    status: 'done',
+  };
+}
+
 async function writeExecutable(file, source) {
   await writeFile(file, source, { mode: 0o755 });
   await chmod(file, 0o755);
@@ -1289,22 +1319,14 @@ test('bootstrap fails closed on unreviewed supply chain or network state', async
 });
 
 test('bootstrap accepts the exact reviewed cloud-init deprecation', async (t) => {
-  const deprecation = {
-    DEPRECATED: [reviewedCloudInitDeprecation],
-  };
   const harness = await makeBootstrapHarness(t);
   const result = run(harness.script, {
     env: {
       ...harness.env,
       FAKE_CLOUD_INIT_EXIT: '2',
-      FAKE_CLOUD_INIT_STATUS_JSON: cloudInitStatus({
-        extended_status: 'degraded done',
-        'modules-config': {
-          errors: [],
-          recoverable_errors: deprecation,
-        },
-        recoverable_errors: deprecation,
-      }),
+      FAKE_CLOUD_INIT_STATUS_JSON: JSON.stringify(
+        liveDegradedCloudInitPayload(),
+      ),
     },
   });
 
@@ -1329,6 +1351,15 @@ test('bootstrap explicitly gates the pinned cloud-init JSON parser', async () =>
 
 test('bootstrap rejects malformed or unreviewed cloud-init status before apt', async (t) => {
   const exactDeprecation = {
+    DEPRECATED: [reviewedCloudInitDeprecation],
+  };
+  const extraAggregateCopy = liveDegradedCloudInitPayload();
+  extraAggregateCopy.recoverable_errors.DEPRECATED.push(
+    reviewedCloudInitDeprecation,
+  );
+  const reviewedCopyInWrongStage = liveDegradedCloudInitPayload();
+  reviewedCopyInWrongStage['modules-config'].recoverable_errors = {};
+  reviewedCopyInWrongStage['modules-final'].recoverable_errors = {
     DEPRECATED: [reviewedCloudInitDeprecation],
   };
   for (const [name, exitCode, statusJson] of [
@@ -1379,6 +1410,12 @@ test('bootstrap rejects malformed or unreviewed cloud-init status before apt', a
           recoverable_errors: exactDeprecation,
         },
       }),
+    ],
+    ['extra-reviewed-aggregate-copy', '2', JSON.stringify(extraAggregateCopy)],
+    [
+      'reviewed-copy-in-wrong-stage',
+      '2',
+      JSON.stringify(reviewedCopyInWrongStage),
     ],
     ['clean-json-wrong-exit', '2', cloudInitStatus()],
     [
@@ -1474,6 +1511,8 @@ test('firewall template and runbook preserve private staged activation', async (
   assert.match(readme, /cloud-init status --wait --long --format json/u);
   assert.ok(readme.includes(reviewedCloudInitDeprecation));
   assert.match(readme, /exit (?:code|status) 2/iu);
+  assert.match(readme, /two identical top-level copies/iu);
+  assert.match(readme, /`init` and `modules-config`/u);
   assert.match(readme, /apt-daily-upgrade\.timer/u);
   assert.match(readme, /APP_CADDY_IMAGE/u);
   assert.match(readme, /caddy-image-ref\.txt/u);

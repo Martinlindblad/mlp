@@ -161,7 +161,10 @@ reviewed_deprecation = (
     "\u0027user\u0027 of type string is deprecated in 22.2 and scheduled to be "
     "removed in 27.2. Use \u0027users\u0027 list instead."
 )
-reviewed_recoverable_errors = {"DEPRECATED": [reviewed_deprecation]}
+reviewed_stage_recoverable_errors = {"DEPRECATED": [reviewed_deprecation]}
+reviewed_aggregate_recoverable_errors = {
+    "DEPRECATED": [reviewed_deprecation, reviewed_deprecation]
+}
 
 
 def unique_object(pairs):
@@ -177,26 +180,27 @@ def reject_constant(value):
     raise ValueError(f"non-standard JSON constant: {value}")
 
 
-def outcomes_are_reviewed(value, allowed_recoverable_errors):
+def errors_are_empty(value):
     if isinstance(value, dict):
         if "errors" in value and value["errors"] != []:
             return False
-        if (
-            "recoverable_errors" in value
-            and value["recoverable_errors"]
-            not in allowed_recoverable_errors
-        ):
-            return False
-        return all(
-            outcomes_are_reviewed(item, allowed_recoverable_errors)
-            for item in value.values()
-        )
+        return all(errors_are_empty(item) for item in value.values())
     if isinstance(value, list):
-        return all(
-            outcomes_are_reviewed(item, allowed_recoverable_errors)
-            for item in value
-        )
+        return all(errors_are_empty(item) for item in value)
     return True
+
+
+def recoverable_errors_by_path(value, path=()):
+    found = {}
+    if isinstance(value, dict):
+        if "recoverable_errors" in value:
+            found[path] = value["recoverable_errors"]
+        for key, item in value.items():
+            found.update(recoverable_errors_by_path(item, path + (key,)))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            found.update(recoverable_errors_by_path(item, path + (index,)))
+    return found
 
 
 try:
@@ -228,15 +232,24 @@ clean_done = (
 reviewed_degraded_done = (
     command_status == 2
     and extended_status == "degraded done"
-    and recoverable_errors == reviewed_recoverable_errors
+    and recoverable_errors == reviewed_aggregate_recoverable_errors
 )
-if not (clean_done or reviewed_degraded_done):
+if not (clean_done or reviewed_degraded_done) or not errors_are_empty(payload):
     raise SystemExit(1)
-allowed_recoverable_errors = (
-    ({}, reviewed_recoverable_errors) if reviewed_degraded_done else ({},)
-)
-if not outcomes_are_reviewed(payload, allowed_recoverable_errors):
-    raise SystemExit(1)
+recoverable_outcomes = recoverable_errors_by_path(payload)
+if clean_done:
+    if any(outcome != {} for outcome in recoverable_outcomes.values()):
+        raise SystemExit(1)
+else:
+    reviewed_degraded_outcomes = {
+        (): reviewed_aggregate_recoverable_errors,
+        ("init",): reviewed_stage_recoverable_errors,
+        ("init-local",): {},
+        ("modules-config",): reviewed_stage_recoverable_errors,
+        ("modules-final",): {},
+    }
+    if recoverable_outcomes != reviewed_degraded_outcomes:
+        raise SystemExit(1)
 ' "$cloud_init_status_code"; then
   fail 'cloud-init first boot did not complete with a reviewed status' 69
 fi
