@@ -26,9 +26,9 @@ services:
     cap_drop: [ALL]
     security_opt: ['no-new-privileges:true']
     tmpfs:
-      - /config:mode=0700,uid=65532,gid=65532
-      - /data:mode=0700,uid=65532,gid=65532
-      - /tmp:mode=1777,uid=65532,gid=65532
+      - /config:rw,noexec,nosuid,nodev,mode=0700,uid=65532,gid=65532
+      - /data:rw,noexec,nosuid,nodev,mode=0700,uid=65532,gid=65532
+      - /tmp:rw,noexec,nosuid,nodev,mode=1770,uid=65532,gid=65532
     volumes:
       - type: bind
         source: ${MLP_REPOSITORY_ROOT:?MLP_REPOSITORY_ROOT is required}/infra/caddy

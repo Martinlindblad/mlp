@@ -672,11 +672,53 @@ async function inspectCaddyMounts(composeArgs, service, dockerOptions = {}) {
   const byDestination = new Map(
     mounts.map((mount) => [mount.Destination, mount]),
   );
-  for (const destination of ['/config', '/data', '/tmp']) {
-    assert.equal(byDestination.get(destination)?.Type, 'tmpfs');
-  }
   assert.equal(byDestination.get('/etc/caddy')?.Type, 'bind');
   assert.equal(byDestination.get('/etc/caddy')?.RW, false);
+
+  const { stdout: tmpfsOutput } = await docker(
+    ['inspect', '--format', '{{json .HostConfig.Tmpfs}}', containerId],
+    dockerOptions,
+  );
+  const tmpfs = JSON.parse(tmpfsOutput);
+  assert.deepEqual(Object.keys(tmpfs).sort(), ['/config', '/data', '/tmp']);
+  for (const [destination, mode] of [
+    ['/config', 'mode=0700'],
+    ['/data', 'mode=0700'],
+    ['/tmp', 'mode=1770'],
+  ]) {
+    const options = new Set(tmpfs[destination].split(','));
+    for (const required of [
+      'rw',
+      'noexec',
+      'nosuid',
+      'nodev',
+      mode,
+      'uid=65532',
+      'gid=65532',
+    ]) {
+      assert.equal(
+        options.has(required),
+        true,
+        `${service}/${destination} must retain ${required}`,
+      );
+    }
+  }
+
+  const { stdout: tmpfsMetadata } = await docker(
+    [
+      'exec',
+      containerId,
+      '/bin/sh',
+      '-ceu',
+      "stat -c '%u:%g:%a' /config /data /tmp",
+    ],
+    dockerOptions,
+  );
+  assert.deepEqual(tmpfsMetadata.trim().split('\n'), [
+    '65532:65532:700',
+    '65532:65532:700',
+    '65532:65532:1770',
+  ]);
 }
 
 test(

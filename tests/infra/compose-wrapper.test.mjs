@@ -570,7 +570,7 @@ exec /work/compose.sh "$@"
       '--tmpfs',
       '/opt/mlp:rw,nosuid,nodev,noexec,mode=0700',
       '--tmpfs',
-      '/usr/local/libexec/mlp:rw,nosuid,nodev,mode=0755',
+      '/usr/local/libexec/mlp:rw,nosuid,nodev,exec,mode=0755',
       ...dockerEnvironment,
       '--mount',
       dockerMount(wrapperPath, '/work/compose.sh'),
