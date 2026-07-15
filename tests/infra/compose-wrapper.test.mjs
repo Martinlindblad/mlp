@@ -495,9 +495,9 @@ printf '%s\\n' "$@" > /capture/arguments
 : > /capture/staged
 for secret in /etc/mlp/compose-secrets/*; do
   [ -f "$secret" ] || continue
-  printf '%s|' "\${secret##*/}" >> /capture/staged
-  stat -c '%u:%g:%a:%h|' "$secret" >> /capture/staged
-  sha256sum "$secret" | cut -d' ' -f1 >> /capture/staged
+  metadata="$(stat -c '%u:%g:%a:%h' "$secret")"
+  digest="$(sha256sum "$secret" | cut -d' ' -f1)"
+  printf '%s|%s|%s\\n' "\${secret##*/}" "$metadata" "$digest" >> /capture/staged
 done
 chmod 0644 /capture/invoked /capture/arguments /capture/process-environment /capture/staged
 `,

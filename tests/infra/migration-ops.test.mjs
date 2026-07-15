@@ -25,6 +25,8 @@ const repositoryRoot = path.resolve(
 );
 const composePath = path.join(repositoryRoot, 'compose.migration.yml');
 const scriptPath = path.join(repositoryRoot, 'ops/migration.sh');
+const nativeChownPath =
+  process.platform === 'darwin' ? '/usr/sbin/chown' : '/bin/chown';
 const environmentPath = path.join(
   repositoryRoot,
   'infra/runtime.example/env/migration.env',
@@ -786,7 +788,7 @@ async function makeHarness(database = 'portfolio') {
     ['/usr/bin/docker', docker],
     [
       '/bin/chown 1000:1000 --',
-      `/usr/sbin/chown ${process.getuid()}:${process.getgid()}`,
+      `${nativeChownPath} ${process.getuid()}:${process.getgid()}`,
     ],
     ['/bin/chmod 0400 --', '/bin/chmod 0400'],
     ['/var/lib/mlp/migration-artifacts/operator', artifactOperator],
