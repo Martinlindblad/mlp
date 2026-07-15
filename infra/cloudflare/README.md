@@ -6,9 +6,9 @@ service environment value or command argument.
 
 Configure public hostname routes in this exact order:
 
-1. `martin-lindblad.com` -> `http://caddy:8080`
-2. `www.martin-lindblad.com` -> `http://caddy:8080`
-3. `migration.martin-lindblad.com` -> `http://caddy:8080`
+1. `migration.martin-lindblad.com` -> `http://caddy:8080`
+2. `martin-lindblad.com` -> `http://caddy:8080`
+3. `www.martin-lindblad.com` -> `http://caddy:8080`
 4. Final catch-all -> HTTP 404
 
 Cloudflare Access applies only to `migration.martin-lindblad.com` and the

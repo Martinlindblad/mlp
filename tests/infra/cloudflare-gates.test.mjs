@@ -24,6 +24,7 @@ const repositoryRoot = path.resolve(
 const dnsScriptRelative = 'scripts/acceptance/dns-authority.sh';
 const tunnelScriptRelative = 'scripts/acceptance/tunnel-health.sh';
 const runbookRelative = 'runbooks/cloudflare-dns-and-tunnel.md';
+const cloudflareReadmeRelative = 'infra/cloudflare/README.md';
 
 async function readRequired(relativePath) {
   try {
@@ -780,5 +781,13 @@ test('Cloudflare runbook defines exact remote tunnel, Access, and serial failove
   assert.doesNotMatch(
     source,
     /(?:Bearer|Client-Secret:)\s+[A-Za-z0-9._-]{12,}/u,
+  );
+});
+
+test('Cloudflare infrastructure README preserves the approved tunnel route order', async () => {
+  const source = await readRequired(cloudflareReadmeRelative);
+  assert.match(
+    source,
+    /1\. `migration\.martin-lindblad\.com`[\s\S]*2\. `martin-lindblad\.com`[\s\S]*3\. `www\.martin-lindblad\.com`[\s\S]*4\. Final catch-all -> HTTP 404/iu,
   );
 });
