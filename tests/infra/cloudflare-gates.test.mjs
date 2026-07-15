@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   chmod,
   mkdir,
@@ -25,6 +26,35 @@ const dnsScriptRelative = 'scripts/acceptance/dns-authority.sh';
 const tunnelScriptRelative = 'scripts/acceptance/tunnel-health.sh';
 const runbookRelative = 'runbooks/cloudflare-dns-and-tunnel.md';
 const cloudflareReadmeRelative = 'infra/cloudflare/README.md';
+
+const canonicalInventoryRecords = [
+  'martin-lindblad.com.\tA\t300\t-\t76.76.21.21',
+  'martin-lindblad.com.\tCAA\t300\t-\t0 issue "letsencrypt.org"',
+  'www.martin-lindblad.com.\tCNAME\t300\t-\tcname.vercel-dns.com.',
+];
+
+function inventoryDigest(records) {
+  return createHash('sha256').update(JSON.stringify(records)).digest('hex');
+}
+
+function canonicalInventoryReport(overrides = {}) {
+  const sourceNonNsRecords =
+    overrides.sourceNonNsRecords ?? canonicalInventoryRecords;
+  const matchedNonNsRecords =
+    overrides.matchedNonNsRecords ?? canonicalInventoryRecords;
+  return {
+    matchedNonNsCount: matchedNonNsRecords.length,
+    matchedNonNsDigest: inventoryDigest(matchedNonNsRecords),
+    matchedNonNsRecords,
+    missingMailOrVerificationRecords: [],
+    missingNonNsRecords: [],
+    sourceNonNsCount: sourceNonNsRecords.length,
+    sourceNonNsDigest: inventoryDigest(sourceNonNsRecords),
+    sourceNonNsRecords,
+    status: 'matched',
+    ...overrides,
+  };
+}
 
 async function readRequired(relativePath) {
   try {
@@ -121,6 +151,16 @@ elif [[ "$name" == martin-lindblad.com. && "$type" == A ]]; then
   else
     printf '76.76.21.21\\n'
   fi
+elif [[ "$name" == martin-lindblad.com. && "$type" == AAAA ]]; then
+  if [[ \${HARNESS_UNEXPECTED_AAAA_RESOLVER:-} == "$resolver" ]]; then
+    printf '2001:db8::76\\n'
+  fi
+elif [[ "$name" == martin-lindblad.com. && "$type" == CNAME ]]; then
+  :
+elif [[ "$name" == www.martin-lindblad.com. && "$type" == A ]]; then
+  :
+elif [[ "$name" == www.martin-lindblad.com. && "$type" == AAAA ]]; then
+  :
 elif [[ "$name" == www.martin-lindblad.com. && "$type" == CNAME ]]; then
   printf 'cname.vercel-dns.com.\\n'
 else
@@ -157,6 +197,10 @@ async function createDnsHarness(options = {}) {
     expectedOrigin,
     [
       'martin-lindblad.com.\tA\t76.76.21.21',
+      'martin-lindblad.com.\tAAAA\t-',
+      'martin-lindblad.com.\tCNAME\t-',
+      'www.martin-lindblad.com.\tA\t-',
+      'www.martin-lindblad.com.\tAAAA\t-',
       'www.martin-lindblad.com.\tCNAME\tcname.vercel-dns.com.',
       '',
     ].join('\n'),
@@ -166,11 +210,7 @@ async function createDnsHarness(options = {}) {
     inventoryReport,
     `${JSON.stringify(
       options.inventoryReport ?? {
-        matchedNonNsCount: 12,
-        missingMailOrVerificationRecords: [],
-        missingNonNsRecords: [],
-        sourceNonNsCount: 12,
-        status: 'matched',
+        ...canonicalInventoryReport(),
       },
     )}\n`,
     { mode: 0o600 },
@@ -199,7 +239,9 @@ async function createDnsHarness(options = {}) {
     ['/usr/bin/id', id],
     ['/usr/bin/stat', metadata],
     ['/usr/bin/dig', dig],
+    ['/usr/bin/sha256sum', '/sbin/sha256sum'],
     ['/bin/date', date],
+    ['/var/lib/mlp/cloudflare-authority-start', stateFile],
   ]);
   const script = path.join(root, 'dns-authority.sh');
   await writeExecutable(script, source);
@@ -217,7 +259,6 @@ async function createDnsHarness(options = {}) {
           EXPECTED_NS_FILE: expectedNameservers,
           INVENTORY_REPORT_FILE: inventoryReport,
           ORIGIN_EXPECTATIONS_FILE: expectedOrigin,
-          STATE_FILE: stateFile,
           HARNESS_NOW: '2000000',
           HARNESS_TRACE: trace,
           ...extraEnvironment,
@@ -243,7 +284,87 @@ test('DNS authority gate is privileged, fixed-command, and executable', async ()
   assert.match(source, /\/usr\/bin\/dig -r/u);
   assert.match(source, /\/bin\/date/u);
   assert.match(source, /\/usr\/bin\/mktemp/u);
+  assert.match(
+    source,
+    /^readonly state_file=\/var\/lib\/mlp\/cloudflare-authority-start$/mu,
+  );
+  assert.doesNotMatch(source, /\$\{STATE_FILE(?::-[^}]*)?\}/u);
   assert.doesNotMatch(source, /\$\{(?:DIG|DATE|CURL|COMMAND|PATH)\b/u);
+});
+
+test('DNS authority gate rejects a hostile state override before any access', async () => {
+  const harness = await createDnsHarness();
+  const hostileState = path.join(harness.root, 'hostile-authority-start');
+  try {
+    await writeFile(hostileState, '1000000\n', { mode: 0o600 });
+
+    const result = harness.run({ STATE_FILE: hostileState });
+
+    assert.equal(result.status, 78, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stderr, /state override/iu);
+    assert.equal(await readFile(hostileState, 'utf8'), '1000000\n');
+    await assert.rejects(readFile(harness.stateFile), { code: 'ENOENT' });
+    await assert.rejects(readFile(harness.trace), { code: 'ENOENT' });
+  } finally {
+    await rm(harness.root, { force: true, recursive: true });
+  }
+});
+
+test('DNS authority gate binds non-empty counts to canonical records and digests', async (t) => {
+  const alternateRecords = [
+    ...canonicalInventoryRecords.slice(0, -1),
+    'www.martin-lindblad.com.\tCNAME\t300\t-\twrong.example.',
+  ];
+  const omittedCount = canonicalInventoryReport();
+  delete omittedCount.sourceNonNsCount;
+
+  for (const fixture of [
+    {
+      label: 'zero records',
+      report: canonicalInventoryReport({
+        matchedNonNsCount: 0,
+        matchedNonNsDigest: inventoryDigest([]),
+        matchedNonNsRecords: [],
+        sourceNonNsCount: 0,
+        sourceNonNsDigest: inventoryDigest([]),
+        sourceNonNsRecords: [],
+      }),
+    },
+    { label: 'omitted count', report: omittedCount },
+    {
+      label: 'digest not derived from records',
+      report: canonicalInventoryReport({ sourceNonNsDigest: '0'.repeat(64) }),
+    },
+    {
+      label: 'different matched record set',
+      report: canonicalInventoryReport({
+        matchedNonNsRecords: alternateRecords,
+        matchedNonNsDigest: inventoryDigest(alternateRecords),
+      }),
+    },
+    {
+      label: 'non-canonical record order',
+      report: canonicalInventoryReport({
+        matchedNonNsRecords: [...canonicalInventoryRecords].reverse(),
+        sourceNonNsRecords: [...canonicalInventoryRecords].reverse(),
+      }),
+    },
+  ]) {
+    await t.test(fixture.label, async () => {
+      const harness = await createDnsHarness({
+        inventoryReport: fixture.report,
+        state: 1000000,
+      });
+      try {
+        const result = harness.run();
+        assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+        await assert.rejects(readFile(harness.stateFile), { code: 'ENOENT' });
+        await assert.rejects(readFile(harness.trace), { code: 'ENOENT' });
+      } finally {
+        await rm(harness.root, { force: true, recursive: true });
+      }
+    });
+  }
 });
 
 test('DNS authority timer starts atomically and opens only after 172800 seconds', async () => {
@@ -252,7 +373,10 @@ test('DNS authority timer starts atomically and opens only after 172800 seconds'
     const first = harness.run();
     assert.equal(first.status, 75, `${first.stdout}\n${first.stderr}`);
     assert.match(first.stdout, /authority hold started/iu);
-    assert.equal(await readFile(harness.stateFile, 'utf8'), '2000000\n');
+    assert.match(
+      await readFile(harness.stateFile, 'utf8'),
+      /^2000000\t[0-9a-f]{64}\n$/u,
+    );
 
     const early = harness.run({ HARNESS_NOW: '2172799' });
     assert.equal(early.status, 75, `${early.stdout}\n${early.stderr}`);
@@ -281,6 +405,86 @@ test('DNS authority timer starts atomically and opens only after 172800 seconds'
         new RegExp(`${resolver}\\twww\\.martin-lindblad\\.com\\.\\tCNAME`, 'u'),
       );
     }
+  } finally {
+    await rm(harness.root, { force: true, recursive: true });
+  }
+});
+
+test('DNS authority gate checks A, AAAA, and CNAME presence and absence', async () => {
+  const harness = await createDnsHarness();
+  try {
+    const baseline = harness.run();
+    assert.equal(baseline.status, 75, `${baseline.stdout}\n${baseline.stderr}`);
+
+    const queries = await readFile(harness.trace, 'utf8');
+    for (const resolver of ['1.1.1.1', '8.8.8.8', '9.9.9.9']) {
+      for (const hostname of [
+        'martin-lindblad.com.',
+        'www.martin-lindblad.com.',
+      ]) {
+        for (const recordType of ['A', 'AAAA', 'CNAME']) {
+          assert.match(
+            queries,
+            new RegExp(
+              `${resolver}\\t${hostname.replaceAll('.', '\\.')}` +
+                `\\t${recordType}(?:\\n|$)`,
+              'u',
+            ),
+          );
+        }
+      }
+    }
+
+    const unexpected = harness.run({
+      HARNESS_UNEXPECTED_AAAA_RESOLVER: '8.8.8.8',
+    });
+    assert.equal(
+      unexpected.status,
+      1,
+      `${unexpected.stdout}\n${unexpected.stderr}`,
+    );
+    await assert.rejects(readFile(harness.stateFile), { code: 'ENOENT' });
+  } finally {
+    await rm(harness.root, { force: true, recursive: true });
+  }
+});
+
+test('DNS authority state restarts when the canonical baseline changes', async () => {
+  const harness = await createDnsHarness();
+  try {
+    const first = harness.run();
+    assert.equal(first.status, 75, `${first.stdout}\n${first.stderr}`);
+    const firstState = await readFile(harness.stateFile, 'utf8');
+    assert.match(firstState, /^2000000\t[0-9a-f]{64}\n$/u);
+
+    const changedRecords = [
+      '_verification.martin-lindblad.com.\tTXT\t300\t-\tverified',
+      ...canonicalInventoryRecords,
+    ].sort();
+    await writeFile(
+      harness.inventoryReport,
+      `${JSON.stringify(
+        canonicalInventoryReport({
+          matchedNonNsRecords: changedRecords,
+          sourceNonNsRecords: changedRecords,
+        }),
+      )}\n`,
+      { mode: 0o600 },
+    );
+
+    const restarted = harness.run({ HARNESS_NOW: '2172800' });
+    assert.equal(
+      restarted.status,
+      75,
+      `${restarted.stdout}\n${restarted.stderr}`,
+    );
+    assert.match(restarted.stdout, /baseline changed[\s\S]*restarted/iu);
+    const secondState = await readFile(harness.stateFile, 'utf8');
+    assert.match(secondState, /^2172800\t[0-9a-f]{64}\n$/u);
+    assert.notEqual(secondState, firstState);
+
+    const complete = harness.run({ HARNESS_NOW: '2345600' });
+    assert.equal(complete.status, 0, `${complete.stdout}\n${complete.stderr}`);
   } finally {
     await rm(harness.root, { force: true, recursive: true });
   }
@@ -447,6 +651,8 @@ case "$url" in
       printf '%s\\n' '{"success":true,"result":{"config":{"ingress":[{"hostname":"martin-lindblad.com","service":"http://caddy:8080"},{"hostname":"migration.martin-lindblad.com","service":"http://caddy:8080"},{"hostname":"www.martin-lindblad.com","service":"http://caddy:8080"},{"service":"http_status:503"}]},"source":"cloudflare"}}'
     elif [[ \${HARNESS_PATH_INGRESS:-no} == yes ]]; then
       printf '%s\\n' '{"success":true,"result":{"config":{"ingress":[{"hostname":"migration.martin-lindblad.com","path":"^/partial$","service":"http://caddy:8080"},{"hostname":"martin-lindblad.com","service":"http://caddy:8080"},{"hostname":"www.martin-lindblad.com","service":"http://caddy:8080"},{"service":"http_status:404"}]},"source":"cloudflare"}}'
+    elif [[ \${HARNESS_ORIGIN_REQUEST_INGRESS:-no} == yes ]]; then
+      printf '%s\\n' '{"success":true,"result":{"config":{"ingress":[{"hostname":"migration.martin-lindblad.com","originRequest":{"access":{"audTag":["unexpected"]}},"service":"http://caddy:8080"},{"hostname":"martin-lindblad.com","service":"http://caddy:8080"},{"hostname":"www.martin-lindblad.com","service":"http://caddy:8080"},{"service":"http_status:404"}]},"source":"cloudflare"}}'
     else
       printf '%s\\n' '{"success":true,"result":{"config":{"ingress":[{"hostname":"migration.martin-lindblad.com","service":"http://caddy:8080"},{"hostname":"martin-lindblad.com","service":"http://caddy:8080"},{"hostname":"www.martin-lindblad.com","service":"http://caddy:8080"},{"service":"http_status:404"}]},"source":"cloudflare"}}'
     fi
@@ -458,8 +664,16 @@ case "$url" in
       *) printf '%s\\n' '{"success":true,"result":[{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","conns":[{"is_pending_reconnect":false}]},{"id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb","conns":[{"is_pending_reconnect":false}]}]}' ;;
     esac
     ;;
+  *'/cfd_tunnel?name=mlp-prod&is_deleted=false&page=1&per_page=1000')
+    case \${HARNESS_TUNNEL_LIST:-one} in
+      zero) printf '%s\\n' '{"success":true,"result":[],"result_info":{"count":0,"page":1,"per_page":1000,"total_count":2}}' ;;
+      duplicate) printf '%s\\n' '{"success":true,"result":[{"deleted_at":null,"id":"11111111-1111-4111-8111-111111111111","name":"mlp-prod"},{"deleted_at":null,"id":"22222222-2222-4222-8222-222222222222","name":"mlp-prod"}],"result_info":{"count":2,"page":1,"per_page":1000,"total_count":4}}' ;;
+      wrong-id) printf '%s\\n' '{"success":true,"result":[{"deleted_at":null,"id":"22222222-2222-4222-8222-222222222222","name":"mlp-prod"}],"result_info":{"count":1,"page":1,"per_page":1000,"total_count":3}}' ;;
+      *) printf '%s\\n' '{"success":true,"result":[{"deleted_at":null,"id":"11111111-1111-4111-8111-111111111111","name":"mlp-prod"}],"result_info":{"count":1,"page":1,"per_page":1000,"total_count":3}}' ;;
+    esac
+    ;;
   */cfd_tunnel/*)
-    printf '%s\\n' '{"success":true,"result":{"name":"mlp-prod","config_src":"cloudflare","status":"healthy"}}'
+    printf '%s\\n' '{"success":true,"result":{"id":"11111111-1111-4111-8111-111111111111","name":"mlp-prod","config_src":"cloudflare","status":"healthy"}}'
     ;;
   https://migration.martin-lindblad.com/api/health/ready)
     if [[ -n "$header_file" ]] && /usr/bin/grep -q '^CF-Access-Client-Id:' "$header_file"; then
@@ -600,6 +814,10 @@ test('tunnel gate proves two local and remote connectors plus public Access', as
     assert.match(trace, /mlp-prod-postgres-1/u);
     assert.match(trace, /\/configurations/u);
     assert.match(trace, /\/connections/u);
+    assert.match(
+      trace,
+      /\/cfd_tunnel\\\?name=mlp-prod\\&is_deleted=false\\&page=1\\&per_page=1000/u,
+    );
     assert.doesNotMatch(
       `${trace}${result.stdout}${result.stderr}`,
       new RegExp(
@@ -637,12 +855,28 @@ test('tunnel gate fails closed on every connector, route, Access, and origin reg
       label: 'duplicate remote connector identity',
     },
     {
+      environment: { HARNESS_TUNNEL_LIST: 'zero' },
+      label: 'zero non-deleted mlp-prod tunnels',
+    },
+    {
+      environment: { HARNESS_TUNNEL_LIST: 'duplicate' },
+      label: 'duplicate non-deleted mlp-prod tunnels',
+    },
+    {
+      environment: { HARNESS_TUNNEL_LIST: 'wrong-id' },
+      label: 'mlp-prod tunnel ID mismatch',
+    },
+    {
       environment: { HARNESS_BAD_INGRESS: 'yes' },
       label: 'wrong ingress order and catch-all',
     },
     {
       environment: { HARNESS_PATH_INGRESS: 'yes' },
       label: 'path-limited ingress route',
+    },
+    {
+      environment: { HARNESS_ORIGIN_REQUEST_INGRESS: 'yes' },
+      label: 'originRequest Access ingress override',
     },
     {
       environment: { HARNESS_ACCESS_REDIRECT: 'no' },
@@ -750,13 +984,20 @@ test('Cloudflare runbook preserves Vercel routing until every authority gate pas
   assert.match(source, /apex, subdomain, MX, TXT, CAA,\s+and verification/iu);
   assert.match(source, /redact[\s\S]*verification payload/iu);
   assert.match(source, /missing non-NS record[\s\S]*blocks/iu);
+  assert.match(source, /sourceNonNsRecords[\s\S]*sourceNonNsDigest/u);
+  assert.match(source, /matchedNonNsRecords[\s\S]*matchedNonNsDigest/u);
+  assert.match(source, /strictly\s+positive|greater than zero/iu);
   assert.match(source, /DNS-only/iu);
   assert.match(source, /TTL[\s\S]*300[\s\S]*24 hours/iu);
   assert.match(source, /1\.1\.1\.1[\s\S]*8\.8\.8\.8[\s\S]*9\.9\.9\.9/u);
   assert.match(source, /172800 seconds|48 hours/iu);
+  assert.match(source, /baseline fingerprint[\s\S]*restart/iu);
+  assert.match(source, /`-`[\s\S]*expected absence/iu);
+  assert.match(source, /A`, `AAAA`, and `CNAME`/u);
   assert.match(source, /exits? 75/iu);
   assert.match(source, /change only the registrar delegation/iu);
   assert.match(source, /Vercel[\s\S]*throughout the hold/iu);
+  assert.doesNotMatch(source, /\bSTATE_FILE=/u);
 });
 
 test('Cloudflare runbook defines exact remote tunnel, Access, and serial failover gates', async () => {
@@ -776,7 +1017,11 @@ test('Cloudflare runbook defines exact remote tunnel, Access, and serial failove
   assert.match(source, /cloudflared-a[\s\S]*restore[\s\S]*cloudflared-b/iu);
   assert.match(source, /failover[\s\S]*root-only\s+temporary header file/iu);
   assert.match(source, /two distinct[\s\S]*connector/iu);
-  assert.match(source, /no app, Caddy, or PostgreSQL host port/iu);
+  assert.match(
+    source,
+    /exactly one non-deleted[\s\S]*mlp-prod[\s\S]*stored tunnel ID/iu,
+  );
+  assert.match(source, /no app, Caddy, or\s+PostgreSQL host port/iu);
   assert.match(source, /revoke[\s\S]*service token[\s\S]*API token/iu);
   assert.doesNotMatch(
     source,

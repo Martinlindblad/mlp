@@ -132,14 +132,34 @@ verify_no_origin_ports() {
 
 verify_remote_tunnel() {
   local api_headers=$1
-  local base_url=$2
+  local tunnels_url=$2
+  local expected_tunnel_id=$3
+  local base_url
+  local tunnel_list
   local tunnel
   local configuration
   local connections
 
-  tunnel=$(curl_json "$api_headers" "$base_url") || return 1
-  /usr/bin/jq -e '
+  tunnel_list=$(curl_json \
+    "$api_headers" \
+    "$tunnels_url?name=mlp-prod&is_deleted=false&page=1&per_page=1000") || return 1
+  /usr/bin/jq -e --arg tunnel_id "$expected_tunnel_id" '
     .success == true and
+    (.result | type == "array" and length == 1) and
+    .result_info.count == 1 and
+    .result_info.page == 1 and
+    .result_info.per_page == 1000 and
+    .result[0].name == "mlp-prod" and
+    .result[0].id == $tunnel_id and
+    (.result[0] | has("deleted_at")) and
+    .result[0].deleted_at == null
+  ' <<<"$tunnel_list" >/dev/null 2>&1 || return 1
+
+  base_url="$tunnels_url/$expected_tunnel_id"
+  tunnel=$(curl_json "$api_headers" "$base_url") || return 1
+  /usr/bin/jq -e --arg tunnel_id "$expected_tunnel_id" '
+    .success == true and
+    .result.id == $tunnel_id and
     .result.name == "mlp-prod" and
     .result.config_src == "cloudflare" and
     .result.status == "healthy"
@@ -149,18 +169,21 @@ verify_remote_tunnel() {
   /usr/bin/jq -e '
     .success == true and
     .result.source == "cloudflare" and
+    (.result.config | type == "object" and keys == ["ingress"]) and
     (.result.config.ingress | type == "array" and length == 4) and
+    (.result.config.ingress[0] | type == "object" and
+      keys == ["hostname", "service"]) and
     .result.config.ingress[0].hostname == "migration.martin-lindblad.com" and
     .result.config.ingress[0].service == "http://caddy:8080" and
-    (.result.config.ingress[0] | has("path") | not) and
+    (.result.config.ingress[1] | type == "object" and
+      keys == ["hostname", "service"]) and
     .result.config.ingress[1].hostname == "martin-lindblad.com" and
     .result.config.ingress[1].service == "http://caddy:8080" and
-    (.result.config.ingress[1] | has("path") | not) and
+    (.result.config.ingress[2] | type == "object" and
+      keys == ["hostname", "service"]) and
     .result.config.ingress[2].hostname == "www.martin-lindblad.com" and
     .result.config.ingress[2].service == "http://caddy:8080" and
-    (.result.config.ingress[2] | has("path") | not) and
-    (.result.config.ingress[3] | has("hostname") | not) and
-    (.result.config.ingress[3] | has("path") | not) and
+    (.result.config.ingress[3] | type == "object" and keys == ["service"]) and
     .result.config.ingress[3].service == "http_status:404"
   ' <<<"$configuration" >/dev/null 2>&1 || return 1
 
@@ -220,7 +243,7 @@ main() {
   local access_client_secret
   local api_headers
   local access_headers
-  local tunnel_url
+  local tunnels_url
   local input_directory
 
   [[ $# -eq 0 ]] || fail 'tunnel-health.sh accepts no arguments' 64
@@ -279,10 +302,10 @@ main() {
   /bin/chmod 0600 "$api_headers" "$access_headers"
   unset api_token access_client_id access_client_secret
 
-  tunnel_url="$cloudflare_api/accounts/$account_id/cfd_tunnel/$tunnel_id"
+  tunnels_url="$cloudflare_api/accounts/$account_id/cfd_tunnel"
   verify_local_connectors || fail 'tunnel connector health gate failed'
   verify_no_origin_ports || fail 'public origin port gate failed'
-  verify_remote_tunnel "$api_headers" "$tunnel_url" || \
+  verify_remote_tunnel "$api_headers" "$tunnels_url" "$tunnel_id" || \
     fail 'remote tunnel configuration gate failed'
   verify_public_access "$access_headers" || fail 'Cloudflare Access gate failed'
 

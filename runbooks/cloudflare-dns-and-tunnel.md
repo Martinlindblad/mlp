@@ -25,14 +25,32 @@ zone. The machine-readable comparison file is
 ```json
 {
   "status": "matched",
-  "sourceNonNsCount": 12,
-  "matchedNonNsCount": 12,
+  "sourceNonNsCount": 3,
+  "sourceNonNsRecords": [
+    "martin-lindblad.com.\tA\t300\t-\t76.76.21.21",
+    "martin-lindblad.com.\tCAA\t300\t-\t0 issue \"letsencrypt.org\"",
+    "www.martin-lindblad.com.\tCNAME\t300\t-\tcname.vercel-dns.com."
+  ],
+  "sourceNonNsDigest": "d57a23b6817d05095e6f2e40fb7f0b4ff4bc70dd7f7ec2c47509b6a12acfdf0f",
+  "matchedNonNsCount": 3,
+  "matchedNonNsRecords": [
+    "martin-lindblad.com.\tA\t300\t-\t76.76.21.21",
+    "martin-lindblad.com.\tCAA\t300\t-\t0 issue \"letsencrypt.org\"",
+    "www.martin-lindblad.com.\tCNAME\t300\t-\tcname.vercel-dns.com."
+  ],
+  "matchedNonNsDigest": "d57a23b6817d05095e6f2e40fb7f0b4ff4bc70dd7f7ec2c47509b6a12acfdf0f",
   "missingNonNsRecords": [],
   "missingMailOrVerificationRecords": []
 }
 ```
 
-The counts are examples, not production values. Any missing non-NS record,
+The records and counts are examples, not production values. Encode each
+canonical record as
+`fqdn<TAB>TYPE<TAB>TTL<TAB>priority-or--<TAB>target`. Both arrays must be the
+same lexically sorted, duplicate-free set, both counts must be strictly
+positive and equal to their array length, and both digests must be SHA-256 of
+the compact JSON array with no trailing newline. The gate recomputes both
+digests instead of trusting the report fields. Any missing non-NS record,
 including any mail or verification record, blocks the registrar change. Do
 not treat Cloudflare-created NS records as missing source records.
 
@@ -50,13 +68,19 @@ followed by `t` into the file.
 
 ```text
 martin-lindblad.com.\tA\t76.76.21.21
+martin-lindblad.com.\tAAAA\t-
+martin-lindblad.com.\tCNAME\t-
+www.martin-lindblad.com.\tA\t-
+www.martin-lindblad.com.\tAAAA\t-
 www.martin-lindblad.com.\tCNAME\tcname.vercel-dns.com.
 ```
 
 Replace the example answers with the observed records. Use one row per DNS
-answer; only `A`, `AAAA`, and `CNAME` are accepted. Keep names and CNAME
-targets lower-case and fully qualified. Store the two assigned Cloudflare
-nameservers, lower-case and fully qualified, one per line in
+answer and one `-` row for each expected absence. Every apex and `www`
+combination of `A`, `AAAA`, and `CNAME` must therefore be explicit. Never mix
+`-` with a present answer for the same name/type. Keep names and CNAME targets
+lower-case and fully qualified. Store the two assigned Cloudflare nameservers,
+lower-case and fully qualified, one per line in
 `/etc/mlp/cloudflare-nameservers`, also `root:root` mode `0600`.
 
 ## 2. Change only the registrar delegation
@@ -72,7 +96,6 @@ Run this gate every few hours:
 sudo EXPECTED_NS_FILE=/etc/mlp/cloudflare-nameservers \
   ORIGIN_EXPECTATIONS_FILE=/etc/mlp/vercel-origin-records.tsv \
   INVENTORY_REPORT_FILE=/var/lib/mlp/dns-inventory-comparison.json \
-  STATE_FILE=/var/lib/mlp/cloudflare-authority-start \
   scripts/acceptance/dns-authority.sh martin-lindblad.com
 curl --fail --silent --show-error https://martin-lindblad.com >/dev/null
 ```
@@ -80,11 +103,15 @@ curl --fail --silent --show-error https://martin-lindblad.com >/dev/null
 The script checks `1.1.1.1`, `8.8.8.8`, and `9.9.9.9` for the exact assigned
 nameservers, a Cloudflare SOA, the exact Vercel apex/`www` answers, and the
 complete inventory report. Its first complete pass atomically creates
-`/var/lib/mlp/cloudflare-authority-start`. It exits 75 and prints elapsed and
-remaining seconds until 172800 seconds (48 hours) have passed. Any observed
-DNS, origin, or inventory mismatch removes that timestamp and restarts the
-hold. Exit 0 with `authority stable for at least 172800 seconds` is the only
-authority approval. Preserve the command outputs as redacted evidence.
+the fixed `/var/lib/mlp/cloudflare-authority-start`; callers cannot override
+that path. The state stores the start time plus a baseline fingerprint derived
+from the canonical zone, nameservers, complete origin matrix, and verified
+inventory digest. A changed baseline fingerprint restarts the hold at zero. It
+exits 75 and prints elapsed and remaining seconds until 172800 seconds (48
+hours) have passed. Any observed DNS, origin, or inventory mismatch removes
+that state and restarts the hold. Exit 0 with
+`authority stable for at least 172800 seconds` is the only authority approval.
+Preserve the command outputs as redacted evidence.
 
 Do not route application traffic to the tunnel until the script has exited 0,
 the application TTL has been 300 for at least 24 hours, and Vercel still
@@ -145,11 +172,12 @@ sudo scripts/acceptance/tunnel-health.sh
 
 The script performs read-only checks. It requires exactly the two expected
 local connectors, both healthy; exactly two distinct live connector identities
-from the Cloudflare API; the remote `mlp-prod` ingress above with final
-`http_status:404`; an unauthenticated Access redirect; authenticated readiness
-status 200; and no app, Caddy, or PostgreSQL host port. API and Access secrets
-are passed to `curl` through root-only temporary header files, never command
-arguments or output.
+from the Cloudflare API; exactly one non-deleted tunnel named `mlp-prod` whose
+ID matches the stored tunnel ID; the remote `mlp-prod` ingress above with no
+extra behavior-changing keys and final `http_status:404`; an unauthenticated
+Access redirect; authenticated readiness status 200; and no app, Caddy, or
+PostgreSQL host port. API and Access secrets are passed to `curl` through
+root-only temporary header files, never command arguments or output.
 
 Then prove failover serially. Never stop both connectors together. For each
 failover probe, assemble the two value-only Access secrets into a root-only
