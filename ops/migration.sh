@@ -120,7 +120,7 @@ validate_migration_environment() {
   [[ $count -eq 9 ]] || return 78
   [[ $CONFIG_MIGRATION_IMAGE =~ ^ghcr\.io/martinlindblad/mlp-migration@sha256:[0-9a-f]{64}$ ]] || return 78
   [[ $CONFIG_MIGRATION_ARCHIVE_RECIPIENT =~ ^age1[0-9a-z]{58}$ ]] || return 78
-  [[ $CONFIG_MIGRATION_MONGO_DATABASE == portfolio ]] || return 78
+  [[ $CONFIG_MIGRATION_MONGO_DATABASE == mlp_db ]] || return 78
   [[ $CONFIG_MIGRATION_PGHOST == postgres ]] || return 78
   [[ $CONFIG_MIGRATION_PGPORT == 5432 ]] || return 78
   [[ $CONFIG_MIGRATION_PGDATABASE =~ ^portfolio(_rehearsal)?$ ]] || return 78

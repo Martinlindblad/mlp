@@ -3480,7 +3480,7 @@ Create `runbooks/rehearsal-and-cutover.md` with a timestamped operator checklist
 ```bash
 umask 077
 export MONGO_URI_FILE=/etc/mlp/secrets/mongo-readonly-uri
-export MONGO_DATABASE=portfolio
+export MONGO_DATABASE=mlp_db
 export ARTIFACT_DIR=/var/lib/mlp/migration-artifacts/source
 export ARCHIVE_RECIPIENT="$(cat /etc/mlp/age-archive-recipient)"
 scripts/migration/export-mongo.sh

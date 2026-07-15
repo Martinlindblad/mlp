@@ -313,7 +313,7 @@ test('migration runtime example is exact, immutable, and non-secret', async () =
     'UNCONFIGURED_AGE_RECIPIENT',
     'the tracked example must fail closed until the operator installs its own recoverable age recipient',
   );
-  assert.equal(environment.MIGRATION_MONGO_DATABASE, 'portfolio');
+  assert.equal(environment.MIGRATION_MONGO_DATABASE, 'mlp_db');
   assert.equal(environment.MIGRATION_PGHOST, 'postgres');
   assert.equal(environment.MIGRATION_PGPORT, '5432');
   assert.equal(environment.MIGRATION_PGDATABASE, 'portfolio');
@@ -474,7 +474,7 @@ async function regularFile(pathname, source) {
   await chmod(pathname, 0o600);
 }
 
-async function makeHarness(database = 'portfolio') {
+async function makeHarness(database = 'portfolio', mongoDatabase = 'mlp_db') {
   const root = await mkdtemp(path.join(os.tmpdir(), 'mlp-migration-ops-'));
   const fake = path.join(root, 'fake');
   const etc = path.join(root, 'etc-mlp');
@@ -753,7 +753,7 @@ async function makeHarness(database = 'portfolio') {
     path.join(envDir, 'migration.env'),
     [
       `MIGRATION_IMAGE=${migrationImage}`,
-      'MIGRATION_MONGO_DATABASE=portfolio',
+      `MIGRATION_MONGO_DATABASE=${mongoDatabase}`,
       'MIGRATION_ARCHIVE_RECIPIENT=age19zc8msml70vjd7xagxgpudukh4w82u0mngguxvfh6s8v96aft4vqpqfy5j',
       'MIGRATION_PGHOST=postgres',
       'MIGRATION_PGPORT=5432',
@@ -1058,6 +1058,32 @@ test('migration wrapper binds each database-writing command to its intended data
       assert.doesNotMatch(await traceFor(harness), /backup:|docker:/u);
     } finally {
       await rm(harness.root, { force: true, recursive: true });
+    }
+  }
+});
+
+test('migration wrapper pins the source MongoDB database to mlp_db', async () => {
+  const accepted = await makeHarness('portfolio', 'mlp_db');
+  try {
+    const result = runHarness(accepted, ['export']);
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  } finally {
+    await rm(accepted.root, { force: true, recursive: true });
+  }
+
+  for (const mongoDatabase of [
+    'portfolio',
+    'mlp-db',
+    'mlp_db.other',
+    'admin',
+  ]) {
+    const rejected = await makeHarness('portfolio', mongoDatabase);
+    try {
+      const result = runHarness(rejected, ['export']);
+      assert.equal(result.status, 78, `${mongoDatabase} must be rejected`);
+      assert.doesNotMatch(await traceFor(rejected), /docker:/u);
+    } finally {
+      await rm(rejected.root, { force: true, recursive: true });
     }
   }
 });

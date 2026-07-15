@@ -39,7 +39,7 @@ files are regular, non-symlink files mode `0600`.
 
 ## Non-negotiable stop conditions
 
-- Use a temporary Atlas user with read-only access scoped only to the portfolio database.
+- Use a temporary Atlas user with read-only access scoped only to the `mlp_db` database.
   There are no source writes, deletes, or schema changes.
 - `MONGO_URI_FILE` is a root-readable regular file, never a command-line value.
 - MongoDB Database Tools is exactly 100.17.0. `age` and the database tools stay
@@ -117,14 +117,14 @@ and SHA-256 evidence hashes. Execute the headings below in numeric order.
 
 On the trusted migration operator environment, install MongoDB Database Tools
 100.17.0 and `age`. Require `mongodump --version` to report 100.17.0 exactly.
-Set the database name to `portfolio`, the root-readable `MONGO_URI_FILE`, a
+Set the source database name to `mlp_db`, the root-readable `MONGO_URI_FILE`, a
 recoverable age recipient, and a fresh root-only artifact directory. Then run
 the repository export script or the installed equivalent:
 
 ```bash
 umask 077
 export MONGO_URI_FILE=/etc/mlp/secrets/mongo-readonly-uri
-export MONGO_DATABASE=portfolio
+export MONGO_DATABASE=mlp_db
 export ARTIFACT_DIR=/var/lib/mlp/migration-artifacts/operator/source
 export ARCHIVE_RECIPIENT="$(cat /etc/mlp/age-archive-recipient)"
 scripts/migration/export-mongo.sh
