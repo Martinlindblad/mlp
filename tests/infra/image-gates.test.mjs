@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback, spawn } from 'node:child_process';
+import { generateKeyPairSync } from 'node:crypto';
 import {
   access,
   chmod,
@@ -477,7 +478,11 @@ test('private-key audit rejects a complete real key but not PEM marker templates
   const wrapperPath = path.join(fixtureRoot, 'scan-private-keys.sh');
   const templatePath = path.join(fixtureRoot, 'template.txt');
   const binaryMarkerPath = path.join(fixtureRoot, 'binary-marker.bin');
-  const privateKeyPath = path.join(fixtureRoot, 'real-private-key');
+  const openSshPrivateKeyPath = path.join(
+    fixtureRoot,
+    'real-openssh-private-key',
+  );
+  const pkcs8PrivateKeyPath = path.join(fixtureRoot, 'real-pkcs8-private-key');
 
   await writeFile(
     templatePath,
@@ -503,8 +508,13 @@ test('private-key audit rejects a complete real key but not PEM marker templates
     '-N',
     '',
     '-f',
-    privateKeyPath,
+    openSshPrivateKeyPath,
   ]);
+  const { privateKey: pkcs8PrivateKey } = generateKeyPairSync('ed25519');
+  await writeFile(
+    pkcs8PrivateKeyPath,
+    pkcs8PrivateKey.export({ format: 'pem', type: 'pkcs8' }),
+  );
   await writeFile(
     wrapperPath,
     `#!/bin/sh\nset -eu\n${shellFunction(
@@ -516,11 +526,20 @@ test('private-key audit rejects a complete real key but not PEM marker templates
 
   const result = await execFile(
     '/bin/sh',
-    [wrapperPath, templatePath, binaryMarkerPath, privateKeyPath],
+    [
+      wrapperPath,
+      templatePath,
+      binaryMarkerPath,
+      openSshPrivateKeyPath,
+      pkcs8PrivateKeyPath,
+    ],
     { encoding: 'utf8' },
   );
   assert.equal(result.stderr, '');
-  assert.deepEqual(result.stdout.trim().split('\n'), [privateKeyPath]);
+  assert.deepEqual(result.stdout.trim().split('\n'), [
+    openSshPrivateKeyPath,
+    pkcs8PrivateKeyPath,
+  ]);
 });
 
 test('failed image builds emit only bounded categorized diagnostics', async (context) => {
