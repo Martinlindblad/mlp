@@ -1,0 +1,64 @@
+#!/usr/sbin/nft -f
+
+destroy table inet mlp_host
+
+table inet mlp_host {
+  chain input {
+    type filter hook input priority filter; policy drop;
+
+    iifname "lo" accept
+    ct state invalid drop
+    ct state established,related accept
+    udp sport 67 udp dport 68 accept
+    udp sport 547 udp dport 546 accept
+    @SSH_RULE@
+    ip protocol icmp icmp type {
+      destination-unreachable,
+      time-exceeded,
+      parameter-problem,
+      echo-request
+    } accept
+    ip6 nexthdr icmpv6 icmpv6 type {
+      destination-unreachable,
+      packet-too-big,
+      time-exceeded,
+      parameter-problem,
+      echo-request,
+      nd-router-advert,
+      nd-neighbor-solicit,
+      nd-neighbor-advert
+    } accept
+  }
+
+  # Docker owns its forwarding policy. This host table must not pre-empt it.
+  chain forward {
+    type filter hook forward priority filter; policy accept;
+  }
+
+  chain output {
+    type filter hook output priority filter; policy drop;
+
+    oifname "lo" accept
+    ct state invalid drop
+    ct state established,related accept
+    udp sport 68 udp dport 67 accept
+    udp sport 546 udp dport 547 accept
+    @DNS_IPV4_RULE@
+    @DNS_IPV6_RULE@
+    ip6 nexthdr icmpv6 icmpv6 type {
+      destination-unreachable,
+      packet-too-big,
+      time-exceeded,
+      parameter-problem,
+      echo-request,
+      echo-reply,
+      nd-router-solicit,
+      nd-neighbor-solicit,
+      nd-neighbor-advert
+    } accept
+    udp dport 123 accept
+    tcp dport 443 accept
+    meta l4proto { tcp, udp } th dport 7844 accept
+    reject with icmpx type admin-prohibited
+  }
+}
