@@ -451,6 +451,12 @@ test('image gate audits image history, configuration, and exported filesystem fo
   assert.match(source, /docker create/u);
   assert.match(source, /docker export/u);
   assert.match(source, /tar -tf/u);
+  assert.match(source, /grep -Eiq -- "\$secret_pattern"/u);
+  assert.match(source, /-exec grep -aEil -- "\$secret_pattern"/u);
+  assert.match(
+    source,
+    /tar --no-same-owner --no-same-permissions[\s\\]+--mode='u\+rwX'/u,
+  );
   for (const forbidden of [
     '\\.env',
     'run/secrets',

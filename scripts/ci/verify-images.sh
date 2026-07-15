@@ -650,7 +650,7 @@ assert_no_image_secrets() {
 
   if grep -F "$MLP_IMAGE_GATE_SECRET_SENTINEL" \
     "$history_file" "$environment_file" >/dev/null 2>&1 ||
-    grep -Eiq "$secret_pattern" "$history_file" "$environment_file"; then
+    grep -Eiq -- "$secret_pattern" "$history_file" "$environment_file"; then
     fail "secret-like metadata detected: $image_name"
   fi
 
@@ -672,6 +672,7 @@ assert_no_image_secrets() {
 
   mkdir "$rootfs_directory"
   tar --no-same-owner --no-same-permissions \
+    --mode='u+rwX' \
     --exclude='dev/*' --exclude='proc/*' --exclude='sys/*' \
     -xf "$rootfs_archive" -C "$rootfs_directory" \
     2>"$WORK_DIRECTORY/rootfs-extract-errors-$image_name.txt" ||
@@ -680,7 +681,7 @@ assert_no_image_secrets() {
     -exec grep -aFl "$MLP_IMAGE_GATE_SECRET_SENTINEL" {} + \
     >"$WORK_DIRECTORY/secret-hits-$image_name.txt" 2>/dev/null || :
   find "$rootfs_directory" -type f \
-    -exec grep -aEil "$secret_pattern" {} + \
+    -exec grep -aEil -- "$secret_pattern" {} + \
     >>"$WORK_DIRECTORY/secret-hits-$image_name.txt" 2>/dev/null || :
   if [ -s "$WORK_DIRECTORY/secret-hits-$image_name.txt" ]; then
     fail "secret-like filesystem content detected: $image_name"
