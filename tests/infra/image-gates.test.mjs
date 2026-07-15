@@ -451,23 +451,128 @@ test('image gate audits image history, configuration, and exported filesystem fo
   assert.match(source, /docker create/u);
   assert.match(source, /docker export/u);
   assert.match(source, /tar -tf/u);
-  assert.match(source, /grep -Eiq -- "\$secret_pattern"/u);
-  assert.match(source, /-exec grep -aEil -- "\$secret_pattern"/u);
-  assert.match(
-    source,
-    /tar --no-same-owner --no-same-permissions[\s\\]+--mode='u\+rwX'/u,
-  );
+  assert.match(source, /grep -Eiq -- "\$credential_uri_pattern"/u);
+  assert.match(source, /find_private_key_files/u);
+  assert.match(source, /chmod -R u\+rwX "\$WORK_DIRECTORY"/u);
+  assert.doesNotMatch(source, /tar[^\n]*--mode=/u);
   for (const forbidden of [
     '\\.env',
     'run/secrets',
     'migration-artifacts',
-    'BEGIN PRIVATE KEY',
+    'PRIVATE KEY',
     'postgresql://',
     'mongodb://',
   ]) {
     assert.match(source, new RegExp(forbidden, 'u'));
   }
   assert.match(source, /MLP_IMAGE_GATE_SECRET_SENTINEL/u);
+});
+
+test('private-key audit rejects a complete real key but not PEM marker templates', async (context) => {
+  const source = await readHarness();
+  const fixtureRoot = await mkdtemp(
+    path.join(os.tmpdir(), 'mlp-image-key-audit-test-'),
+  );
+  context.after(() => rm(fixtureRoot, { force: true, recursive: true }));
+  const wrapperPath = path.join(fixtureRoot, 'scan-private-keys.sh');
+  const templatePath = path.join(fixtureRoot, 'template.txt');
+  const binaryMarkerPath = path.join(fixtureRoot, 'binary-marker.bin');
+  const privateKeyPath = path.join(fixtureRoot, 'real-private-key');
+
+  await writeFile(
+    templatePath,
+    [
+      '-----BEGIN PRIVATE KEY-----',
+      '{{ BASE64_PRIVATE_KEY }}',
+      '-----END PRIVATE KEY-----',
+      '',
+    ].join('\n'),
+  );
+  await writeFile(
+    binaryMarkerPath,
+    Buffer.concat([
+      Buffer.from([0, 1, 2, 3]),
+      Buffer.from('-----BEGIN OPENSSH PRIVATE KEY-----'),
+      Buffer.from([0, 255, 4, 5]),
+    ]),
+  );
+  await execFile('ssh-keygen', [
+    '-q',
+    '-t',
+    'ed25519',
+    '-N',
+    '',
+    '-f',
+    privateKeyPath,
+  ]);
+  await writeFile(
+    wrapperPath,
+    `#!/bin/sh\nset -eu\n${shellFunction(
+      source,
+      'find_private_key_files',
+    )}\nfind_private_key_files "$@"\n`,
+  );
+  await chmod(wrapperPath, 0o755);
+
+  const result = await execFile(
+    '/bin/sh',
+    [wrapperPath, templatePath, binaryMarkerPath, privateKeyPath],
+    { encoding: 'utf8' },
+  );
+  assert.equal(result.stderr, '');
+  assert.deepEqual(result.stdout.trim().split('\n'), [privateKeyPath]);
+});
+
+test('failed image builds emit only bounded categorized diagnostics', async (context) => {
+  const source = await readHarness();
+  const buildImage = shellFunctionBody(source, 'build_image');
+  assert.ok(
+    buildImage.indexOf('report_build_failure') >= 0 &&
+      buildImage.indexOf('report_build_failure') <
+        buildImage.indexOf('fail "image build failed'),
+    'categorized diagnostics must be emitted before the build log is cleaned',
+  );
+  const fixtureRoot = await mkdtemp(
+    path.join(os.tmpdir(), 'mlp-image-build-diagnostic-test-'),
+  );
+  context.after(() => rm(fixtureRoot, { force: true, recursive: true }));
+  const wrapperPath = path.join(fixtureRoot, 'report-build-failure.sh');
+  const logPath = path.join(fixtureRoot, 'build.log');
+  const secret = 'BUILD_DIAGNOSTIC_SECRET_MUST_NOT_LEAK';
+  await writeFile(
+    logPath,
+    [
+      '#7 ERROR: failed to solve: process did not complete successfully: exit code: 17',
+      'Dockerfile:42',
+      `postgresql://operator:${secret}@database.invalid/portfolio`,
+      '-----BEGIN PRIVATE KEY-----',
+      secret,
+      '-----END PRIVATE KEY-----',
+      `token=${secret}`,
+      '',
+    ].join('\n'),
+  );
+  await writeFile(
+    wrapperPath,
+    `#!/bin/sh\nset -eu\n${shellFunction(
+      source,
+      'report_build_failure',
+    )}\nreport_build_failure app "$1"\n`,
+  );
+  await chmod(wrapperPath, 0o755);
+
+  const result = await execFile('/bin/sh', [wrapperPath, logPath], {
+    encoding: 'utf8',
+  });
+  const output = `${result.stdout}${result.stderr}`;
+  assert.match(output, /build diagnostics: app/u);
+  assert.match(output, /build-error=1/u);
+  assert.match(output, /command-exit=1/u);
+  assert.match(output, /dockerfile-lines=42/u);
+  assert.ok(output.length < 1500, 'diagnostics must remain bounded');
+  assert.doesNotMatch(output, new RegExp(secret, 'u'));
+  assert.doesNotMatch(output, /postgresql:\/\//u);
+  assert.doesNotMatch(output, /BEGIN PRIVATE KEY/u);
 });
 
 test('image gate enforces hardened runtime settings and retains only verified success tags', async () => {
@@ -912,6 +1017,28 @@ false
   }).catch((error) => error);
   assert.equal(result.code, 1, result.stderr ?? '');
   await assert.rejects(access(cleanupWork));
+});
+
+test('cleanup removes an extracted read-only filesystem tree', async (context) => {
+  const source = await readHarness();
+  const fixture = await createCleanupFixture(source, { success: 1 });
+  context.after(() =>
+    rm(fixture.fixtureRoot, { force: true, recursive: true }),
+  );
+  const readOnlyDirectory = path.join(fixture.cleanupWork, 'rootfs', 'nested');
+  await mkdir(readOnlyDirectory, { recursive: true });
+  await writeFile(path.join(readOnlyDirectory, 'file'), 'read-only\n');
+  await chmod(path.join(readOnlyDirectory, 'file'), 0o444);
+  await chmod(readOnlyDirectory, 0o555);
+  await chmod(path.dirname(readOnlyDirectory), 0o555);
+
+  const result = await execFile('/bin/sh', [fixture.wrapperPath], {
+    encoding: 'utf8',
+    env: fixture.env,
+  }).catch((error) => error);
+
+  assert.equal(result.code ?? 0, 0, result.stderr ?? '');
+  await assert.rejects(access(fixture.cleanupWork));
 });
 
 test('cleanup retries a stuck owned resource and converts nominal success to failure', async (context) => {

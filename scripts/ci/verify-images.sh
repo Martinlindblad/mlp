@@ -55,7 +55,7 @@ if ! docker info >/dev/null 2>&1; then
   fail 'Docker daemon is required'
 fi
 
-for required_command in awk cat chmod cmp curl find flock grep jq mktemp mkdir rm sed sha256sum sleep sort ssh-keygen tar tr wc; do
+for required_command in awk cat chmod cmp curl find flock grep jq mktemp mkdir python3 rm sed sha256sum sleep sort ssh-keygen tar tr wc; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     fail "required host command is unavailable: $required_command"
   fi
@@ -69,6 +69,11 @@ early_cleanup() {
   status=$?
   trap ':' HUP INT TERM
   trap - 0
+  if [ -e "$WORK_DIRECTORY" ] && ! chmod -R u+rwX "$WORK_DIRECTORY"; then
+    if [ "$status" -eq 0 ]; then
+      status=1
+    fi
+  fi
   if ! rm -rf "$WORK_DIRECTORY" || [ -e "$WORK_DIRECTORY" ]; then
     if [ "$status" -eq 0 ]; then
       status=1
@@ -346,6 +351,9 @@ cleanup() {
   done
   IFS=$cleanup_ifs
 
+  if [ -e "$WORK_DIRECTORY" ] && ! chmod -R u+rwX "$WORK_DIRECTORY"; then
+    cleanup_failed=1
+  fi
   if ! rm -rf "$WORK_DIRECTORY" || [ -e "$WORK_DIRECTORY" ]; then
     cleanup_failed=1
   fi
@@ -496,6 +504,48 @@ track_volume() {
   fi
 }
 
+report_build_failure() {
+  image_name=$1
+  build_log=$2
+  python3 - "$image_name" "$build_log" <<'PY'
+from collections import deque
+import re
+import sys
+
+image_name = sys.argv[1]
+build_log = sys.argv[2]
+categories = (
+    ('build-error', re.compile(r'\b(?:error|failed to solve)\b', re.IGNORECASE)),
+    ('command-exit', re.compile(r'\b(?:exit code|did not complete successfully)\b', re.IGNORECASE)),
+    ('permission', re.compile(r'\bpermission denied\b', re.IGNORECASE)),
+    ('not-found', re.compile(r'\b(?:not found|no such file)\b', re.IGNORECASE)),
+    ('network', re.compile(r'\b(?:resolve|resolution|network|connection|timeout)\b', re.IGNORECASE)),
+    ('checksum', re.compile(r'\b(?:checksum|digest|manifest)\b', re.IGNORECASE)),
+    ('no-space', re.compile(r'\bno space left\b', re.IGNORECASE)),
+    ('architecture', re.compile(r'\b(?:architecture|platform)\b', re.IGNORECASE)),
+    ('invalid-option', re.compile(r'\b(?:unknown|invalid|unrecognized) (?:flag|option|argument)\b', re.IGNORECASE)),
+)
+counts = {name: 0 for name, _ in categories}
+dockerfile_lines = set()
+with open(build_log, encoding='utf-8', errors='replace') as log_file:
+    bounded_lines = deque(log_file, maxlen=5000)
+for raw_line in bounded_lines:
+    line = raw_line[:4096]
+    for name, pattern in categories:
+        if pattern.search(line):
+            counts[name] += 1
+    for match in re.finditer(r'(?:Dockerfile:|\bline\s+)([0-9]{1,6})\b', line):
+        dockerfile_lines.add(int(match.group(1)))
+
+print(f'build diagnostics: {image_name}', file=sys.stderr)
+summary = ' '.join(f'{name}={count}' for name, count in counts.items() if count)
+print(summary or 'categorized-errors=0', file=sys.stderr)
+if dockerfile_lines:
+    rendered_lines = ','.join(str(line) for line in sorted(dockerfile_lines)[:20])
+    print(f'dockerfile-lines={rendered_lines}', file=sys.stderr)
+PY
+}
+
 build_image() {
   image_name=$1
   dockerfile=$2
@@ -513,6 +563,7 @@ build_image() {
     --tag "$image_reference" \
     --file "$REPOSITORY_ROOT/$dockerfile" \
     "$REPOSITORY_ROOT" >"$WORK_DIRECTORY/build-$image_name.txt" 2>&1; then
+    report_build_failure "$image_name" "$WORK_DIRECTORY/build-$image_name.txt"
     fail "image build failed: $image_name"
   fi
   image_id=$(docker image inspect --format '{{.Id}}' "$image_reference" 2>/dev/null) ||
@@ -632,6 +683,70 @@ assert_image_metadata() {
   [ "$configured_user" = "$expected_user" ] || fail "image user mismatch: $image_name"
 }
 
+find_private_key_files() {
+  python3 - "$@" <<'PY'
+import base64
+import os
+import re
+import stat
+import sys
+
+labels = rb'(?:PRIVATE KEY|RSA PRIVATE KEY|EC PRIVATE KEY|OPENSSH PRIVATE KEY|ENCRYPTED PRIVATE KEY)'
+private_key_block = re.compile(
+    rb'-----BEGIN (?P<label>' + labels + rb')-----(?P<body>.*?)-----END (?P=label)-----',
+    re.DOTALL,
+)
+base64_line = re.compile(rb'[A-Za-z0-9+/=]+')
+
+
+def regular_files(paths):
+    for supplied_path in paths:
+        supplied_stat = os.lstat(supplied_path)
+        if stat.S_ISREG(supplied_stat.st_mode):
+            yield supplied_path
+            continue
+        if not stat.S_ISDIR(supplied_stat.st_mode):
+            continue
+        for directory, child_directories, filenames in os.walk(
+            supplied_path, followlinks=False
+        ):
+            child_directories[:] = [
+                name
+                for name in child_directories
+                if stat.S_ISDIR(os.lstat(os.path.join(directory, name)).st_mode)
+            ]
+            for filename in filenames:
+                candidate = os.path.join(directory, filename)
+                if stat.S_ISREG(os.lstat(candidate).st_mode):
+                    yield candidate
+
+
+def decoded_private_key(block):
+    body = block.group('body')
+    body = body.replace(b'\\r\\n', b'\n').replace(b'\\n', b'\n').replace(b'\\r', b'\n')
+    lines = [line.strip() for line in body.splitlines() if line.strip()]
+    if not lines or any(base64_line.fullmatch(line) is None for line in lines):
+        return False
+    encoded = b''.join(lines)
+    if len(encoded) < 64:
+        return False
+    try:
+        decoded = base64.b64decode(encoded, validate=True)
+    except ValueError:
+        return False
+    if block.group('label') == b'OPENSSH PRIVATE KEY':
+        return decoded.startswith(b'openssh-key-v1\x00')
+    return len(decoded) >= 32 and decoded.startswith(b'0')
+
+
+for path in regular_files(sys.argv[1:]):
+    with open(path, 'rb') as candidate_file:
+        contents = candidate_file.read()
+    if any(decoded_private_key(block) for block in private_key_block.finditer(contents)):
+        print(path)
+PY
+}
+
 assert_no_image_secrets() {
   image_name=$1
   image_reference=$2
@@ -641,7 +756,8 @@ assert_no_image_secrets() {
   rootfs_listing="$WORK_DIRECTORY/rootfs-$image_name.txt"
   rootfs_directory="$WORK_DIRECTORY/rootfs-$image_name"
   container_name="mlp-image-gate-audit-$image_name-$$"
-  secret_pattern='-----BEGIN PRIVATE KEY-----|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----|postgresql://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb\+srv://[[:alnum:]_.~-]+:[^@[:space:]/]+@'
+  credential_uri_pattern='postgresql://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb\+srv://[[:alnum:]_.~-]+:[^@[:space:]/]+@'
+  private_key_hits="$WORK_DIRECTORY/private-key-hits-$image_name.txt"
 
   docker history --no-trunc "$image_reference" >"$history_file" 2>/dev/null ||
     fail "image history inspection failed: $image_name"
@@ -650,8 +766,13 @@ assert_no_image_secrets() {
 
   if grep -F "$MLP_IMAGE_GATE_SECRET_SENTINEL" \
     "$history_file" "$environment_file" >/dev/null 2>&1 ||
-    grep -Eiq -- "$secret_pattern" "$history_file" "$environment_file"; then
+    grep -Eiq -- "$credential_uri_pattern" "$history_file" "$environment_file"; then
     fail "secret-like metadata detected: $image_name"
+  fi
+  find_private_key_files "$history_file" "$environment_file" >"$private_key_hits" ||
+    fail "private-key metadata scan failed: $image_name"
+  if [ -s "$private_key_hits" ]; then
+    fail "private-key metadata detected: $image_name"
   fi
 
   track_container "$container_name"
@@ -672,19 +793,27 @@ assert_no_image_secrets() {
 
   mkdir "$rootfs_directory"
   tar --no-same-owner --no-same-permissions \
-    --mode='u+rwX' \
     --exclude='dev/*' --exclude='proc/*' --exclude='sys/*' \
     -xf "$rootfs_archive" -C "$rootfs_directory" \
     2>"$WORK_DIRECTORY/rootfs-extract-errors-$image_name.txt" ||
     fail "image filesystem extraction failed: $image_name"
+  chmod -R u+rwX "$rootfs_directory" ||
+    fail "image filesystem permission normalization failed: $image_name"
   find "$rootfs_directory" -type f \
     -exec grep -aFl "$MLP_IMAGE_GATE_SECRET_SENTINEL" {} + \
     >"$WORK_DIRECTORY/secret-hits-$image_name.txt" 2>/dev/null || :
   find "$rootfs_directory" -type f \
-    -exec grep -aEil -- "$secret_pattern" {} + \
+    -exec grep -aEil -- "$credential_uri_pattern" {} + \
     >>"$WORK_DIRECTORY/secret-hits-$image_name.txt" 2>/dev/null || :
+  find_private_key_files "$rootfs_directory" >"$private_key_hits" ||
+    fail "private-key filesystem scan failed: $image_name"
   if [ -s "$WORK_DIRECTORY/secret-hits-$image_name.txt" ]; then
     fail "secret-like filesystem content detected: $image_name"
+  fi
+  if [ -s "$private_key_hits" ]; then
+    sed "s|^$rootfs_directory|/|" "$private_key_hits" | \
+      sed -n '1,20{s/^/private-key path: /;p;}' >&2
+    fail "private-key filesystem content detected: $image_name"
   fi
 }
 
