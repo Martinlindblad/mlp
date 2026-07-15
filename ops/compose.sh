@@ -5,6 +5,8 @@ set -Eeuo pipefail
 umask 077
 export LC_ALL=C
 
+STAGING_TEMP=
+
 fail() {
   local message=$1
   local status=${2:-78}
@@ -17,6 +19,7 @@ validate_arguments() {
   for argument in "$@"; do
     case "$argument" in
       -f | -f?* | -p | -p?* | \
+        --candidate-app-image | --candidate-app-image=* | \
         --env-file | --env-file=* | \
         --file | --file=* | \
         --project-directory | --project-directory=* | \
@@ -47,6 +50,20 @@ validate_file() {
   [[ -f "$path" && ! -L "$path" && -s "$path" ]] || fail 'invalid runtime file'
   metadata=$(/usr/bin/stat -c '%u:%g:%a' -- "$path")
   [[ "$metadata" == 0:0:600 ]] || fail 'unsafe runtime file ownership or mode'
+}
+
+validate_compose_binary() {
+  local metadata
+  local version
+  [[ -f /usr/local/libexec/mlp/docker-compose && \
+    ! -L /usr/local/libexec/mlp/docker-compose && \
+    -x /usr/local/libexec/mlp/docker-compose ]] || fail 'invalid Compose binary'
+  metadata=$(/usr/bin/stat -c '%u:%g:%a' -- /usr/local/libexec/mlp/docker-compose)
+  [[ "$metadata" == 0:0:755 ]] || fail 'unsafe Compose binary ownership or mode'
+  version=$(/usr/local/libexec/mlp/docker-compose version --short 2>/dev/null) || \
+    fail 'invalid Compose binary version'
+  [[ "$version" == 5.3.1 || "$version" == v5.3.1 ]] || \
+    fail 'invalid Compose binary version'
 }
 
 validate_environment_file() {
@@ -96,31 +113,100 @@ validate_environment_file() {
   [[ "$count" -gt 0 ]] || fail 'empty runtime environment file'
 }
 
-read_secret() {
+validate_secret_file() {
   local path=$1
   local size
-  local value
+  local value=
 
   validate_file "$path"
   size=$(/usr/bin/stat -c '%s' -- "$path")
-  value=$(/bin/cat -- "$path")
+  IFS= read -r value < "$path" || [[ -n "$value" ]]
   [[ -n "$value" ]] || fail 'empty runtime secret'
   [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || \
     fail 'multiline runtime secret'
   [[ ${#value} -eq $((size - 1)) ]] || fail 'runtime secret must end in one newline'
-  printf '%s' "$value"
+  unset value
+}
+
+validate_staged_secret() {
+  local path=$1
+  local uid=$2
+  local gid=$3
+  local metadata
+  [[ -f "$path" && ! -L "$path" && -s "$path" ]] || return 78
+  metadata=$(/usr/bin/stat -c '%u:%g:%a:%h' -- "$path") || return 78
+  [[ "$metadata" == "$uid:$gid:400:1" ]]
+}
+
+stage_secret() {
+  local source=$1
+  local name=$2
+  local uid=$3
+  local gid=$4
+  local destination=/etc/mlp/compose-secrets/$name
+  local payload_size
+
+  payload_size=$(( $(/usr/bin/stat -c '%s' -- "$source") - 1 ))
+  [[ $payload_size -gt 0 ]] || return 78
+  STAGING_TEMP=$(/usr/bin/mktemp /etc/mlp/compose-secrets/.stage.XXXXXXXXXX) || return 70
+  /usr/bin/head -c "$payload_size" -- "$source" > "$STAGING_TEMP" || return 70
+  /bin/chown "$uid:$gid" -- "$STAGING_TEMP" || return 70
+  /bin/chmod 0400 -- "$STAGING_TEMP" || return 70
+  validate_staged_secret "$STAGING_TEMP" "$uid" "$gid" || return 78
+
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    validate_staged_secret "$destination" "$uid" "$gid" || return 78
+    /usr/bin/cmp --silent -- "$STAGING_TEMP" "$destination" || return 78
+  elif ! /bin/ln -- "$STAGING_TEMP" "$destination"; then
+    validate_staged_secret "$destination" "$uid" "$gid" || return 78
+    /usr/bin/cmp --silent -- "$STAGING_TEMP" "$destination" || return 78
+  fi
+
+  /bin/rm -f -- "$STAGING_TEMP" || return 70
+  STAGING_TEMP=
+  validate_staged_secret "$destination" "$uid" "$gid"
+}
+
+cleanup_staging_temp() {
+  [[ -n "$STAGING_TEMP" ]] || return 0
+  /bin/rm -f -- "$STAGING_TEMP" || return 70
+  STAGING_TEMP=
+}
+
+on_exit() {
+  local status=$?
+  trap - EXIT HUP INT TERM
+  cleanup_staging_temp || status=70
+  exit "$status"
 }
 
 [[ ${EUID:-$(/usr/bin/id -u)} -eq 0 ]] || {
   printf '%s\n' 'mlp-compose requires root' >&2
   exit 77
 }
+
+candidate_app_image=
+if [[ ${1:-} == --candidate-app-image ]]; then
+  [[ $# -ge 2 ]] || fail 'immutable candidate app image required' 64
+  candidate_app_image=$2
+  shift 2
+  [[ "$candidate_app_image" =~ ^ghcr\.io/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$ ]] || \
+    fail 'immutable candidate app image required' 64
+fi
 validate_arguments "$@"
 clear_caller_environment
+unset XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_RUNTIME_DIR
+HOME=/etc/mlp
+DOCKER_CONFIG=/etc/mlp/docker-client
+DOCKER_HOST=unix:///run/docker.sock
+export DOCKER_CONFIG DOCKER_HOST HOME
 
 validate_directory /etc/mlp
+validate_directory /etc/mlp/compose-secrets
+validate_directory /etc/mlp/docker-client
 validate_directory /etc/mlp/env
 validate_directory /etc/mlp/secrets
+validate_compose_binary
 validate_environment_file /etc/mlp/env/app.env APP_
 validate_environment_file /etc/mlp/env/migrator.env MIGRATOR_
 validate_environment_file /etc/mlp/env/backup.env BACKUP_
@@ -134,17 +220,38 @@ validate_file /etc/mlp/secrets/restic-password
 validate_file /etc/mlp/secrets/restic-s3-access-key-id
 validate_file /etc/mlp/secrets/restic-s3-secret-access-key
 
-MLP_POSTGRES_BOOTSTRAP_PASSWORD="$(read_secret /etc/mlp/secrets/postgres-bootstrap-password)"
-MLP_POSTGRES_MIGRATOR_PASSWORD="$(read_secret /etc/mlp/secrets/postgres-migrator-password)"
-MLP_POSTGRES_APP_PASSWORD="$(read_secret /etc/mlp/secrets/postgres-app-password)"
-MLP_POSTGRES_BACKUP_PASSWORD="$(read_secret /etc/mlp/secrets/postgres-backup-password)"
-MLP_CLOUDFLARE_TUNNEL_TOKEN="$(read_secret /etc/mlp/secrets/cloudflare-tunnel-token)"
-MLP_RESTIC_PASSWORD="$(read_secret /etc/mlp/secrets/restic-password)"
-MLP_RESTIC_S3_ACCESS_KEY_ID="$(read_secret /etc/mlp/secrets/restic-s3-access-key-id)"
-MLP_RESTIC_S3_SECRET_ACCESS_KEY="$(read_secret /etc/mlp/secrets/restic-s3-secret-access-key)"
-export MLP_POSTGRES_BOOTSTRAP_PASSWORD MLP_POSTGRES_MIGRATOR_PASSWORD MLP_POSTGRES_APP_PASSWORD MLP_POSTGRES_BACKUP_PASSWORD MLP_CLOUDFLARE_TUNNEL_TOKEN MLP_RESTIC_PASSWORD MLP_RESTIC_S3_ACCESS_KEY_ID MLP_RESTIC_S3_SECRET_ACCESS_KEY
+validate_secret_file /etc/mlp/secrets/postgres-bootstrap-password
+validate_secret_file /etc/mlp/secrets/postgres-migrator-password
+validate_secret_file /etc/mlp/secrets/postgres-app-password
+validate_secret_file /etc/mlp/secrets/postgres-backup-password
+validate_secret_file /etc/mlp/secrets/cloudflare-tunnel-token
+validate_secret_file /etc/mlp/secrets/restic-password
+validate_secret_file /etc/mlp/secrets/restic-s3-access-key-id
+validate_secret_file /etc/mlp/secrets/restic-s3-secret-access-key
 
-exec /usr/bin/docker compose \
+trap on_exit EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-a 65532 65532 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-b 65532 65532 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/postgres-bootstrap-password postgres-bootstrap-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-migrator 1000 1000 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/restic-password restic-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/restic-s3-access-key-id restic-s3-access-key-id-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/restic-s3-secret-access-key restic-s3-secret-access-key-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation'
+
+if [[ -n "$candidate_app_image" ]]; then
+  export APP_IMAGE="$candidate_app_image"
+fi
+
+exec /usr/local/libexec/mlp/docker-compose \
   --project-name mlp-prod \
   --project-directory /opt/mlp \
   --env-file /etc/mlp/env/app.env \

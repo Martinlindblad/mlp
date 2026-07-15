@@ -1,0 +1,12 @@
+[Unit]
+Description=Monthly MLP PostgreSQL restore test at 03:17 UTC on day 1
+
+[Timer]
+OnCalendar=*-*-01 03:17:00 UTC
+Persistent=true
+RandomizedDelaySec=0
+AccuracySec=1s
+Unit=mlp-db-restore-test.service
+
+[Install]
+WantedBy=timers.target

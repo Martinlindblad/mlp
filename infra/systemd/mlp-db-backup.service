@@ -1,0 +1,33 @@
+[Unit]
+Description=MLP PostgreSQL off-VM backup
+Requires=docker.service
+Wants=network-online.target
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/local/sbin/mlp-backup
+TimeoutStartSec=1h
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectClock=true
+ProtectHostname=true
+NoNewPrivileges=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/opt/mlp /etc/mlp
+ReadWritePaths=/run/lock/mlp-operations.lock /run/docker.sock /etc/mlp/compose-secrets /var/lib/mlp/backup-reports
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Check the MLP platform every five minutes
+
+[Timer]
+OnCalendar=*-*-* *:0/5:00 UTC
+Persistent=true
+AccuracySec=1s
+RandomizedDelaySec=0
+Unit=mlp-platform-health.service
+
+[Install]
+WantedBy=timers.target

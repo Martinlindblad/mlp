@@ -62,12 +62,17 @@ export PGPASSWORD
 
 work=$(mktemp -d /tmp/mlp-backup.XXXXXX)
 dump="$work/postgresql.dump"
+backup_json="$work/restic-backup.json"
 export RESTIC_CACHE_DIR="$work/restic-cache"
 mkdir -p "$RESTIC_CACHE_DIR"
 
 run_child pg_dump --format=custom --file="$dump"
 unset PGPASSWORD
 run_child pg_restore --list "$dump" > /dev/null
-run_child /usr/local/bin/mlp-restic backup --host mlp-prod --tag mlp-postgresql "$dump"
-run_child /usr/local/bin/mlp-restic forget --host mlp-prod --tag mlp-postgresql --keep-daily 30 --prune
-run_child /usr/local/bin/mlp-restic check --read-data-subset=5%
+run_child /usr/local/bin/mlp-restic backup --json --host mlp-prod \
+  --tag mlp-postgresql "$dump" >"$backup_json" 2>/dev/null
+run_child /usr/local/bin/mlp-restic forget --host mlp-prod --tag mlp-postgresql \
+  --group-by host,tags --keep-daily 30 --prune >/dev/null 2>&1
+run_child /usr/local/bin/mlp-restic check --read-data-subset=5% \
+  >/dev/null 2>&1
+cat "$backup_json"

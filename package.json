@@ -26,6 +26,7 @@
     "test:assets:verification": "vitest run tests/unit/migration/verification-assets.test.ts",
     "test:images": "node --test tests/infra/docker-image.test.mjs tests/infra/migration-image.test.mjs",
     "test:compose": "node --test tests/infra/compose.test.mjs tests/infra/compose-wrapper.test.mjs tests/infra/caddy.test.mjs",
+    "test:ops": "node --test tests/infra/backup.test.mjs tests/infra/restore.test.mjs tests/infra/deploy.test.mjs tests/infra/contact-mode.test.mjs tests/infra/migration-ops.test.mjs tests/infra/ops-security.test.mjs tests/infra/systemd.test.mjs tests/infra/recovery-runbook.test.mjs",
     "migration:rehearsal": "tsx scripts/migration/run-rehearsal.ts",
     "migration:preload": "tsx scripts/migration/preload-content.ts",
     "migration:contacts": "tsx scripts/migration/finalize-contacts.ts",

@@ -62,15 +62,79 @@ const permanentServices = [
   'postgres',
 ];
 const egressServices = ['app', 'cloudflared-a', 'cloudflared-b', 'db-backup'];
-const secretSources = {
-  'cloudflare-tunnel-token': 'MLP_CLOUDFLARE_TUNNEL_TOKEN',
-  'postgres-app-password': 'MLP_POSTGRES_APP_PASSWORD',
-  'postgres-backup-password': 'MLP_POSTGRES_BACKUP_PASSWORD',
-  'postgres-bootstrap-password': 'MLP_POSTGRES_BOOTSTRAP_PASSWORD',
-  'postgres-migrator-password': 'MLP_POSTGRES_MIGRATOR_PASSWORD',
-  'restic-password': 'MLP_RESTIC_PASSWORD',
-  'restic-s3-access-key-id': 'MLP_RESTIC_S3_ACCESS_KEY_ID',
-  'restic-s3-secret-access-key': 'MLP_RESTIC_S3_SECRET_ACCESS_KEY',
+const secretFiles = {
+  'cloudflare-tunnel-token-cloudflared-a': {
+    canonical: 'cloudflare-tunnel-token',
+    gid: '65532',
+    target: 'cloudflare-tunnel-token',
+    uid: '65532',
+  },
+  'cloudflare-tunnel-token-cloudflared-b': {
+    canonical: 'cloudflare-tunnel-token',
+    gid: '65532',
+    target: 'cloudflare-tunnel-token',
+    uid: '65532',
+  },
+  'postgres-app-password-app': {
+    canonical: 'postgres-app-password',
+    gid: '1000',
+    target: 'postgres-app-password',
+    uid: '1000',
+  },
+  'postgres-app-password-postgres': {
+    canonical: 'postgres-app-password',
+    gid: '70',
+    target: 'postgres-app-password',
+    uid: '70',
+  },
+  'postgres-backup-password-db-backup': {
+    canonical: 'postgres-backup-password',
+    gid: '10001',
+    target: 'postgres-backup-password',
+    uid: '10001',
+  },
+  'postgres-backup-password-postgres': {
+    canonical: 'postgres-backup-password',
+    gid: '70',
+    target: 'postgres-backup-password',
+    uid: '70',
+  },
+  'postgres-bootstrap-password-postgres': {
+    canonical: 'postgres-bootstrap-password',
+    gid: '70',
+    target: 'postgres-bootstrap-password',
+    uid: '70',
+  },
+  'postgres-migrator-password-migrator': {
+    canonical: 'postgres-migrator-password',
+    gid: '1000',
+    target: 'postgres-migrator-password',
+    uid: '1000',
+  },
+  'postgres-migrator-password-postgres': {
+    canonical: 'postgres-migrator-password',
+    gid: '70',
+    target: 'postgres-migrator-password',
+    uid: '70',
+  },
+  'restic-password-db-backup': {
+    canonical: 'restic-password',
+    gid: '10001',
+    target: 'restic-password',
+    uid: '10001',
+  },
+  'restic-s3-access-key-id-db-backup': {
+    canonical: 'restic-s3-access-key-id',
+    gid: '10001',
+    target: 'restic-s3-access-key-id',
+    uid: '10001',
+  },
+  'restic-s3-secret-access-key-db-backup': {
+    canonical: 'restic-s3-secret-access-key',
+    gid: '10001',
+    target: 'restic-s3-secret-access-key',
+    uid: '10001',
+  },
 };
 
 const expectedNetworks = {
@@ -104,22 +168,28 @@ const expectedTmpfs = {
 };
 
 const expectedSecretMounts = {
-  app: [['postgres-app-password', '1000', '1000']],
+  app: [['postgres-app-password-app', 'postgres-app-password']],
   caddy: [],
-  'cloudflared-a': [['cloudflare-tunnel-token', '65532', '65532']],
-  'cloudflared-b': [['cloudflare-tunnel-token', '65532', '65532']],
-  'db-backup': [
-    ['postgres-backup-password', '10001', '10001'],
-    ['restic-password', '10001', '10001'],
-    ['restic-s3-access-key-id', '10001', '10001'],
-    ['restic-s3-secret-access-key', '10001', '10001'],
+  'cloudflared-a': [
+    ['cloudflare-tunnel-token-cloudflared-a', 'cloudflare-tunnel-token'],
   ],
-  migrator: [['postgres-migrator-password', '1000', '1000']],
+  'cloudflared-b': [
+    ['cloudflare-tunnel-token-cloudflared-b', 'cloudflare-tunnel-token'],
+  ],
+  'db-backup': [
+    ['postgres-backup-password-db-backup', 'postgres-backup-password'],
+    ['restic-password-db-backup', 'restic-password'],
+    ['restic-s3-access-key-id-db-backup', 'restic-s3-access-key-id'],
+    ['restic-s3-secret-access-key-db-backup', 'restic-s3-secret-access-key'],
+  ],
+  migrator: [
+    ['postgres-migrator-password-migrator', 'postgres-migrator-password'],
+  ],
   postgres: [
-    ['postgres-app-password', '70', '70'],
-    ['postgres-backup-password', '70', '70'],
-    ['postgres-bootstrap-password', '70', '70'],
-    ['postgres-migrator-password', '70', '70'],
+    ['postgres-app-password-postgres', 'postgres-app-password'],
+    ['postgres-backup-password-postgres', 'postgres-backup-password'],
+    ['postgres-bootstrap-password-postgres', 'postgres-bootstrap-password'],
+    ['postgres-migrator-password-postgres', 'postgres-migrator-password'],
   ],
 };
 
@@ -197,18 +267,17 @@ function secretMounts(service, serviceName) {
         secret && typeof secret === 'object' && !Array.isArray(secret),
         `${serviceName} must use long-form secret mounts`,
       );
+      assert.deepEqual(
+        Object.keys(secret).sort(),
+        ['source', 'target'],
+        `${serviceName}/${secret.source} ownership must come from its reviewed host file`,
+      );
       assert.equal(
         secret.target,
-        secret.source,
+        secretFiles[secret.source]?.target,
         `${serviceName} secret targets must remain explicit and canonical`,
       );
-      assert.ok(
-        // The YAML 1.2 parser represents the reviewed source literal 0400 as
-        // decimal 400. Rendered JSON has a separate fail-closed contract below.
-        secret.mode === 400 || secret.mode === 256 || secret.mode === '0400',
-        `${serviceName}/${secret.source} must use mode 0400`,
-      );
-      return [secret.source, String(secret.uid), String(secret.gid)];
+      return [secret.source, secret.target];
     })
     .sort(([left], [right]) => left.localeCompare(right));
 }
@@ -368,7 +437,7 @@ function assertTopologyAndImages(
   assert.deepEqual(objectKeys(config.volumes, 'volumes'), ['postgres-data']);
   assert.deepEqual(
     objectKeys(config.secrets, 'secrets'),
-    Object.keys(secretSources).sort(),
+    Object.keys(secretFiles).sort(),
   );
 
   if (!rendered) {
@@ -491,16 +560,18 @@ function assertSecretMatrixAndBootstrap(
   source,
   { interpolationValues = {}, rendered = false } = {},
 ) {
-  for (const [secretName, environmentName] of Object.entries(secretSources)) {
+  for (const [secretName, contract] of Object.entries(secretFiles)) {
     assert.deepEqual(
       config.secrets[secretName],
       rendered
         ? {
-            environment: environmentName,
+            file: `/etc/mlp/compose-secrets/${secretName}`,
             name: `mlp-prod_${secretName}`,
           }
-        : { environment: environmentName },
+        : { file: `/etc/mlp/compose-secrets/${secretName}` },
     );
+    assert.match(contract.uid, /^\d+$/u);
+    assert.match(contract.gid, /^\d+$/u);
   }
   for (const serviceName of serviceNames) {
     assert.deepEqual(
@@ -513,13 +584,17 @@ function assertSecretMatrixAndBootstrap(
       `${serviceName} must not receive Compose-client secret-source values`,
     );
   }
-  if (!rendered) {
-    assert.equal(
-      source.match(/^\s*mode:\s*0400\s*$/gmu)?.length ?? 0,
-      12,
-      'all twelve runtime secret mounts must spell literal mode 0400',
-    );
-  }
+  assert.doesNotMatch(
+    JSON.stringify(config.secrets),
+    /"(?:environment|content)":/u,
+    'read-only services require bind-backed file secrets, never Compose-injected content',
+  );
+  assert.equal(
+    source.match(/^\s*file:\s*\/etc\/mlp\/compose-secrets\/[a-z0-9-]+\s*$/gmu)
+      ?.length ?? 0,
+    12,
+    'all twelve per-consumer secret files must use the persistent reviewed root',
+  );
 
   const postgres = config.services.postgres;
   assert.equal(postgres.environment.POSTGRES_DB, 'portfolio');
@@ -970,12 +1045,6 @@ function canonicalVerifierConfig(source, values) {
   for (const service of Object.values(config.services)) {
     service.entrypoint = null;
     if (service.command === undefined) service.command = null;
-    if (service.secrets) {
-      service.secrets = service.secrets.map((secret) => ({
-        ...secret,
-        mode: 256,
-      }));
-    }
     if (service.depends_on) {
       service.depends_on = Object.fromEntries(
         Object.entries(service.depends_on).map(([name, dependency]) => [
@@ -1039,8 +1108,8 @@ async function createVerifierLayout(wrapperSource) {
   return { root, verifierPath };
 }
 
-function runVerifier(verifierPath, extraEnvironment = {}) {
-  return spawnSync(process.execPath, [verifierPath], {
+function runVerifier(verifierPath, extraEnvironment = {}, args = []) {
+  return spawnSync(process.execPath, [verifierPath, ...args], {
     encoding: 'utf8',
     env: {
       ...process.env,
@@ -1101,7 +1170,7 @@ test('production Compose isolates network gateways and forbids host-control surf
   assertNetworksAndHardening(parseCompose(source));
 });
 
-test('production Compose enforces the exact eight-source and twelve-mount secret matrix', async () => {
+test('production Compose enforces twelve UID-safe file sources and twelve intended mounts', async () => {
   const source = await readRequiredText('compose.production.yml');
   assertSecretMatrixAndBootstrap(parseCompose(source), source);
 });
@@ -1182,30 +1251,76 @@ cat ${shellQuote(configPath)}
       assert.equal(compatible.stdout, 'production config valid\n');
       assert.equal(compatible.stderr, '');
 
-      const composeV5Render = structuredClone(canonical);
-      for (const service of Object.values(composeV5Render.services)) {
-        for (const secret of service.secrets ?? []) secret.mode = '0400';
-      }
+      const candidateImage = `ghcr.io/martinlindblad/mlp@sha256:${randomBytes(
+        32,
+      ).toString('hex')}`;
+      const mismatchedCandidate = runVerifier(
+        layout.verifierPath,
+        { MLP_POSTGRES_APP_PASSWORD: sentinel },
+        ['--candidate-app-image', candidateImage],
+      );
+      assertNoSentinelLeak(
+        mismatchedCandidate,
+        [sentinel, candidateImage],
+        'mismatched candidate verification',
+      );
+      assert.notEqual(
+        mismatchedCandidate.status,
+        0,
+        'candidate verification must reject rendered app and migrator images that do not equal the requested candidate',
+      );
+      assert.equal(mismatchedCandidate.stdout, '');
+      assert.equal(mismatchedCandidate.stderr, 'production config invalid\n');
+
+      const candidateRender = structuredClone(canonical);
+      candidateRender.services.app.image = candidateImage;
+      candidateRender.services.migrator.image = candidateImage;
       await writeFile(
         configPath,
-        `${JSON.stringify(composeV5Render)}\n`,
+        `${JSON.stringify(candidateRender)}\n`,
         'utf8',
       );
-      const composeV5Compatible = runVerifier(layout.verifierPath, {
-        MLP_POSTGRES_APP_PASSWORD: sentinel,
-      });
-      assertNoSentinelLeak(
-        composeV5Compatible,
-        [sentinel],
-        'Compose v5 secret-mode rendering',
+      const candidate = runVerifier(
+        layout.verifierPath,
+        { MLP_POSTGRES_APP_PASSWORD: sentinel },
+        ['--candidate-app-image', candidateImage],
       );
-      assert.equal(
-        composeV5Compatible.status,
-        0,
-        'the verifier must accept Compose v5 canonical string mode 0400',
+      assertNoSentinelLeak(candidate, [sentinel], 'candidate verification');
+      assert.equal(candidate.status, 0);
+      assert.deepEqual(
+        (await readFile(argumentsPath, 'utf8')).trim().split('\n'),
+        [
+          '--candidate-app-image',
+          candidateImage,
+          '--profile',
+          '*',
+          'config',
+          '--format',
+          'json',
+        ],
+        'the verifier must pass only its bounded candidate image flag to the sibling wrapper',
       );
-      assert.equal(composeV5Compatible.stdout, 'production config valid\n');
-      assert.equal(composeV5Compatible.stderr, '');
+
+      for (const args of [
+        ['--candidate-app-image'],
+        ['--candidate-app-image', 'mlp:latest'],
+        [`--candidate-app-image=${candidateImage}`],
+        ['--unexpected'],
+      ]) {
+        const rejected = runVerifier(
+          layout.verifierPath,
+          { MLP_POSTGRES_APP_PASSWORD: sentinel },
+          args,
+        );
+        assertNoSentinelLeak(
+          rejected,
+          [sentinel, candidateImage],
+          'invalid verifier arguments',
+        );
+        assert.notEqual(rejected.status, 0);
+        assert.equal(rejected.stdout, '');
+        assert.equal(rejected.stderr, 'production config invalid\n');
+      }
 
       const mutations = [
         [
@@ -1367,8 +1482,8 @@ cat ${shellQuote(configPath)}
             (config.services.app.environment.DATABASE_PASSWORD = sentinel),
         ],
         [
-          'decimal secret mode 400',
-          (config) => (config.services.app.secrets[0].mode = 400),
+          'secret uid remap that file sources cannot honor',
+          (config) => (config.services.app.secrets[0].uid = '1000'),
         ],
       ];
 

@@ -188,33 +188,43 @@ const expectedTmpfs = {
     '/var/run/postgresql:rw,noexec,nosuid,nodev,uid=70,gid=70,mode=0770',
   ],
 };
-const secretSources = {
-  'cloudflare-tunnel-token': 'MLP_CLOUDFLARE_TUNNEL_TOKEN',
-  'postgres-app-password': 'MLP_POSTGRES_APP_PASSWORD',
-  'postgres-backup-password': 'MLP_POSTGRES_BACKUP_PASSWORD',
-  'postgres-bootstrap-password': 'MLP_POSTGRES_BOOTSTRAP_PASSWORD',
-  'postgres-migrator-password': 'MLP_POSTGRES_MIGRATOR_PASSWORD',
-  'restic-password': 'MLP_RESTIC_PASSWORD',
-  'restic-s3-access-key-id': 'MLP_RESTIC_S3_ACCESS_KEY_ID',
-  'restic-s3-secret-access-key': 'MLP_RESTIC_S3_SECRET_ACCESS_KEY',
-};
+const secretFiles = [
+  'cloudflare-tunnel-token-cloudflared-a',
+  'cloudflare-tunnel-token-cloudflared-b',
+  'postgres-app-password-app',
+  'postgres-app-password-postgres',
+  'postgres-backup-password-db-backup',
+  'postgres-backup-password-postgres',
+  'postgres-bootstrap-password-postgres',
+  'postgres-migrator-password-migrator',
+  'postgres-migrator-password-postgres',
+  'restic-password-db-backup',
+  'restic-s3-access-key-id-db-backup',
+  'restic-s3-secret-access-key-db-backup',
+];
 const expectedSecretMounts = {
-  app: [['postgres-app-password', '1000', '1000']],
+  app: [['postgres-app-password-app', 'postgres-app-password']],
   caddy: [],
-  'cloudflared-a': [['cloudflare-tunnel-token', '65532', '65532']],
-  'cloudflared-b': [['cloudflare-tunnel-token', '65532', '65532']],
-  'db-backup': [
-    ['postgres-backup-password', '10001', '10001'],
-    ['restic-password', '10001', '10001'],
-    ['restic-s3-access-key-id', '10001', '10001'],
-    ['restic-s3-secret-access-key', '10001', '10001'],
+  'cloudflared-a': [
+    ['cloudflare-tunnel-token-cloudflared-a', 'cloudflare-tunnel-token'],
   ],
-  migrator: [['postgres-migrator-password', '1000', '1000']],
+  'cloudflared-b': [
+    ['cloudflare-tunnel-token-cloudflared-b', 'cloudflare-tunnel-token'],
+  ],
+  'db-backup': [
+    ['postgres-backup-password-db-backup', 'postgres-backup-password'],
+    ['restic-password-db-backup', 'restic-password'],
+    ['restic-s3-access-key-id-db-backup', 'restic-s3-access-key-id'],
+    ['restic-s3-secret-access-key-db-backup', 'restic-s3-secret-access-key'],
+  ],
+  migrator: [
+    ['postgres-migrator-password-migrator', 'postgres-migrator-password'],
+  ],
   postgres: [
-    ['postgres-app-password', '70', '70'],
-    ['postgres-backup-password', '70', '70'],
-    ['postgres-bootstrap-password', '70', '70'],
-    ['postgres-migrator-password', '70', '70'],
+    ['postgres-app-password-postgres', 'postgres-app-password'],
+    ['postgres-backup-password-postgres', 'postgres-backup-password'],
+    ['postgres-bootstrap-password-postgres', 'postgres-bootstrap-password'],
+    ['postgres-migrator-password-postgres', 'postgres-migrator-password'],
   ],
 };
 const expectedDependencies = {
@@ -281,7 +291,7 @@ function validateTopLevel(config) {
   exactKeys(config.services, serviceNames);
   exactKeys(config.networks, networkNames);
   exactKeys(config.volumes, ['postgres-data']);
-  exactKeys(config.secrets, Object.keys(secretSources));
+  exactKeys(config.secrets, secretFiles);
   exactValue(config['x-harden'], {
     cap_drop: ['ALL'],
     read_only: true,
@@ -309,11 +319,11 @@ function validateTopLevel(config) {
   invariant(dataVolume.external !== true);
   invariant(dataVolume.driver_opts === undefined);
 
-  for (const [name, environment] of Object.entries(secretSources)) {
+  for (const name of secretFiles) {
     const secret = mapping(config.secrets[name]);
-    invariant(secret.environment === environment);
+    invariant(secret.file === `/etc/mlp/compose-secrets/${name}`);
     invariant(secret.name === `mlp-prod_${name}`);
-    exactKeys(secret, ['environment', 'name']);
+    exactKeys(secret, ['file', 'name']);
   }
 }
 
@@ -323,12 +333,16 @@ function validateServiceKeys(services) {
   }
 }
 
-function validateImages(services) {
+function validateImages(services, candidateAppImage) {
   invariant(services.postgres.image === exactImages.postgres);
   invariant(services.caddy.image === exactImages.caddy);
   invariant(services['cloudflared-a'].image === exactImages.cloudflared);
   invariant(services['cloudflared-b'].image === exactImages.cloudflared);
   invariant(services.app.image === services.migrator.image);
+  if (candidateAppImage !== undefined) {
+    invariant(services.app.image === candidateAppImage);
+    invariant(services.migrator.image === candidateAppImage);
+  }
   for (const service of Object.values(services)) {
     invariant(immutableImage(service.image));
     invariant(service.build === undefined);
@@ -392,10 +406,8 @@ function normalizeSecretMounts(service) {
   return (service.secrets ?? [])
     .map((secretValue) => {
       const secret = mapping(secretValue);
-      exactKeys(secret, ['gid', 'mode', 'source', 'target', 'uid']);
-      invariant(secret.target === secret.source);
-      invariant(secret.mode === '0400' || secret.mode === 256);
-      return [secret.source, String(secret.uid), String(secret.gid)];
+      exactKeys(secret, ['source', 'target']);
+      return [secret.source, secret.target];
     })
     .sort(([left], [right]) => left.localeCompare(right));
 }
@@ -657,12 +669,12 @@ function validateMounts(services) {
   }
 }
 
-export function validateProductionConfig(config) {
+export function validateProductionConfig(config, candidateAppImage) {
   mapping(config);
   validateTopLevel(config);
   const services = mapping(config.services);
   validateServiceKeys(services);
-  validateImages(services);
+  validateImages(services, candidateAppImage);
   validateNetworkMembership(services);
   validateHardening(services);
   validateSecrets(services);
@@ -674,13 +686,13 @@ export function validateProductionConfig(config) {
   return true;
 }
 
-function renderThroughWrapper() {
+function renderThroughWrapper(wrapperArguments) {
   const wrapperPath = fileURLToPath(
     new URL('../ops/compose.sh', import.meta.url),
   );
   const result = spawnSync(
     wrapperPath,
-    ['--profile', '*', 'config', '--format', 'json'],
+    [...wrapperArguments, '--profile', '*', 'config', '--format', 'json'],
     {
       encoding: 'utf8',
       env: process.env,
@@ -694,9 +706,20 @@ function renderThroughWrapper() {
   return JSON.parse(result.stdout);
 }
 
+function argumentsToForward(args) {
+  if (args.length === 0) return [];
+  invariant(args.length === 2 && args[0] === '--candidate-app-image');
+  invariant(/^ghcr\.io\/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$/u.test(args[1]));
+  return args;
+}
+
 function main() {
   try {
-    validateProductionConfig(renderThroughWrapper());
+    const wrapperArguments = argumentsToForward(process.argv.slice(2));
+    validateProductionConfig(
+      renderThroughWrapper(wrapperArguments),
+      wrapperArguments[1],
+    );
     process.stdout.write('production config valid\n');
   } catch {
     process.stderr.write('production config invalid\n');

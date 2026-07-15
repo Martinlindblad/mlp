@@ -1,0 +1,147 @@
+name: mlp-migration
+
+x-operator: &operator
+  image: ${MIGRATION_IMAGE:?MIGRATION_IMAGE is required}
+  user: '1000:1000'
+  restart: 'no'
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=1770
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '3'
+
+x-mongo-secret: &mongo-secret
+  source: mongo-uri-migration-operator
+  target: mongo-uri
+
+x-migrator-secret: &migrator-secret
+  source: postgres-migrator-password-migration-operator
+  target: postgres-migrator-password
+
+x-artifacts: &artifacts
+  type: bind
+  source: /var/lib/mlp/migration-artifacts/operator
+  target: /migration-artifacts
+  bind:
+    create_host_path: false
+
+x-postgres-environment: &postgres-environment
+  PGHOST: ${MIGRATION_PGHOST:?MIGRATION_PGHOST is required}
+  PGPORT: ${MIGRATION_PGPORT:?MIGRATION_PGPORT is required}
+  PGDATABASE: ${MIGRATION_PGDATABASE:?MIGRATION_PGDATABASE is required}
+  PGUSER: ${MIGRATION_PGUSER:?MIGRATION_PGUSER is required}
+  PGPASSWORD_FILE: /run/secrets/postgres-migrator-password
+  PGPOOL_MAX: ${MIGRATION_PGPOOL_MAX:?MIGRATION_PGPOOL_MAX is required}
+  PGCONNECT_TIMEOUT_MS: ${MIGRATION_PGCONNECT_TIMEOUT_MS:?MIGRATION_PGCONNECT_TIMEOUT_MS is required}
+
+x-import-environment: &import-environment
+  <<: *postgres-environment
+  MONGO_URI_FILE: /run/secrets/mongo-uri
+  MONGO_DATABASE: ${MIGRATION_MONGO_DATABASE:?MIGRATION_MONGO_DATABASE is required}
+  MIGRATION_REPORT_ROOT: /migration-artifacts/reports
+
+services:
+  migration-export:
+    <<: *operator
+    profiles:
+      - export
+    command:
+      - export
+    environment:
+      MONGO_URI_FILE: /run/secrets/mongo-uri
+      MONGO_DATABASE: ${MIGRATION_MONGO_DATABASE:?MIGRATION_MONGO_DATABASE is required}
+      ARCHIVE_RECIPIENT: ${MIGRATION_ARCHIVE_RECIPIENT:?MIGRATION_ARCHIVE_RECIPIENT is required}
+      ARTIFACT_DIR: /migration-artifacts/source
+    secrets:
+      - *mongo-secret
+    volumes:
+      - *artifacts
+    networks:
+      egress:
+        gw_priority: 1
+
+  migration-rehearsal:
+    <<: *operator
+    profiles:
+      - rehearsal
+    command:
+      - rehearsal
+    environment: *import-environment
+    secrets:
+      - *mongo-secret
+      - *migrator-secret
+    volumes:
+      - *artifacts
+    networks:
+      database: {}
+      egress:
+        gw_priority: 1
+
+  migration-preload:
+    <<: *operator
+    profiles:
+      - preload
+    command:
+      - preload
+    environment: *import-environment
+    secrets:
+      - *mongo-secret
+      - *migrator-secret
+    volumes:
+      - *artifacts
+    networks:
+      database: {}
+      egress:
+        gw_priority: 1
+
+  migration-contacts:
+    <<: *operator
+    profiles:
+      - contacts
+    command:
+      - contacts
+    environment:
+      <<: *import-environment
+      CONTACT_TRAFFIC_DRAINED: 'yes'
+    secrets:
+      - *mongo-secret
+      - *migrator-secret
+    volumes:
+      - *artifacts
+    networks:
+      database: {}
+      egress:
+        gw_priority: 1
+
+  migration-remove-synthetic:
+    <<: *operator
+    profiles:
+      - remove-synthetic
+    command:
+      - remove-synthetic
+    environment: *postgres-environment
+    secrets:
+      - *migrator-secret
+    networks:
+      database: {}
+
+networks:
+  database:
+    name: mlp-prod_database
+    external: true
+  egress:
+    name: mlp-prod_egress
+    external: true
+
+secrets:
+  mongo-uri-migration-operator:
+    file: /etc/mlp/compose-secrets/mongo-uri-migration-operator
+  postgres-migrator-password-migration-operator:
+    file: /etc/mlp/compose-secrets/postgres-migrator-password-migration-operator

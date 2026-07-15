@@ -1,0 +1,30 @@
+[Unit]
+Description=MLP platform health report
+Wants=network-online.target
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/local/sbin/mlp-status
+TimeoutStartSec=90s
+RuntimeMaxSec=90s
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+ReadWritePaths=/run/lock/mlp-operations.lock -/run/docker.sock /var/lib/mlp/status

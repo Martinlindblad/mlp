@@ -1,0 +1,12 @@
+[Unit]
+Description=Nightly MLP PostgreSQL backup at 02:17 UTC
+
+[Timer]
+OnCalendar=*-*-* 02:17:00 UTC
+Persistent=true
+RandomizedDelaySec=0
+AccuracySec=1s
+Unit=mlp-db-backup.service
+
+[Install]
+WantedBy=timers.target

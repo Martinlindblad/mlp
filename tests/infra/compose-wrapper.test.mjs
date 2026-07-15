@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {
   chmod,
   copyFile,
@@ -49,6 +49,32 @@ const secretSources = {
   MLP_RESTIC_S3_ACCESS_KEY_ID: 'restic-s3-access-key-id',
   MLP_RESTIC_S3_SECRET_ACCESS_KEY: 'restic-s3-secret-access-key',
 };
+
+const stagedSecrets = [
+  ['cloudflare-tunnel-token', 'cloudflare-tunnel-token-cloudflared-a', 65532],
+  ['cloudflare-tunnel-token', 'cloudflare-tunnel-token-cloudflared-b', 65532],
+  ['postgres-app-password', 'postgres-app-password-app', 1000],
+  ['postgres-app-password', 'postgres-app-password-postgres', 70],
+  ['postgres-backup-password', 'postgres-backup-password-db-backup', 10001],
+  ['postgres-backup-password', 'postgres-backup-password-postgres', 70],
+  ['postgres-bootstrap-password', 'postgres-bootstrap-password-postgres', 70],
+  ['postgres-migrator-password', 'postgres-migrator-password-migrator', 1000],
+  ['postgres-migrator-password', 'postgres-migrator-password-postgres', 70],
+  ['restic-password', 'restic-password-db-backup', 10001],
+  ['restic-s3-access-key-id', 'restic-s3-access-key-id-db-backup', 10001],
+  [
+    'restic-s3-secret-access-key',
+    'restic-s3-secret-access-key-db-backup',
+    10001,
+  ],
+];
+
+const canonicalSecretVariables = Object.fromEntries(
+  Object.entries(secretSources).map(([variable, filename]) => [
+    filename,
+    variable,
+  ]),
+);
 
 const environmentFiles = {
   'app.env': {
@@ -129,7 +155,7 @@ function assertFixedWrapperContract(source) {
     'production roots must not be environment-overridable',
   );
   assert.doesNotMatch(source, /^(?:set -x|env|printenv)\b/mu);
-  assert.doesNotMatch(source, /\b(?:eval|source)\b/u);
+  assert.doesNotMatch(source, /^(?:\s*)(?:eval|source)\s/mu);
   assert.doesNotMatch(source, /tr -d ["']?\\n/u);
   assert.doesNotMatch(
     source,
@@ -171,6 +197,19 @@ function assertFixedWrapperContract(source) {
     argumentValidation > rootGuard,
     'override arguments must be rejected immediately after the root gate',
   );
+  const candidateParse = source.indexOf(
+    'if [[ ${1:-} == --candidate-app-image ]]; then',
+    rootGuard,
+  );
+  assert.ok(
+    candidateParse > rootGuard && candidateParse < argumentValidation,
+    'the bounded deploy image override must be parsed only after the root gate and before generic argument validation',
+  );
+  assert.match(
+    source,
+    /\^ghcr\\\.io\/[a-z0-9.\\\[\\\]_*+?()|{}\\/-]+@sha256:\[0-9a-f\]\{64\}\$/u,
+    'candidate app image must require one immutable GHCR digest',
+  );
 
   const validateArguments = shellFunctionBody(source, 'validate_arguments');
   for (const option of [
@@ -179,6 +218,7 @@ function assertFixedWrapperContract(source) {
     '--file',
     '--project-directory',
     '--project-name',
+    '--candidate-app-image',
     '-f',
     '-p',
   ]) {
@@ -224,14 +264,40 @@ function assertFixedWrapperContract(source) {
     'environment files must contain only auditable KEY=value records',
   );
 
-  const readSecret = shellFunctionBody(source, 'read_secret');
-  assert.match(readSecret, /validate_file/u);
-  assert.match(readSecret, /\$'\\n'/u);
-  assert.match(readSecret, /\$'\\r'/u);
-  assert.match(readSecret, /\/usr\/bin\/stat[^\n]*%s/u);
-  assert.match(readSecret, /\$\{#[A-Za-z_][A-Za-z0-9_]*\}/u);
+  const validateSecret = shellFunctionBody(source, 'validate_secret_file');
+  assert.match(validateSecret, /validate_file/u);
+  assert.match(validateSecret, /\$'\\n'/u);
+  assert.match(validateSecret, /\$'\\r'/u);
+  assert.match(validateSecret, /\/usr\/bin\/stat[^\n]*%s/u);
+  assert.match(validateSecret, /\$\{#[A-Za-z_][A-Za-z0-9_]*\}/u);
 
-  for (const directory of ['/etc/mlp', '/etc/mlp/env', '/etc/mlp/secrets']) {
+  const stageSecret = shellFunctionBody(source, 'stage_secret');
+  assert.match(stageSecret, /\/usr\/bin\/mktemp/u);
+  assert.match(stageSecret, /\/usr\/bin\/head[^\n]*-c/u);
+  assert.match(stageSecret, /\/bin\/chown/u);
+  assert.match(stageSecret, /\/bin\/chmod[^\n]*0400/u);
+  assert.match(stageSecret, /\/usr\/bin\/cmp[^\n]*--silent/u);
+  assert.match(stageSecret, /\/bin\/ln/u);
+  assert.doesNotMatch(
+    stageSecret,
+    /\bmv\b/u,
+    'staging must never replace a bind source inode behind a running container',
+  );
+
+  const validateComposeBinary = shellFunctionBody(
+    source,
+    'validate_compose_binary',
+  );
+  assert.match(validateComposeBinary, /version --short/u);
+  assert.match(validateComposeBinary, /(?:v?5\.3\.1)/u);
+
+  for (const directory of [
+    '/etc/mlp',
+    '/etc/mlp/compose-secrets',
+    '/etc/mlp/docker-client',
+    '/etc/mlp/env',
+    '/etc/mlp/secrets',
+  ]) {
     assert.ok(
       lines.includes(`validate_directory ${directory}`),
       `wrapper must validate fixed directory ${directory}`,
@@ -246,21 +312,28 @@ function assertFixedWrapperContract(source) {
     );
   }
 
-  for (const [variableName, filename] of Object.entries(secretSources)) {
+  for (const [, filename] of Object.entries(secretSources)) {
+    assert.match(
+      source,
+      new RegExp(`^validate_secret_file /etc/mlp/secrets/${filename}$`, 'mu'),
+      `${filename} must be fully validated before staging starts`,
+    );
+  }
+  for (const [canonical, staged, uid] of stagedSecrets) {
     assert.match(
       source,
       new RegExp(
-        `^${variableName}=["']?\\$\\(read_secret /etc/mlp/secrets/${filename}\\)["']?$`,
+        `^stage_secret /etc/mlp/secrets/${canonical} ${staged} ${uid} ${uid}\\b`,
         'mu',
       ),
-      `${variableName} must come only from ${filename}`,
-    );
-    assert.match(
-      source,
-      new RegExp(`^export(?: [A-Z0-9_]+)* ${variableName}(?: |$)`, 'mu'),
-      `${variableName} must be exported only to the short-lived Compose client`,
+      `${staged} must be a dedicated ${uid}:${uid} bind source`,
     );
   }
+  assert.doesNotMatch(
+    source,
+    /^MLP_[A-Z0-9_]+=/mu,
+    'raw secrets must never enter shell or Compose environment variables',
+  );
 
   const firstDirectoryValidation = source.indexOf(
     'validate_directory /etc/mlp',
@@ -273,9 +346,7 @@ function assertFixedWrapperContract(source) {
   const lastEnvironmentValidation = source.lastIndexOf(
     'validate_environment_file /etc/mlp/env/',
   );
-  const firstSecretRead = Math.min(
-    ...Object.keys(secretSources).map((name) => source.indexOf(`${name}=`)),
-  );
+  const firstSecretStage = source.indexOf('\nstage_secret ');
   assert.ok(
     callerEnvironmentClear > argumentValidation,
     'caller environment must be cleared after the root and argument gates',
@@ -284,19 +355,37 @@ function assertFixedWrapperContract(source) {
     firstDirectoryValidation > callerEnvironmentClear,
     'caller environment must be cleared before runtime files are processed',
   );
+  const fixedHome = source.indexOf('\nHOME=/etc/mlp\n', callerEnvironmentClear);
+  assert.ok(
+    fixedHome > callerEnvironmentClear && fixedHome < firstDirectoryValidation,
+    'Docker plugin discovery must use the fixed root home after caller variables are cleared',
+  );
+  assert.match(source, /^export DOCKER_CONFIG DOCKER_HOST HOME$/mu);
   assert.ok(lastEnvironmentValidation > firstDirectoryValidation);
   assert.ok(
-    firstSecretRead > lastEnvironmentValidation,
-    'all paths and environment records must be validated before reading secrets',
+    firstSecretStage > lastEnvironmentValidation,
+    'all paths and environment records must be validated before staging secrets',
+  );
+  const callerClear = source.indexOf('clear_caller_environment', rootGuard);
+  const candidateExport = source.indexOf(
+    'export APP_IMAGE="$candidate_app_image"',
+    firstSecretStage,
+  );
+  assert.ok(
+    candidateExport > firstSecretStage && candidateExport > callerClear,
+    'the validated candidate image must be exported only after caller variables are cleared and runtime files are validated',
   );
 
+  assert.match(source, /^DOCKER_CONFIG=\/etc\/mlp\/docker-client$/mu);
+  assert.match(source, /^DOCKER_HOST=unix:\/\/\/run\/docker\.sock$/mu);
+  assert.match(source, /^export DOCKER_CONFIG DOCKER_HOST HOME$/mu);
   const invocation = lines.find((line) =>
-    line.startsWith('exec /usr/bin/docker compose '),
+    line.startsWith('exec /usr/local/libexec/mlp/docker-compose '),
   );
   assert.equal(
     invocation,
-    'exec /usr/bin/docker compose --project-name mlp-prod --project-directory /opt/mlp --env-file /etc/mlp/env/app.env --env-file /etc/mlp/env/migrator.env --env-file /etc/mlp/env/backup.env --file /opt/mlp/compose.production.yml "$@"',
-    'wrapper must use one fixed project, root, env-file order, and Compose file',
+    'exec /usr/local/libexec/mlp/docker-compose --project-name mlp-prod --project-directory /opt/mlp --env-file /etc/mlp/env/app.env --env-file /etc/mlp/env/migrator.env --env-file /etc/mlp/env/backup.env --file /opt/mlp/compose.production.yml "$@"',
+    'wrapper must exec one fixed reviewed standalone Compose binary with a fixed project, root, env-file order, and Compose file',
   );
 }
 
@@ -344,10 +433,12 @@ async function createDockerWrapperFixture() {
   const envDirectory = path.join(root, 'env');
   const secretDirectory = path.join(root, 'secrets');
   const captureDirectory = path.join(root, 'capture');
+  const composeBinaryDirectory = path.join(root, 'compose-bin');
   await Promise.all([
     mkdir(envDirectory),
     mkdir(secretDirectory),
     mkdir(captureDirectory),
+    mkdir(composeBinaryDirectory),
   ]);
 
   for (const filename of Object.keys(environmentFiles)) {
@@ -367,22 +458,27 @@ async function createDockerWrapperFixture() {
     });
   }
 
-  const fakeDockerPath = path.join(root, 'docker');
+  const fakeDockerPath = path.join(composeBinaryDirectory, 'docker-compose');
   await writeFile(
     fakeDockerPath,
     `#!/bin/sh
 set -eu
 umask 077
+if [ "\${1:-}" = version ] && [ "\${2:-}" = --short ]; then
+  printf '%s\\n' "\${TEST_COMPOSE_VERSION:-5.3.1}"
+  exit 0
+fi
 : > /capture/invoked
 printf '%s\\n' "$@" > /capture/arguments
-${Object.keys(secretSources)
-  .map(
-    (name) =>
-      `printf '%s=%s\\n' '${name}' "\${${name}:?}" >> /capture/environment`,
-  )
-  .join('\n')}
 /usr/bin/env > /capture/process-environment
-chmod 0644 /capture/invoked /capture/arguments /capture/environment /capture/process-environment
+: > /capture/staged
+for secret in /etc/mlp/compose-secrets/*; do
+  [ -f "$secret" ] || continue
+  printf '%s|' "\${secret##*/}" >> /capture/staged
+  stat -c '%u:%g:%a:%h|' "$secret" >> /capture/staged
+  sha256sum "$secret" | cut -d' ' -f1 >> /capture/staged
+done
+chmod 0644 /capture/invoked /capture/arguments /capture/process-environment /capture/staged
 `,
     { encoding: 'utf8', mode: 0o700 },
   );
@@ -399,6 +495,7 @@ chmod 0644 /capture/invoked /capture/arguments /capture/environment /capture/pro
   return {
     bashEnvSentinel,
     captureDirectory,
+    composeBinaryDirectory,
     envDirectory,
     fakeDockerPath,
     hostileBashEnvPath,
@@ -419,14 +516,16 @@ function runWrapperHarness(
   const setup = `
 set -eu
 umask 077
-mkdir -p /etc/mlp/env /etc/mlp/secrets
+mkdir -p /etc/mlp/compose-secrets /etc/mlp/docker-client /etc/mlp/env /etc/mlp/secrets
 cp /fixtures/env/app.env /etc/mlp/env/app.env
 cp /fixtures/env/migrator.env /etc/mlp/env/migrator.env
 cp /fixtures/env/backup.env /etc/mlp/env/backup.env
 cp /fixtures/secrets/* /etc/mlp/secrets/
 cp /fixtures/compose.production.yml /opt/mlp/compose.production.yml
-chmod 0700 /etc/mlp /etc/mlp/env /etc/mlp/secrets /opt/mlp
+cp /fixtures/docker-compose /usr/local/libexec/mlp/docker-compose
+chmod 0700 /etc/mlp /etc/mlp/compose-secrets /etc/mlp/docker-client /etc/mlp/env /etc/mlp/secrets /opt/mlp
 chmod 0600 /etc/mlp/env/* /etc/mlp/secrets/* /opt/mlp/compose.production.yml
+chmod 0755 /usr/local/libexec/mlp/docker-compose
 ${mutation}
 exec /work/compose.sh "$@"
 `;
@@ -449,6 +548,8 @@ exec /work/compose.sh "$@"
       '/etc/mlp:rw,nosuid,nodev,noexec,mode=0700',
       '--tmpfs',
       '/opt/mlp:rw,nosuid,nodev,noexec,mode=0700',
+      '--tmpfs',
+      '/usr/local/libexec/mlp:rw,nosuid,nodev,mode=0755',
       ...dockerEnvironment,
       '--mount',
       dockerMount(wrapperPath, '/work/compose.sh'),
@@ -462,7 +563,7 @@ exec /work/compose.sh "$@"
       '--mount',
       dockerMount(fixture.secretDirectory, '/fixtures/secrets'),
       '--mount',
-      dockerMount(fixture.fakeDockerPath, '/usr/bin/docker'),
+      dockerMount(fixture.fakeDockerPath, '/fixtures/docker-compose'),
       '--mount',
       dockerMount(fixture.hostileBashEnvPath, '/fixtures/hostile-bash-env'),
       '--mount',
@@ -492,7 +593,7 @@ async function captureExists(directory, filename) {
   }
 }
 
-test('root Compose wrapper fixes paths, validates before reads, and exports exactly eight sources', async () => {
+test('root Compose wrapper stages twelve UID-safe files and execs pinned Compose directly', async () => {
   const source = await readRequiredText(wrapperRelativePath);
   assertFixedWrapperContract(source);
 
@@ -700,6 +801,7 @@ test(
         'DOCKER_CONFIG',
         'DOCKER_CONTEXT',
         'DOCKER_HOST',
+        'HOME',
         'MIGRATOR_PGHOST',
         'MIGRATOR_UNREVIEWED_OVERRIDE',
         'MLP_POSTGRES_APP_PASSWORD',
@@ -741,7 +843,6 @@ test(
           .trim()
           .split('\n'),
         [
-          'compose',
           '--project-name',
           'mlp-prod',
           '--project-directory',
@@ -759,10 +860,10 @@ test(
           'json',
         ],
       );
-      const capturedEnvironment = Object.fromEntries(
+      const processEnvironmentEntries = Object.fromEntries(
         (
           await readFile(
-            path.join(fixture.captureDirectory, 'environment'),
+            path.join(fixture.captureDirectory, 'process-environment'),
             'utf8',
           )
         )
@@ -773,30 +874,13 @@ test(
             return [line.slice(0, separator), line.slice(separator + 1)];
           }),
       );
-      assert.deepEqual(capturedEnvironment, fixture.sentinels);
       const processEnvironment = new Set(
-        (
-          await readFile(
-            path.join(fixture.captureDirectory, 'process-environment'),
-            'utf8',
-          )
-        )
-          .trim()
-          .split('\n')
-          .map((line) => line.slice(0, line.indexOf('='))),
+        Object.keys(processEnvironmentEntries),
       );
       for (const prefix of callerEnvironmentPrefixes) {
         const matchingNames = [...processEnvironment]
           .filter((name) => name.startsWith(prefix))
           .sort();
-        if (prefix === 'MLP_') {
-          assert.deepEqual(
-            matchingNames,
-            Object.keys(secretSources).sort(),
-            'Docker must receive only the eight file-loaded MLP secret sources',
-          );
-          continue;
-        }
         assert.equal(
           matchingNames.length > 0,
           false,
@@ -817,9 +901,90 @@ test(
           `Docker must not inherit hostile Bash variable ${name}`,
         );
       }
+      assert.equal(processEnvironmentEntries.HOME, '/etc/mlp');
+      assert.equal(
+        processEnvironmentEntries.DOCKER_CONFIG,
+        '/etc/mlp/docker-client',
+      );
+      assert.equal(
+        processEnvironmentEntries.DOCKER_HOST,
+        'unix:///run/docker.sock',
+      );
+
+      const capturedStagedSecrets = new Map(
+        (await readFile(path.join(fixture.captureDirectory, 'staged'), 'utf8'))
+          .trim()
+          .split('\n')
+          .map((line) => {
+            const [name, metadata, digest] = line.split('|');
+            return [name, { digest, metadata }];
+          }),
+      );
+      assert.equal(capturedStagedSecrets.size, stagedSecrets.length);
+      for (const [canonical, staged, uid] of stagedSecrets) {
+        const sentinel = fixture.sentinels[canonicalSecretVariables[canonical]];
+        const digest = createHash('sha256').update(sentinel).digest('hex');
+        assert.deepEqual(capturedStagedSecrets.get(staged), {
+          digest,
+          metadata: `${uid}:${uid}:400:1`,
+        });
+      }
+
+      const candidateImage = `ghcr.io/martinlindblad/mlp@sha256:${randomBytes(
+        32,
+      ).toString('hex')}`;
+      const hostileCandidate = `TASK9_INHERITED_APP_IMAGE_${randomBytes(
+        16,
+      ).toString('hex')}`;
+      const candidateRun = runWrapperHarness(fixture, {
+        args: ['--candidate-app-image', candidateImage, 'config'],
+        environment: {
+          APP_IMAGE: hostileCandidate,
+          MLP_UNREVIEWED_OVERRIDE: hostileCandidate,
+        },
+      });
+      assertNoSentinels(
+        candidateRun,
+        [hostileCandidate],
+        'bounded candidate image invocation',
+      );
+      assert.equal(candidateRun.status, 0);
+      assert.deepEqual(
+        (
+          await readFile(
+            path.join(fixture.captureDirectory, 'arguments'),
+            'utf8',
+          )
+        )
+          .trim()
+          .split('\n')
+          .slice(-1),
+        ['config'],
+        'the internal candidate flag must never reach Docker Compose',
+      );
+      const candidateProcessEnvironment = Object.fromEntries(
+        (
+          await readFile(
+            path.join(fixture.captureDirectory, 'process-environment'),
+            'utf8',
+          )
+        )
+          .trim()
+          .split('\n')
+          .map((line) => {
+            const separator = line.indexOf('=');
+            return [line.slice(0, separator), line.slice(separator + 1)];
+          }),
+      );
+      assert.equal(candidateProcessEnvironment.APP_IMAGE, candidateImage);
+      assert.equal(
+        Object.hasOwn(candidateProcessEnvironment, 'MLP_UNREVIEWED_OVERRIDE'),
+        false,
+      );
 
       const invalidTrees = [
         'chmod 0755 /etc/mlp/secrets',
+        'chmod 0755 /etc/mlp/compose-secrets',
         'chmod 0644 /etc/mlp/secrets/postgres-app-password',
         'chmod 0644 /etc/mlp/env/app.env',
         'chown 1:1 /etc/mlp/secrets/postgres-app-password',
@@ -827,6 +992,9 @@ test(
         'rm /etc/mlp/env/app.env && ln -s backup.env /etc/mlp/env/app.env',
         "printf '\\nsecond-line\\n' >> /etc/mlp/secrets/postgres-app-password",
         "printf '\\nUNSCOPED=value\\n' >> /etc/mlp/env/app.env",
+        "printf 'wrong' > /etc/mlp/compose-secrets/postgres-app-password-app && chown 1000:1000 /etc/mlp/compose-secrets/postgres-app-password-app && chmod 0400 /etc/mlp/compose-secrets/postgres-app-password-app",
+        'head -c -1 /etc/mlp/secrets/postgres-app-password > /etc/mlp/compose-secrets/postgres-app-password-app && chown 1000:1000 /etc/mlp/compose-secrets/postgres-app-password-app && chmod 0400 /etc/mlp/compose-secrets/postgres-app-password-app && ln /etc/mlp/compose-secrets/postgres-app-password-app /etc/mlp/compose-secrets/alias',
+        'ln -s /etc/mlp/secrets/postgres-app-password /etc/mlp/compose-secrets/postgres-app-password-app',
       ];
       for (const mutation of invalidTrees) {
         await rm(fixture.captureDirectory, { force: true, recursive: true });
@@ -845,6 +1013,18 @@ test(
         );
       }
 
+      await rm(fixture.captureDirectory, { force: true, recursive: true });
+      await mkdir(fixture.captureDirectory);
+      const unpinnedCompose = runWrapperHarness(fixture, {
+        environment: { TEST_COMPOSE_VERSION: '5.2.0' },
+      });
+      assert.notEqual(unpinnedCompose.status, 0);
+      assert.equal(
+        await captureExists(fixture.captureDirectory, 'invoked'),
+        false,
+        'an unexpected standalone Compose version must fail before invocation',
+      );
+
       for (const args of [
         ['--file', '/tmp/override.yml', 'config'],
         ['--file=/tmp/override.yml', 'config'],
@@ -861,6 +1041,10 @@ test(
         ['--env-file', '/tmp/override.env', 'config'],
         ['--env-file=/tmp/override.env', 'config'],
         ['config', '--environment'],
+        ['--candidate-app-image'],
+        ['--candidate-app-image', 'mlp:latest', 'config'],
+        [`--candidate-app-image=${candidateImage}`, 'config'],
+        ['config', '--candidate-app-image', candidateImage],
       ]) {
         await rm(fixture.captureDirectory, { force: true, recursive: true });
         await mkdir(fixture.captureDirectory);
