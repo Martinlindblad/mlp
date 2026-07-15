@@ -436,16 +436,33 @@ export async function importSnapshot(
   snapshot: Partial<SourceSnapshot>,
 ): Promise<MigrationReport> {
   const prepared = prepareSnapshot(snapshot);
+  try {
+    return await db
+      .transaction()
+      .execute(async (trx) => importPreparedSnapshot(trx, prepared));
+  } catch (error) {
+    if (error instanceof MigrationValidationError) throw error;
+    const requested = sourceCollections.filter(
+      (collection) => prepared[collection] !== undefined,
+    );
+    throw new MigrationValidationError([
+      invalidIssue(requested[0] ?? 'contact', 'database'),
+    ]);
+  }
+}
+
+export async function importPreparedSnapshot(
+  trx: Transaction<Database>,
+  prepared: PreparedSnapshot,
+): Promise<MigrationReport> {
   const requested = sourceCollections.filter(
     (collection) => prepared[collection] !== undefined,
   );
 
   try {
-    await db.transaction().execute(async (trx) => {
-      for (const collection of requested) {
-        await importCollection(trx, collection, prepared);
-      }
-    });
+    for (const collection of requested) {
+      await importCollection(trx, collection, prepared);
+    }
   } catch (error) {
     if (error instanceof MigrationValidationError) throw error;
     throw new MigrationValidationError([

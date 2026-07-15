@@ -55,13 +55,13 @@ files are regular, non-symlink files mode `0600`.
   for at least 86400 seconds before the switch.
 - Contact maintenance may last at most 1800 seconds. No gate is waived to meet
   the clock.
-- The existing `finalize-contacts` implementation must be reviewed before live
-  use to prove that final import and all count/ID/timestamp/hash validation are
-  inside one rollback-capable transaction. If final contact import and all
-  verification are not inside the same rollback-capable transaction, cutover
-  completion must not be declared. The current `importSnapshot()` commits before
-  `verifySnapshot()` runs; this is a hard cutover blocker, not an operator
-  exception, so do not proceed to Gate 14.
+- Live use requires the reviewed `finalizeContactSnapshot()` build. It imports
+  and performs all count/ID/timestamp/hash validation inside one serializable,
+  rollback-capable transaction and is covered by the PostgreSQL 18.4 integration
+  test. If final contact import and all verification are not inside the same
+  rollback-capable transaction, cutover completion must not be declared. Any
+  mismatch throws before commit and rolls back inserted rows; if the test or its
+  evidence is absent, do not proceed to Gate 14.
 
 ## Runtime command boundary
 
@@ -99,10 +99,12 @@ without changing production DNS:
    record documents to their verified Vercel values.
 4. From an independent client, verify that Vercel again serves pages and that
    Vercel contact writes succeed. Do not infer recovery from DNS alone.
-5. Roll back the uncommitted PostgreSQL contact import transaction. If the
-   transaction cannot still be rolled back, stop: the finalization build does
-   not satisfy this runbook.
-6. End the window without modifying or deleting Atlas. Retain redacted failure
+5. If Gate 13 fails, require its atomic transaction to have rolled back all
+   inserted rows and require that no success report was written.
+6. If a later pre-write gate fails after Gate 13 succeeded, leave the verified
+   PostgreSQL rows intact; restore Vercel routing and let the next attempt
+   re-verify those rows idempotently. Never perform a partial compensating delete.
+7. End the window without modifying or deleting Atlas. Retain redacted failure
    evidence and open a new cutover record only after the defect is fixed.
 
 The saved Cloudflare documents are rollback inputs, not repository artifacts.

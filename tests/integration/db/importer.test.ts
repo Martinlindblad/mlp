@@ -9,7 +9,10 @@ import { importSnapshot } from '../../../migration/importer';
 import type { SourceSnapshot } from '../../../migration/inventory';
 import { mapSourceDocument } from '../../../migration/mappers';
 import { parseSourceDocument } from '../../../migration/source-schemas';
-import { verifySnapshot } from '../../../migration/verification';
+import {
+  finalizeContactSnapshot,
+  verifySnapshot,
+} from '../../../migration/verification';
 import { migrateToLatest } from '../../../server/db/migrator';
 import { createIsolatedDatabase } from '../../helpers/postgres';
 
@@ -593,5 +596,66 @@ describe('transactional snapshot importer and verification', () => {
     expect(output).not.toContain('1999-01-01');
     expect(output).not.toContain('2026-07-14T10:11:12.123Z');
     expectRedacted(failure);
+  });
+
+  it('rolls back a final contact insert when complete verification fails', async () => {
+    const complete = fullSnapshot();
+    const expected = complete.contact[0];
+    const unexpected = complete.contact[1];
+    const unexpectedSource = parseSourceDocument('contact', unexpected.value);
+    await isolated.db
+      .insertInto('contact_messages')
+      .values(
+        mapSourceDocument('contact', unexpectedSource, unexpected.sourceOrder),
+      )
+      .execute();
+
+    let failure: unknown;
+    try {
+      await finalizeContactSnapshot(isolated.db, { contact: [expected] });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toMatchObject({
+      name: 'MigrationValidationError',
+      issues: [expect.objectContaining({ collection: 'contact' })],
+    });
+    expectRedacted(failure);
+
+    const rows = await isolated.db
+      .selectFrom('contact_messages')
+      .select('id')
+      .orderBy('id')
+      .execute();
+    expect(rows).toEqual([{ id: objectId(20).toHexString() }]);
+  });
+
+  it('commits final contacts only after their complete verification succeeds', async () => {
+    const snapshot = { contact: fullSnapshot().contact };
+    const result = await finalizeContactSnapshot(isolated.db, snapshot);
+
+    expect(result.migrated.collections.contact).toMatchObject({
+      count: 2,
+      ids: [objectId(19).toHexString(), objectId(20).toHexString()],
+      canonicalHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect(result.validated.collections.contact).toEqual({
+      sourceCount: 2,
+      destinationCount: 2,
+      idsMatch: true,
+      timestampsMatch: true,
+      hashMatch: true,
+    });
+    expectRedacted(result);
+    expect(
+      await isolated.db
+        .selectFrom('contact_messages')
+        .select('id')
+        .orderBy('id')
+        .execute(),
+    ).toEqual([
+      { id: objectId(19).toHexString() },
+      { id: objectId(20).toHexString() },
+    ]);
   });
 });

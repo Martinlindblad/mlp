@@ -100,7 +100,7 @@ test('runbook binds rehearsal to strict migration and redacted evidence contract
 
   assert.match(
     source,
-    /temporary Atlas user[\s\S]*read-only[\s\S]*portfolio database/iu,
+    /temporary Atlas user[\s\S]*read-only[\s\S]*`mlp_db` database/iu,
   );
   assert.match(source, /MONGO_URI_FILE[\s\S]*root-readable/iu);
   assert.match(source, /MongoDB Database Tools[\s\S]*100\.17\.0/iu);
@@ -153,16 +153,28 @@ test('runbook binds rehearsal to strict migration and redacted evidence contract
   assert.doesNotMatch(source, /(?:password|token)\s*=\s*["'][^"'$]+["']/iu);
 });
 
-test('runbook forbids cutover completion when final contact import is not atomic', async () => {
+test('runbook requires the reviewed atomic contact finalizer before Gate 14', async () => {
   const source = await readRequired(runbookRelativePath);
 
   assert.match(
     source,
-    /If final contact import and all\s+verification are not inside the same rollback-capable\s+transaction,\s+cutover\s+completion must not be declared/iu,
+    /If final contact import and all\s+verification are not inside the same\s+rollback-capable\s+transaction,\s+cutover\s+completion must not be declared/iu,
   );
   assert.match(
     source,
-    /`importSnapshot\(\)` commits before\s+`verifySnapshot\(\)`[\s\S]*do not proceed to Gate 14/iu,
+    /reviewed `finalizeContactSnapshot\(\)`[\s\S]*serializable[\s\S]*PostgreSQL 18\.4 integration\s+test[\s\S]*mismatch[\s\S]*rolls back inserted rows[\s\S]*do not proceed to Gate 14/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /current `importSnapshot\(\)` commits before\s+`verifySnapshot\(\)`/iu,
+  );
+  assert.match(
+    source,
+    /If Gate 13 fails[\s\S]*atomic transaction[\s\S]*rolled back[\s\S]*If a later pre-write gate fails after Gate 13 succeeded[\s\S]*leave the verified\s+PostgreSQL rows intact[\s\S]*idempotently/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /Roll back the uncommitted PostgreSQL contact import transaction/iu,
   );
 });
 
@@ -206,7 +218,11 @@ test('runbook has a timed pre-write rollback branch and a one-way commit point',
   assert.match(source, /restore[\s\S]*Vercel[\s\S]*contact writes/iu);
   assert.match(
     source,
-    /roll back[\s\S]*uncommitted PostgreSQL contact import/iu,
+    /Gate 13 fails[\s\S]*atomic transaction[\s\S]*rolled back/iu,
+  );
+  assert.match(
+    source,
+    /later pre-write gate fails after Gate 13 succeeded[\s\S]*PostgreSQL rows intact/iu,
   );
   assert.match(source, /without modifying or deleting Atlas/iu);
 

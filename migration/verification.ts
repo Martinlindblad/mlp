@@ -12,7 +12,12 @@ import {
   type DestinationRow,
 } from './canonical';
 import { MigrationValidationError, type MigrationIssue } from './errors';
-import { prepareSnapshot, type PreparedDocument } from './importer';
+import {
+  importPreparedSnapshot,
+  prepareSnapshot,
+  type MigrationReport,
+  type PreparedDocument,
+} from './importer';
 import type { SourceSnapshot } from './inventory';
 import {
   SOURCE_COLLECTIONS,
@@ -35,6 +40,11 @@ export interface ValidationReport {
 
 export interface VerificationOptions {
   publicRoot: string;
+}
+
+export interface ContactFinalizationResult {
+  migrated: MigrationReport;
+  validated: ValidationReport;
 }
 
 const sourceCollections = Object.keys(SOURCE_COLLECTIONS) as SourceCollection[];
@@ -219,4 +229,50 @@ export async function verifySnapshot(
 
   if (issues.length > 0) throw new MigrationValidationError(issues);
   return { valid: true, generatedAt: new Date().toISOString(), collections };
+}
+
+export async function finalizeContactSnapshot(
+  db: Kysely<Database>,
+  snapshot: Partial<SourceSnapshot>,
+  options: VerificationOptions = {
+    publicRoot: path.resolve(process.cwd(), 'public'),
+  },
+): Promise<ContactFinalizationResult> {
+  const requested = Object.keys(snapshot);
+  if (
+    requested.length !== 1 ||
+    requested[0] !== 'contact' ||
+    snapshot.contact === undefined
+  ) {
+    throw new MigrationValidationError([
+      {
+        collection: 'contact',
+        id: 'unknown',
+        code: 'invalid_value',
+        path: '$',
+      },
+    ]);
+  }
+  const prepared = prepareSnapshot(snapshot);
+
+  try {
+    return await db
+      .transaction()
+      .setIsolationLevel('serializable')
+      .execute(async (trx) => {
+        const migrated = await importPreparedSnapshot(trx, prepared);
+        const validated = await verifySnapshot(trx, snapshot, options);
+        return { migrated, validated };
+      });
+  } catch (error) {
+    if (error instanceof MigrationValidationError) throw error;
+    throw new MigrationValidationError([
+      {
+        collection: 'contact',
+        id: 'unknown',
+        code: 'invalid_value',
+        path: 'database',
+      },
+    ]);
+  }
 }

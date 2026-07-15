@@ -1,8 +1,7 @@
-import { importSnapshot } from '../../migration/importer';
 import { captureSnapshot } from '../../migration/inventory';
 import { withSourceDatabase } from '../../migration/mongo-client';
 import { reportPath, writeReport } from '../../migration/report';
-import { verifySnapshot } from '../../migration/verification';
+import { finalizeContactSnapshot } from '../../migration/verification';
 import {
   migrationPublicRoot,
   runId,
@@ -18,12 +17,15 @@ async function main(): Promise<void> {
   await withMigrationTarget(async (target) =>
     withSourceDatabase(async (source) => {
       const snapshot = await captureSnapshot(source, ['contact']);
-      const migrated = await importSnapshot(target, snapshot);
-      // Verification reads the complete destination contact table; there is no
-      // implicit or undefined preload boundary.
-      const validated = await verifySnapshot(target, snapshot, {
-        publicRoot: migrationPublicRoot(),
-      });
+      // Import and complete-destination verification share one serializable
+      // transaction. A mismatch throws before commit and rolls back inserts.
+      const { migrated, validated } = await finalizeContactSnapshot(
+        target,
+        snapshot,
+        {
+          publicRoot: migrationPublicRoot(),
+        },
+      );
       await writeReport(reportPath(`${id}-contacts-migration.json`), migrated);
       await writeReport(
         reportPath(`${id}-contacts-validation.json`),
