@@ -3012,16 +3012,22 @@ git commit -m "feat: add backup restore and safe deployment operations"
 **Files:**
 - Create: `playwright.config.ts`
 - Create: `tests/fixtures/seed-postgres.ts`
+- Create: `tests/integration/db/e2e-seed.test.ts`
 - Create: `tests/e2e/public-routes.spec.ts`
 - Create: `tests/e2e/service-worker.spec.ts`
+- Create: `tests/e2e/assets.spec.ts`
 - Create: `tests/infra/workflow-pins.test.mjs`
+- Create: `tests/infra/image-gates.test.mjs`
+- Create: `scripts/ci/verify-images.sh`
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/workflows/publish-image.yml`
 - Create: `.github/dependabot.yml`
 
 **Interfaces:**
-- Consumes: all local checks, PostgreSQL migrations, app/backup Dockerfiles, and public API contracts.
-- Produces: required CI evidence on push/PR, two manually published immutable GHCR digests with SBOM/provenance, and zero automatic production deployment.
+- Consumes: all local checks, PostgreSQL migrations, app/backup/migration Dockerfiles, and public API contracts.
+- Produces: required CI evidence on push/PR, three manually published immutable GHCR digests with SBOM/provenance, and zero automatic production deployment.
+
+The executed implementation strengthens the initial sketches below: browser tests use stable DOM markers and `domcontentloaded`, require an active service-worker controller, perform the contact POST inside the controlled browser page, run against the standalone production server, and exercise all three hardened images through a fail-closed Linux image harness.
 
 - [ ] **Step 1: Write browser and workflow-pin tests first**
 
@@ -3115,7 +3121,7 @@ export default defineConfig({
 
 - [ ] **Step 3: Add push/PR CI with exact action commits**
 
-Create `.github/workflows/ci.yml` with `permissions: { contents: read }`, cancellation by ref, a PostgreSQL service using the pinned 18.4 digest, and these exact action pins:
+Create `.github/workflows/ci.yml` with `permissions: { contents: read }`, cancellation by ref, a PostgreSQL service using the pinned 18.4 digest, and immutable action commits allowlisted by `tests/infra/workflow-pins.test.mjs`. The following block is the original interface sketch; the implemented workflow and allowlist are normative because action releases advanced during execution:
 
 ```yaml
 name: CI
@@ -3171,37 +3177,31 @@ jobs:
 
 Add Caddy validate, Compose render, service-worker tests, and the Docker runtime inspections from Tasks 7-10 as explicit steps before Playwright. The Node infrastructure tests validate workflow pins and shell command contracts without downloading floating CI helper tools.
 
-- [ ] **Step 4: Add a manual two-image publication workflow**
+- [ ] **Step 4: Add a manual three-image publication workflow**
 
-Create `.github/workflows/publish-image.yml` with only `workflow_dispatch`, no production credentials, no SSH, and permissions `contents: read`, `packages: write`, `id-token: write`, `attestations: write`. Use these exact pins:
+Create `.github/workflows/publish-image.yml` with only `workflow_dispatch`, no production credentials, no SSH, and least-privilege per-job permissions. Use the reviewed immutable action pins recorded by `tests/infra/workflow-pins.test.mjs`; install Trivy and GitHub CLI directly from checksum-verified release artifacts.
 
-```yaml
-- uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-- uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-- uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-- uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
-- uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
-- uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
-- uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-```
-
-Build and push:
+Build, runtime-test, vulnerability/secret-scan, save, and only then push:
 
 ```text
 ghcr.io/${{ github.repository_owner }}/mlp:${{ github.sha }}
 ghcr.io/${{ github.repository_owner }}/mlp-backup:${{ github.sha }}
+ghcr.io/${{ github.repository_owner }}/mlp-migration:${{ github.sha }}
 ```
 
-Pass `COMMIT_SHA=${{ github.sha }}` to the app build. Give the Buildx steps IDs `build-app` and `build-backup`, set `provenance: true` and `sbom: true`, and record `${{ steps.build-app.outputs.digest }}` plus `${{ steps.build-backup.outputs.digest }}`. Attest both subject-name/digest pairs, generate SPDX JSON SBOMs from the two digest references, and upload a `production-images-${{ github.sha }}` artifact containing exactly:
+Pass `COMMIT_SHA=${{ github.sha }}` to all three builds. Preserve the exact scanned image tarballs between jobs, derive each immutable digest from that image's successful `docker push` result rather than a mutable tag lookup, and sign plus attest every digest. Generate SPDX 2.3 JSON SBOMs and upload a `production-images-${{ github.sha }}` artifact containing exactly:
 
 ```text
 app-image-ref.txt
 app-image-digest.txt
 backup-image-ref.txt
 backup-image-digest.txt
+migration-image-ref.txt
+migration-image-digest.txt
 git-commit.txt
 app.spdx.json
 backup.spdx.json
+migration.spdx.json
 ```
 
 The workflow ends after artifact upload and prints the digest-qualified references; it contains no deploy job.
@@ -3210,7 +3210,7 @@ The workflow ends after artifact upload and prints the digest-qualified referenc
 
 Create `.github/dependabot.yml` with weekly Monday updates for `npm`, `github-actions`, and `docker`, all targeting `main`, each limited to five open pull requests. Digest updates are reviewed through pull requests and must pass the full CI workflow.
 
-After the first manual publication, set both GHCR packages to public read visibility and verify an unauthenticated `docker pull` by digest from a logged-out test environment. This portfolio deployment therefore stores no long-lived GHCR credential on the VM. If organization policy forbids public packages, stop and amend the approved runtime-secret inventory before putting a package read token on the VM.
+After the first manual publication, set all three GHCR packages to public read visibility and verify unauthenticated digest pulls, Cosign signatures, provenance, and SBOM attestations from an empty Docker client configuration. This portfolio deployment therefore stores no long-lived GHCR credential on the VM. If repository policy forbids public packages, stop and amend the approved runtime-secret inventory before putting a package read token on the VM.
 
 - [ ] **Step 6: Verify workflows, build, and browser behavior**
 
@@ -3218,6 +3218,7 @@ Run:
 
 ```bash
 node --test tests/infra/workflow-pins.test.mjs
+node --test tests/infra/image-gates.test.mjs
 actionlint .github/workflows/*.yml
 rg -n 'uses: [^#[:space:]]+@(main|master|v[0-9]+|latest)' .github/workflows
 yarn test:e2e
@@ -3228,7 +3229,7 @@ Expected: pin test and actionlint pass; `rg` produces no output; all Playwright 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add .github playwright.config.ts tests/e2e tests/fixtures tests/infra/workflow-pins.test.mjs
+git add .github playwright.config.ts scripts/ci tests/e2e tests/fixtures tests/integration/db/e2e-seed.test.ts tests/infra/workflow-pins.test.mjs tests/infra/image-gates.test.mjs
 git commit -m "ci: verify and publish self hosted portfolio images"
 ```
 

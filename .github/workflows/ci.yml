@@ -1,0 +1,297 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up exact Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          package-manager-cache: false
+      - name: Activate exact Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          yarn --version | grep -Fx 1.22.22
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+      - name: Install checksum-verified actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="$RUNNER_TEMP/actionlint_1.7.12_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output "$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$archive" | sha256sum --check --strict
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP" actionlint
+          sudo install --owner=root --group=root --mode=0755 \
+            "$RUNNER_TEMP/actionlint" /usr/local/bin/actionlint
+          actionlint -version | grep -F "${ACTIONLINT_VERSION}"
+      - name: Validate workflow syntax and immutable action pins
+        run: |
+          actionlint .github/workflows/*.yml
+          yarn test:workflow
+      - name: Verify formatting
+        run: >-
+          yarn prettier --check
+          ".github/**/*.yml"
+          playwright.config.ts
+          "tests/e2e/**/*.ts"
+          "tests/fixtures/**/*.ts"
+          tests/integration/db/e2e-seed.test.ts
+          tests/infra/workflow-pins.test.mjs
+          tests/infra/image-gates.test.mjs
+      - name: Lint and type-check
+        run: |
+          yarn lint
+          yarn typecheck
+          yarn migration:typecheck
+      - name: Run deterministic tests
+        run: |
+          yarn test:unit
+          yarn test:assets
+          yarn test:images
+          yarn test:ops
+          yarn test:image-gates
+      - name: Build production and migration outputs
+        run: |
+          yarn build:production
+          yarn build:migration
+
+  postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up exact Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          package-manager-cache: false
+      - name: Activate exact Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          yarn --version | grep -Fx 1.22.22
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+      - name: Run PostgreSQL integration tests
+        run: yarn test:integration
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGCONNECT_TIMEOUT_MS: 5000
+      PGDATABASE: portfolio_browser
+      PGHOST: 127.0.0.1
+      PGPASSWORD_FILE: /tmp/mlp-browser-secrets/portfolio-app-password
+      PGPOOL_MAX: 5
+      PGPORT: 5432
+      PGUSER: portfolio_app
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up exact Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          package-manager-cache: false
+      - name: Activate exact Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          yarn --version | grep -Fx 1.22.22
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+      - name: Create production-shaped PostgreSQL roles
+        env:
+          DATABASE_ADMIN_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          const client = new pg.Client({ connectionString: process.env.DATABASE_ADMIN_URL });
+          await client.connect();
+          try {
+            await client.query("create role portfolio_migrator login password 'ci-migrator-only' nosuperuser nocreatedb nocreaterole noreplication nobypassrls");
+            await client.query("create role portfolio_app login password 'ci-app-only' nosuperuser nocreatedb nocreaterole noreplication nobypassrls");
+            await client.query("create role portfolio_backup login password 'ci-backup-only' nosuperuser nocreatedb nocreaterole noreplication nobypassrls");
+            await client.query('create database portfolio_browser owner portfolio_migrator');
+          } finally {
+            await client.end();
+          }
+          NODE
+          install -d -m 0700 /tmp/mlp-browser-secrets
+          printf '%s\n' 'ci-migrator-only' >/tmp/mlp-browser-secrets/portfolio-migrator-password
+          printf '%s\n' 'ci-app-only' >/tmp/mlp-browser-secrets/portfolio-app-password
+          chmod 0600 \
+            /tmp/mlp-browser-secrets/portfolio-app-password \
+            /tmp/mlp-browser-secrets/portfolio-migrator-password
+      - name: Apply migrations twice as the database owner
+        env:
+          PGPASSWORD_FILE: /tmp/mlp-browser-secrets/portfolio-migrator-password
+          PGPOOL_MAX: 2
+          PGUSER: portfolio_migrator
+        run: |
+          yarn build:scripts
+          node dist/scripts/db/migrate.js
+          node dist/scripts/db/migrate.js
+      - name: Seed deterministic browser fixtures as migrator
+        env:
+          PGPASSWORD_FILE: /tmp/mlp-browser-secrets/portfolio-migrator-password
+          PGPOOL_MAX: 2
+          PGUSER: portfolio_migrator
+        run: yarn tsx tests/fixtures/seed-postgres.ts
+      - name: Install the locked Chromium runtime
+        run: yarn playwright install --with-deps chromium
+      - name: Run browser acceptance as the runtime role
+        run: yarn test:e2e
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+          if-no-files-found: warn
+
+  images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up exact Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          package-manager-cache: false
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Activate exact Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          yarn --version | grep -Fx 1.22.22
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+      - name: Install exact Compose and Caddy tools
+        env:
+          CADDY_SHA512: 747df7ee74de188485157a383633a1a963fd9233b71fbb4a69ddcbcc589ce4e2cc82dacf5dbbe136cb51d17e14c59daeb5d9bc92487610b0f3b93680b2646546
+          COMPOSE_SHA256: f9ebc6ebdb19d769b793c245a736caaeb198c62587f13b25c660c13b4987f959
+        run: |
+          compose="$RUNNER_TEMP/docker-compose-linux-x86_64"
+          curl --fail --silent --show-error --location \
+            --output "$compose" \
+            https://github.com/docker/compose/releases/download/v5.3.1/docker-compose-linux-x86_64
+          printf '%s  %s\n' "$COMPOSE_SHA256" "$compose" | sha256sum --check --strict
+          sudo install --directory --owner=root --group=root --mode=0755 /usr/local/libexec/mlp
+          sudo install --owner=root --group=root --mode=0755 \
+            "$compose" /usr/local/libexec/mlp/docker-compose
+          test "$(/usr/local/libexec/mlp/docker-compose version --short)" = 5.3.1
+
+          caddy_archive="$RUNNER_TEMP/caddy_2.10.2_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output "$caddy_archive" \
+            https://github.com/caddyserver/caddy/releases/download/v2.10.2/caddy_2.10.2_linux_amd64.tar.gz
+          printf '%s  %s\n' "$CADDY_SHA512" "$caddy_archive" | sha512sum --check --strict
+          tar --extract --gzip --file "$caddy_archive" --directory "$RUNNER_TEMP" caddy
+          sudo install --owner=root --group=root --mode=0755 "$RUNNER_TEMP/caddy" /usr/local/bin/caddy
+          caddy version | grep -F 'v2.10.2'
+      - name: Validate Caddy and Compose rendering
+        run: |
+          sudo install --directory --owner=root --group=root --mode=0755 /etc/caddy/modes
+          sudo install --owner=root --group=root --mode=0644 infra/caddy/Caddyfile /etc/caddy/Caddyfile
+          sudo install --owner=root --group=root --mode=0644 infra/caddy/modes/*.caddy /etc/caddy/modes/
+          CONTACT_MODE=contact-enabled caddy validate --config /etc/caddy/Caddyfile
+          rendered="$(
+            /usr/local/libexec/mlp/docker-compose \
+              --project-name mlp-prod \
+              --project-directory "$PWD" \
+              --env-file infra/runtime.example/env/app.env \
+              --env-file infra/runtime.example/env/migrator.env \
+              --env-file infra/runtime.example/env/backup.env \
+              --file compose.production.yml \
+              --profile '*' config --format json
+          )"
+          printf '%s' "$rendered" | node --input-type=module -e \
+            "import fs from 'node:fs'; import {validateProductionConfig} from './scripts/verify-production-config.mjs'; validateProductionConfig(JSON.parse(fs.readFileSync(0,'utf8')));"
+          profiles=(export rehearsal preload contacts remove-synthetic)
+          services=(migration-export migration-rehearsal migration-preload migration-contacts migration-remove-synthetic)
+          for index in "${!profiles[@]}"; do
+            actual="$(
+              /usr/local/libexec/mlp/docker-compose \
+                --project-name mlp-migration \
+                --project-directory "$PWD" \
+                --env-file infra/runtime.example/env/migration.env \
+                --file compose.migration.yml \
+                --profile "${profiles[$index]}" config --services
+            )"
+            test "$actual" = "${services[$index]}"
+          done
+      - name: Run Compose and Caddy Linux gates without skips
+        run: yarn test:compose
+      - name: Verify all image-gate contracts
+        run: yarn test:image-gates
+      - name: Build and exercise all three hardened amd64 images
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: ./scripts/ci/verify-images.sh

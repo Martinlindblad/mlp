@@ -1,0 +1,367 @@
+name: Publish verified production images
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Exact commit on protected main to publish
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: production-images
+  cancel-in-progress: false
+
+env:
+  APP_IMAGE: ghcr.io/martinlindblad/mlp
+  BACKUP_IMAGE: ghcr.io/martinlindblad/mlp-backup
+  MIGRATION_IMAGE: ghcr.io/martinlindblad/mlp-migration
+
+jobs:
+  build-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the exact requested revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Require an exact clean main revision
+        env:
+          REQUESTED_COMMIT: ${{ inputs.commit_sha }}
+        run: |
+          test "$GITHUB_REF" = refs/heads/main
+          printf '%s\n' "$REQUESTED_COMMIT" | grep -Eq '^[0-9a-f]{40}$'
+          test "$REQUESTED_COMMIT" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Set up exact Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          package-manager-cache: false
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Activate exact Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          yarn --version | grep -Fx 1.22.22
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+      - name: Install checksum-verified Trivy
+        env:
+          TRIVY_SHA256: 8b4376d5d6befe5c24d503f10ff136d9e0c49f9127a4279fd110b727929a5aa9
+          TRIVY_VERSION: v0.70.0
+        run: |
+          archive="$RUNNER_TEMP/trivy_0.70.0_Linux-64bit.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output "$archive" \
+            "https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}/trivy_0.70.0_Linux-64bit.tar.gz"
+          printf '%s  %s\n' "$TRIVY_SHA256" "$archive" | sha256sum --check --strict
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP" trivy
+          sudo install --owner=root --group=root --mode=0755 "$RUNNER_TEMP/trivy" /usr/local/bin/trivy
+          trivy --version | grep -F 'Version: 0.70.0'
+      - name: Verify image-gate contract
+        run: yarn test:image-gates
+      - name: Build and exercise all three hardened amd64 images
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: ./scripts/ci/verify-images.sh
+      - name: Scan the verified images and generate SPDX 2.3 SBOMs
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p verified
+          scan_and_save() {
+            local key=$1
+            local source=$2
+            local target=$3
+            docker image inspect "$source" >/dev/null
+            docker tag "$source" "$target"
+            trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --timeout 20m \
+              --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed=false \
+              --exit-code 1 --format table "$target"
+            trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --timeout 20m \
+              --scanners secret --exit-code 1 --format table "$target"
+            trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --timeout 20m \
+              --format spdx-json --output "verified/${key}.spdx.json" "$target"
+            jq -e \
+              '.spdxVersion == "SPDX-2.3" and (.packages | type == "array" and length > 0)' \
+              "verified/${key}.spdx.json" >/dev/null
+            docker save --output "verified/${key}-image.tar" "$target"
+          }
+          scan_and_save app \
+            "mlp-image-gate-app:${COMMIT_SHA}" "${APP_IMAGE}:${COMMIT_SHA}"
+          scan_and_save backup \
+            "mlp-image-gate-backup:${COMMIT_SHA}" "${BACKUP_IMAGE}:${COMMIT_SHA}"
+          scan_and_save migration \
+            "mlp-image-gate-migration:${COMMIT_SHA}" "${MIGRATION_IMAGE}:${COMMIT_SHA}"
+          (cd verified && sha256sum -- app-image.tar backup-image.tar migration-image.tar >image-tars.sha256)
+          printf '%s\n' "$COMMIT_SHA" >verified/git-commit.txt
+      - name: Upload only verified images and SBOMs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verified-images-${{ github.sha }}
+          path: verified
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+  publish:
+    needs: build-scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      packages: write
+    outputs:
+      app-digest: ${{ steps.publish.outputs.app_digest }}
+      backup-digest: ${{ steps.publish.outputs.backup_digest }}
+      migration-digest: ${{ steps.publish.outputs.migration_digest }}
+    steps:
+      - name: Download the already verified images
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: verified-images-${{ github.sha }}
+          path: verified
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Log in only for the publication barrier
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Load, publish, and resolve exact registry digests
+        id: publish
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(cat verified/git-commit.txt)" = "$COMMIT_SHA"
+          (cd verified && sha256sum --check --strict image-tars.sha256)
+          docker load --input verified/app-image.tar >/dev/null
+          docker load --input verified/backup-image.tar >/dev/null
+          docker load --input verified/migration-image.tar >/dev/null
+          mkdir -p published
+          publish_one() {
+            local key=$1
+            local image=$2
+            local user=$3
+            local tagged="${image}:${COMMIT_SHA}"
+            local digest image_json push_digest_count push_log
+            test "$(docker image inspect --format '{{.Os}}|{{.Architecture}}|{{.Config.User}}|{{index .Config.Labels \"org.opencontainers.image.revision\"}}' "$tagged")" = \
+              "linux|amd64|${user}|${COMMIT_SHA}"
+            push_log="$RUNNER_TEMP/push-${key}.log"
+            docker push "$tagged" | tee "$push_log"
+            digest="$(sed -nE 's/^.*: digest: (sha256:[0-9a-f]{64}) size: [0-9]+$/\1/p' "$push_log")"
+            push_digest_count="$(printf '%s\n' "$digest" | grep -Ec '^sha256:[0-9a-f]{64}$')"
+            test "$push_digest_count" -eq 1
+            image_json="$(docker buildx imagetools inspect "${image}@${digest}" --format '{{json .Image}}')"
+            jq -e --arg revision "$COMMIT_SHA" --arg user "$user" \
+              '.os == "linux" and .architecture == "amd64" and .config.User == $user and .config.Labels["org.opencontainers.image.revision"] == $revision' \
+              <<<"$image_json" >/dev/null
+            printf '%s_digest=%s\n' "$key" "$digest" >>"$GITHUB_OUTPUT"
+            printf '%s@%s\n' "$image" "$digest" >"published/${key}-image-ref.txt"
+            printf '%s\n' "$digest" >"published/${key}-image-digest.txt"
+          }
+          publish_one app "$APP_IMAGE" 1000:1000
+          publish_one backup "$BACKUP_IMAGE" 10001:10001
+          publish_one migration "$MIGRATION_IMAGE" 1000:1000
+          printf '%s\n' "$COMMIT_SHA" >published/git-commit.txt
+      - name: Upload digest-qualified publication evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: published-images-${{ github.sha }}
+          path: published
+          retention-days: 1
+          if-no-files-found: error
+
+  sign-attest:
+    needs:
+      - build-scan
+      - publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production-images
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - name: Download verified SBOMs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: verified-images-${{ github.sha }}
+          path: verified
+      - name: Download published digest evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: published-images-${{ github.sha }}
+          path: published
+      - name: Install exact Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.0.6
+      - name: Log in only for signature and attestation writes
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Validate evidence and sign all digests keylessly
+        env:
+          APP_DIGEST: ${{ needs.publish.outputs.app-digest }}
+          BACKUP_DIGEST: ${{ needs.publish.outputs.backup-digest }}
+          MIGRATION_DIGEST: ${{ needs.publish.outputs.migration-digest }}
+        run: |
+          set -Eeuo pipefail
+          cosign version | grep -F 'v3.0.6'
+          test "$(cat published/app-image-ref.txt)" = "${APP_IMAGE}@${APP_DIGEST}"
+          test "$(cat published/backup-image-ref.txt)" = "${BACKUP_IMAGE}@${BACKUP_DIGEST}"
+          test "$(cat published/migration-image-ref.txt)" = "${MIGRATION_IMAGE}@${MIGRATION_DIGEST}"
+          test "$(cat published/git-commit.txt)" = "$GITHUB_SHA"
+          cosign sign --yes "${APP_IMAGE}@${APP_DIGEST}"
+          cosign sign --yes "${BACKUP_IMAGE}@${BACKUP_DIGEST}"
+          cosign sign --yes "${MIGRATION_IMAGE}@${MIGRATION_DIGEST}"
+      - name: Attest application provenance
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ env.APP_IMAGE }}
+          subject-digest: ${{ needs.publish.outputs.app-digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: Attest application SBOM
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ env.APP_IMAGE }}
+          subject-digest: ${{ needs.publish.outputs.app-digest }}
+          sbom-path: verified/app.spdx.json
+          push-to-registry: true
+          create-storage-record: false
+      - name: Attest backup provenance
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ env.BACKUP_IMAGE }}
+          subject-digest: ${{ needs.publish.outputs.backup-digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: Attest backup SBOM
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ env.BACKUP_IMAGE }}
+          subject-digest: ${{ needs.publish.outputs.backup-digest }}
+          sbom-path: verified/backup.spdx.json
+          push-to-registry: true
+          create-storage-record: false
+      - name: Attest migration provenance
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ env.MIGRATION_IMAGE }}
+          subject-digest: ${{ needs.publish.outputs.migration-digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: Attest migration SBOM
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ env.MIGRATION_IMAGE }}
+          subject-digest: ${{ needs.publish.outputs.migration-digest }}
+          sbom-path: verified/migration.spdx.json
+          push-to-registry: true
+          create-storage-record: false
+
+  verify-release:
+    needs:
+      - build-scan
+      - publish
+      - sign-attest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Download verified SBOMs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: verified-images-${{ github.sha }}
+          path: verified
+      - name: Download published digest evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: published-images-${{ github.sha }}
+          path: published
+      - name: Install exact Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.0.6
+      - name: Install checksum-verified GitHub CLI
+        env:
+          GH_SHA256: 83d5c2ccad5498f58bf6368acb1ab32588cf43ab3a4b1c301bf36328b1c8bd60
+          GH_VERSION: 2.96.0
+        run: |
+          archive="$RUNNER_TEMP/gh_2.96.0_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output "$archive" \
+            "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz"
+          printf '%s  %s\n' "$GH_SHA256" "$archive" | sha256sum --check --strict
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP"
+          sudo install --owner=root --group=root --mode=0755 \
+            "$RUNNER_TEMP/gh_${GH_VERSION}_linux_amd64/bin/gh" /usr/local/bin/gh
+          gh --version | head -1 | grep -F "gh version ${GH_VERSION}"
+      - name: Prove anonymous pulls, signatures, provenance, and SBOMs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          anonymous="$RUNNER_TEMP/anonymous-docker"
+          install -d -m 0700 "$anonymous"
+          printf '{"auths":{}}\n' >"$anonymous/config.json"
+          export DOCKER_CONFIG="$anonymous"
+          identity='https://github.com/martinlindblad/mlp/.github/workflows/publish-image.yml@refs/heads/main'
+          verify_one() {
+            local reference=$1
+            docker pull --platform linux/amd64 "$reference" >/dev/null
+            cosign verify \
+              --certificate-identity "$identity" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$reference" >/dev/null
+            gh attestation verify "oci://${reference}" \
+              --repo martinlindblad/mlp \
+              --signer-workflow martinlindblad/mlp/.github/workflows/publish-image.yml \
+              --cert-identity "$identity" \
+              --source-ref refs/heads/main \
+              --source-digest "$GITHUB_SHA" \
+              --deny-self-hosted-runners >/dev/null
+            gh attestation verify "oci://${reference}" \
+              --repo martinlindblad/mlp \
+              --signer-workflow martinlindblad/mlp/.github/workflows/publish-image.yml \
+              --cert-identity "$identity" \
+              --source-ref refs/heads/main \
+              --source-digest "$GITHUB_SHA" \
+              --deny-self-hosted-runners \
+              --predicate-type https://spdx.dev/Document/v2.3 >/dev/null
+          }
+          verify_one "$(cat published/app-image-ref.txt)"
+          verify_one "$(cat published/backup-image-ref.txt)"
+          verify_one "$(cat published/migration-image-ref.txt)"
+      - name: Assemble the verified deployment lock artifact
+        run: |
+          mkdir -p production-images
+          cp published/*.txt production-images/
+          cp verified/*.spdx.json production-images/
+          test "$(find production-images -type f | wc -l)" -eq 10
+      - name: Upload the only deployable image references
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: production-images-${{ github.sha }}
+          path: production-images
+          retention-days: 30
+          if-no-files-found: error
