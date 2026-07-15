@@ -1161,6 +1161,10 @@ test('bootstrap installs pinned root-owned runtime and stages a checked firewall
     trace,
     /systemctl\tenable\t--now\tqemu-guest-agent\.service\tdocker\.service\tsystemd-resolved\.service\tunattended-upgrades\.service\tapt-daily\.timer\tapt-daily-upgrade\.timer/u,
   );
+  const resolvedRestartIndex = lineIndex(
+    lines,
+    'systemctl\trestart\tsystemd-resolved.service',
+  );
   assert.doesNotMatch(
     trace,
     /systemctl\tenable[^\n]*mlp-(?:db-(?:backup|restore-test)|platform-health)\.timer/u,
@@ -1180,7 +1184,11 @@ test('bootstrap installs pinned root-owned runtime and stages a checked firewall
     trace,
     /runuser\t--user\tmlp-admin\t--\t\/usr\/bin\/docker\t--host\tunix:\/\/\/run\/docker\.sock\tps/u,
   );
-  lineIndex(lines, 'resolvectl\tdns');
+  const resolvedVerificationIndex = lineIndex(lines, 'resolvectl\tdns');
+  assert.ok(
+    resolvedRestartIndex < resolvedVerificationIndex,
+    'systemd-resolved must reload the installed drop-in before verification',
+  );
   assert.equal(
     await readlink(
       path.join(path.dirname(harness.debianSource), '../../resolv.conf'),

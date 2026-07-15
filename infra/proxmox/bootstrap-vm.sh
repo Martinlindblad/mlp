@@ -575,6 +575,7 @@ systemctl daemon-reload
 systemctl enable --now \
   qemu-guest-agent.service docker.service systemd-resolved.service \
   unattended-upgrades.service apt-daily.timer apt-daily-upgrade.timer
+systemctl restart systemd-resolved.service
 
 docker version >/dev/null
 installed_compose=$(docker compose version --short)
