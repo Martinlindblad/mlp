@@ -96,12 +96,16 @@ RESTORE_VOLUME="$RUN_ID-restore"
 SOURCE_DATABASE_CONTAINER="$RUN_ID-source-postgres"
 TARGET_DATABASE_CONTAINER="$RUN_ID-target-postgres"
 APP_CONTAINER="$RUN_ID-app"
+CADDY_CONTAINER="$RUN_ID-caddy"
+CADDY_CAPABILITY_CONTAINER="$RUN_ID-caddy-capability"
 STAGING_IMAGE_SUFFIX="staging-$COMMIT_SHA-$RUN_RANDOM_SUFFIX"
 APP_CANONICAL_IMAGE="mlp-image-gate-app:$COMMIT_SHA"
 BACKUP_CANONICAL_IMAGE="mlp-image-gate-backup:$COMMIT_SHA"
+CADDY_CANONICAL_IMAGE="mlp-image-gate-caddy:$COMMIT_SHA"
 MIGRATION_CANONICAL_IMAGE="mlp-image-gate-migration:$COMMIT_SHA"
 APP_IMAGE="mlp-image-gate-app:$STAGING_IMAGE_SUFFIX"
 BACKUP_IMAGE="mlp-image-gate-backup:$STAGING_IMAGE_SUFFIX"
+CADDY_IMAGE="mlp-image-gate-caddy:$STAGING_IMAGE_SUFFIX"
 MIGRATION_IMAGE="mlp-image-gate-migration:$STAGING_IMAGE_SUFFIX"
 POSTGRES_PASSWORD_FILE="$WORK_DIRECTORY/postgres-password"
 MIGRATOR_PASSWORD_FILE="$WORK_DIRECTORY/postgres-migrator-password"
@@ -182,7 +186,7 @@ remove_labeled_resource() {
   resource_name=$2
 
   case $resource_kind in
-    container) docker container rm --force "$resource_name" >/dev/null 2>&1 ;;
+    container) docker container rm --force --volumes "$resource_name" >/dev/null 2>&1 ;;
     network) docker network rm "$resource_name" >/dev/null 2>&1 ;;
     volume) docker volume rm --force "$resource_name" >/dev/null 2>&1 ;;
     *) return 1 ;;
@@ -415,6 +419,7 @@ image_matrix() {
   cat <<'IMAGE_MATRIX'
 app|Dockerfile|1000:1000|mlp-image-gate-app
 backup|infra/backup/Dockerfile|10001:10001|mlp-image-gate-backup
+caddy|infra/caddy/Dockerfile|65532:65532|mlp-image-gate-caddy
 migration|infra/migration/Dockerfile|1000:1000|mlp-image-gate-migration
 IMAGE_MATRIX
 }
@@ -728,6 +733,64 @@ assert_runtime_hardening() {
   assert_container_hardening "$image_name" "$expected_user" "$container_name"
   docker start --attach "$container_name" >"$WORK_DIRECTORY/hardening-run-$image_name.txt" 2>&1 ||
     fail "hardened container execution failed: $image_name"
+}
+
+verify_caddy_runtime() {
+  track_container "$CADDY_CAPABILITY_CONTAINER"
+  docker run \
+    --name "$CADDY_CAPABILITY_CONTAINER" \
+    --label "mlp.image-gate.run=$RUN_ID" \
+    --platform linux/amd64 \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --user 65532:65532 \
+    --entrypoint /bin/sh \
+    "$CADDY_IMAGE" -eu -c 'test -z "$(getcap /usr/bin/caddy)"' \
+    >"$WORK_DIRECTORY/caddy-capability.txt" 2>&1 ||
+    fail 'Caddy file capability inspection failed'
+  assert_container_hardening \
+    caddy 65532:65532 "$CADDY_CAPABILITY_CONTAINER"
+  [ ! -s "$WORK_DIRECTORY/caddy-capability.txt" ] ||
+    fail 'Caddy image retained a file capability'
+
+  track_container "$CADDY_CONTAINER"
+  docker run --detach \
+    --name "$CADDY_CONTAINER" \
+    --label "mlp.image-gate.run=$RUN_ID" \
+    --platform linux/amd64 \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --user 65532:65532 \
+    --tmpfs /config:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=0700 \
+    --tmpfs /data:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=0700 \
+    --tmpfs /tmp:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=1770 \
+    --mount "type=bind,source=$REPOSITORY_ROOT/infra/caddy,target=/etc/caddy,readonly" \
+    --env CONTACT_MODE=contact-enabled \
+    "$CADDY_IMAGE" >"$WORK_DIRECTORY/caddy-run.txt" 2>&1 ||
+    fail 'hardened Caddy start failed'
+  assert_container_hardening caddy 65532:65532 "$CADDY_CONTAINER"
+
+  caddy_attempt=0
+  while [ "$caddy_attempt" -lt 20 ]; do
+    caddy_running=$(docker container inspect --format='{{.State.Running}}' \
+      "$CADDY_CONTAINER" 2>/dev/null) ||
+      fail 'Caddy runtime state inspection failed'
+    if [ "$caddy_running" = true ] &&
+      caddy_status=$(docker exec "$CADDY_CONTAINER" curl \
+        --silent --output /dev/null --write-out '%{http_code}' \
+        --header 'Host: unknown.invalid' \
+        http://127.0.0.1:8080/ 2>/dev/null) &&
+      [ "$caddy_status" = 421 ]; then
+      return 0
+    fi
+    caddy_attempt=$((caddy_attempt + 1))
+    sleep 1
+  done
+  fail 'hardened Caddy did not remain running'
 }
 
 wait_for_postgres() {
@@ -1702,9 +1765,11 @@ SYNTHETIC_CONTACT_SQL
 for candidate_image in \
   "$APP_CANONICAL_IMAGE" \
   "$BACKUP_CANONICAL_IMAGE" \
+  "$CADDY_CANONICAL_IMAGE" \
   "$MIGRATION_CANONICAL_IMAGE" \
   "$APP_IMAGE" \
   "$BACKUP_IMAGE" \
+  "$CADDY_IMAGE" \
   "$MIGRATION_IMAGE"; do
   assert_image_tag_absent "$candidate_image"
 done
@@ -1718,6 +1783,7 @@ while IFS='|' read -r image_name dockerfile expected_user image_tag; do
   assert_runtime_hardening "$image_name" "$expected_user" "$image_reference"
 done <"$WORK_DIRECTORY/image-matrix.txt"
 
+verify_caddy_runtime
 prepare_source_database
 run_database_migrations
 start_and_verify_app
@@ -1727,8 +1793,10 @@ verify_migration_operator
 acquire_promotion_lock
 promote_image "$APP_IMAGE" "$APP_CANONICAL_IMAGE"
 promote_image "$BACKUP_IMAGE" "$BACKUP_CANONICAL_IMAGE"
+promote_image "$CADDY_IMAGE" "$CADDY_CANONICAL_IMAGE"
 promote_image "$MIGRATION_IMAGE" "$MIGRATION_CANONICAL_IMAGE"
 verify_promoted_image "$APP_IMAGE" "$APP_CANONICAL_IMAGE"
 verify_promoted_image "$BACKUP_IMAGE" "$BACKUP_CANONICAL_IMAGE"
+verify_promoted_image "$CADDY_IMAGE" "$CADDY_CANONICAL_IMAGE"
 verify_promoted_image "$MIGRATION_IMAGE" "$MIGRATION_CANONICAL_IMAGE"
 SUCCESS=1

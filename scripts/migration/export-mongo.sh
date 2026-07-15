@@ -17,7 +17,7 @@ esac
 unset version
 
 [[ -f "$MONGO_URI_FILE" && ! -L "$MONGO_URI_FILE" ]]
-secret_mode="$(stat -f '%Lp' "$MONGO_URI_FILE" 2>/dev/null || stat -c '%a' "$MONGO_URI_FILE")"
+secret_mode="$(stat -c '%a' "$MONGO_URI_FILE" 2>/dev/null || stat -f '%Lp' "$MONGO_URI_FILE")"
 [[ "$secret_mode" == 600 || "$secret_mode" == 400 ]]
 unset secret_mode
 

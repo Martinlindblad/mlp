@@ -2446,6 +2446,7 @@ Create `infra/runtime.example/env/app.env`:
 
 ```dotenv
 APP_IMAGE=ghcr.io/martinlindblad/mlp@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+APP_CADDY_IMAGE=ghcr.io/martinlindblad/mlp-caddy@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 BACKUP_IMAGE=ghcr.io/martinlindblad/mlp-backup@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 PGHOST=postgres
 PGPORT=5432
@@ -2572,7 +2573,7 @@ services:
     <<: *harden
 
   caddy:
-    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    image: ${APP_CADDY_IMAGE:?APP_CADDY_IMAGE must be a digest}
     restart: unless-stopped
     environment: { CONTACT_MODE: ${CONTACT_MODE:-contact-enabled} }
     volumes: [./infra/caddy:/etc/caddy:ro]
@@ -2692,7 +2693,8 @@ Run:
 ```bash
 sudo env MLP_REPO_ROOT="$PWD" MLP_CONFIG_ROOT="$PWD/infra/runtime.example" ./ops/compose.sh config --quiet
 MLP_REPO_ROOT="$PWD" MLP_CONFIG_ROOT="$PWD/infra/runtime.example" node scripts/verify-production-config.mjs
-docker run --rm -e CONTACT_MODE=contact-enabled -v "$PWD/infra/caddy:/etc/caddy:ro" caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+docker build --build-arg COMMIT_SHA="$(git rev-parse HEAD)" --tag mlp-caddy:validate --file infra/caddy/Dockerfile .
+docker run --rm -e CONTACT_MODE=contact-enabled -v "$PWD/infra/caddy:/etc/caddy:ro" mlp-caddy:validate caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 node --test tests/infra/compose.test.mjs tests/infra/caddy.test.mjs
 shellcheck ops/compose.sh infra/postgres/init-roles.sh
 ```
@@ -3025,9 +3027,9 @@ git commit -m "feat: add backup restore and safe deployment operations"
 
 **Interfaces:**
 - Consumes: all local checks, PostgreSQL migrations, app/backup/migration Dockerfiles, and public API contracts.
-- Produces: required CI evidence on push/PR, three manually published immutable GHCR digests with SBOM/provenance, and zero automatic production deployment.
+- Produces: required CI evidence on push/PR, four manually published immutable GHCR digests with SBOM/provenance, and zero automatic production deployment.
 
-The executed implementation strengthens the initial sketches below: browser tests use stable DOM markers and `domcontentloaded`, require an active service-worker controller, perform the contact POST inside the controlled browser page, run against the standalone production server, and exercise all three hardened images through a fail-closed Linux image harness.
+The executed implementation strengthens the initial sketches below: browser tests use stable DOM markers and `domcontentloaded`, require an active service-worker controller, perform the contact POST inside the controlled browser page, run against the standalone production server, and exercise all four hardened images through a fail-closed Linux image harness. The fourth image is a minimal derived Caddy image that preserves the exact pinned upstream base while removing only `cap_net_bind_service=ep`, allowing production to retain UID/GID 65532, `cap_drop: ALL`, and `no-new-privileges`.
 
 - [ ] **Step 1: Write browser and workflow-pin tests first**
 
@@ -3177,7 +3179,7 @@ jobs:
 
 Add Caddy validate, Compose render, service-worker tests, and the Docker runtime inspections from Tasks 7-10 as explicit steps before Playwright. The Node infrastructure tests validate workflow pins and shell command contracts without downloading floating CI helper tools.
 
-- [ ] **Step 4: Add a manual three-image publication workflow**
+- [ ] **Step 4: Add a manual four-image publication workflow**
 
 Create `.github/workflows/publish-image.yml` with only `workflow_dispatch`, no production credentials, no SSH, and least-privilege per-job permissions. Use the reviewed immutable action pins recorded by `tests/infra/workflow-pins.test.mjs`; install Trivy and GitHub CLI directly from checksum-verified release artifacts.
 
@@ -3186,21 +3188,25 @@ Build, runtime-test, vulnerability/secret-scan, save, and only then push:
 ```text
 ghcr.io/${{ github.repository_owner }}/mlp:${{ github.sha }}
 ghcr.io/${{ github.repository_owner }}/mlp-backup:${{ github.sha }}
+ghcr.io/${{ github.repository_owner }}/mlp-caddy:${{ github.sha }}
 ghcr.io/${{ github.repository_owner }}/mlp-migration:${{ github.sha }}
 ```
 
-Pass `COMMIT_SHA=${{ github.sha }}` to all three builds. Preserve the exact scanned image tarballs between jobs, derive each immutable digest from that image's successful `docker push` result rather than a mutable tag lookup, and sign plus attest every digest. Generate SPDX 2.3 JSON SBOMs and upload a `production-images-${{ github.sha }}` artifact containing exactly:
+Pass `COMMIT_SHA=${{ github.sha }}` to all four builds. Preserve the exact scanned image tarballs between jobs, derive each immutable digest from that image's successful `docker push` result rather than a mutable tag lookup, and sign plus attest every digest. Generate SPDX 2.3 JSON SBOMs and upload a `production-images-${{ github.sha }}` artifact containing exactly:
 
 ```text
 app-image-ref.txt
 app-image-digest.txt
 backup-image-ref.txt
 backup-image-digest.txt
+caddy-image-ref.txt
+caddy-image-digest.txt
 migration-image-ref.txt
 migration-image-digest.txt
 git-commit.txt
 app.spdx.json
 backup.spdx.json
+caddy.spdx.json
 migration.spdx.json
 ```
 
@@ -3210,7 +3216,7 @@ The workflow ends after artifact upload and prints the digest-qualified referenc
 
 Create `.github/dependabot.yml` with weekly Monday updates for `npm`, `github-actions`, and `docker`, all targeting `main`, each limited to five open pull requests. Digest updates are reviewed through pull requests and must pass the full CI workflow.
 
-After the first manual publication, set all three GHCR packages to public read visibility and verify unauthenticated digest pulls, Cosign signatures, provenance, and SBOM attestations from an empty Docker client configuration. This portfolio deployment therefore stores no long-lived GHCR credential on the VM. If repository policy forbids public packages, stop and amend the approved runtime-secret inventory before putting a package read token on the VM.
+After the first manual publication, set all four GHCR packages to public read visibility and verify unauthenticated digest pulls, Cosign signatures, provenance, and SBOM attestations from an empty Docker client configuration. This portfolio deployment therefore stores no long-lived GHCR credential on the VM. If repository policy forbids public packages, stop and amend the approved runtime-secret inventory before putting a package read token on the VM.
 
 - [ ] **Step 6: Verify workflows, build, and browser behavior**
 
@@ -3487,7 +3493,7 @@ Any uncovered field, invalid nested object, duplicate ID, missing Linux asset, c
 
 - [ ] **Step 3: Preload and verify immutable content while Vercel remains production**
 
-After Tasks 12-13 pass, put the reviewed digest-qualified `APP_IMAGE` and `BACKUP_IMAGE` into `/etc/mlp/env/app.env`. For the one-time empty-volume bootstrap, start PostgreSQL, run a fresh migrator, start app/Caddy/connectors, require every healthcheck, and take the first logical backup:
+After Tasks 12-13 pass, put the reviewed digest-qualified `APP_IMAGE` and `APP_CADDY_IMAGE` into `/etc/mlp/env/app.env` and `BACKUP_IMAGE` into `/etc/mlp/env/backup.env`. For the one-time empty-volume bootstrap, start PostgreSQL, run a fresh migrator, start app/Caddy/connectors, require every healthcheck, and take the first logical backup:
 
 ```bash
 sudo /usr/local/sbin/mlp-compose up -d postgres

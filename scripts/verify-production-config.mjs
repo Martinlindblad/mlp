@@ -240,8 +240,6 @@ const expectedDependencies = {
   postgres: undefined,
 };
 const exactImages = {
-  caddy:
-    'caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d',
   cloudflared:
     'cloudflare/cloudflared:2026.7.1@sha256:188bb03589a32affed3cf4d0590565ffe67b78866e6b5582574afab2b705bafe',
   postgres:
@@ -335,7 +333,11 @@ function validateServiceKeys(services) {
 
 function validateImages(services, candidateAppImage) {
   invariant(services.postgres.image === exactImages.postgres);
-  invariant(services.caddy.image === exactImages.caddy);
+  invariant(
+    /^ghcr\.io\/martinlindblad\/mlp-caddy@sha256:[0-9a-f]{64}$/u.test(
+      services.caddy.image,
+    ),
+  );
   invariant(services['cloudflared-a'].image === exactImages.cloudflared);
   invariant(services['cloudflared-b'].image === exactImages.cloudflared);
   invariant(services.app.image === services.migrator.image);

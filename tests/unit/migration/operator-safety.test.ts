@@ -88,6 +88,7 @@ describe('migration operator safety', () => {
     const uriFile = path.join(root, 'mongo-uri');
     const argsLog = path.join(root, 'mongodump-args');
     const configLog = path.join(root, 'mongodump-config');
+    const statLog = path.join(root, 'stat-args');
     await import('node:fs/promises').then(({ mkdir }) =>
       Promise.all([
         mkdir(bin, { mode: 0o700 }),
@@ -107,7 +108,7 @@ printf '%s\\n' "$*" >"$FAKE_ARGS_LOG"
 config=''
 for argument in "$@"; do case "$argument" in --config=*) config="\${argument#--config=}";; esac; done
 test -n "$config"
-test "$(stat -f '%Lp' "$config" 2>/dev/null || stat -c '%a' "$config")" = 600
+test "$(stat -c '%a' "$config" 2>/dev/null || stat -f '%Lp' "$config")" = 600
 grep -F 'SECRET_URI_VALUE' "$config" >/dev/null
 printf '%s' "$config" >"$FAKE_CONFIG_LOG"
 printf 'PLAINTEXT_ARCHIVE_FIXTURE'
@@ -125,6 +126,23 @@ cat >/dev/null
 printf 'FAKE_ENCRYPTED_ARCHIVE' >"$output"
 `,
     );
+    await executable(
+      path.join(bin, 'stat'),
+      `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"$FAKE_STAT_LOG"
+case "\${1:-}" in
+  -c)
+    test "\${2:-}" = '%a'
+    node -e 'const {mode}=require("node:fs").statSync(process.argv[1]); process.exit((mode & 0o777) === 0o600 ? 0 : 1)' "\${3:-}"
+    echo 600
+    exit 0
+    ;;
+  -f) echo GNU_FILESYSTEM_DIAGNOSTIC; exit 1 ;;
+  *) exit 99 ;;
+esac
+`,
+    );
 
     const result = await run('bash', [exportScript], {
       ...process.env,
@@ -135,9 +153,11 @@ printf 'FAKE_ENCRYPTED_ARCHIVE' >"$output"
       ARTIFACT_DIR: artifacts,
       FAKE_ARGS_LOG: argsLog,
       FAKE_CONFIG_LOG: configLog,
+      FAKE_STAT_LOG: statLog,
     });
 
     expect(result).toMatchObject({ code: 0, stderr: '' });
+    expect((await readFile(statLog, 'utf8')).split('\n')[0]).toMatch(/^-c %a /);
     expect(result.stdout.trim()).toMatch(
       /\/mongo-final-\d{8}T\d{6}Z\.archive\.gz\.age$/,
     );

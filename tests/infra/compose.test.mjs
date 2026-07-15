@@ -31,9 +31,6 @@ const runtimeTimeoutMs = 180_000;
 const postgresImage =
   'postgres:18.4-alpine@sha256:' +
   '9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15';
-const caddyImage =
-  'caddy:2.10.2-alpine@sha256:' +
-  '4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d';
 const cloudflaredImage =
   'cloudflare/cloudflared:2026.7.1@sha256:' +
   '188bb03589a32affed3cf4d0590565ffe67b78866e6b5582574afab2b705bafe';
@@ -41,6 +38,9 @@ const placeholderAppImage = `ghcr.io/martinlindblad/mlp@sha256:${'a'.repeat(
   64,
 )}`;
 const placeholderBackupImage = `ghcr.io/martinlindblad/mlp-backup@sha256:${'b'.repeat(
+  64,
+)}`;
+const placeholderCaddyImage = `ghcr.io/martinlindblad/mlp-caddy@sha256:${'c'.repeat(
   64,
 )}`;
 
@@ -135,6 +135,17 @@ const secretFiles = {
     target: 'restic-s3-secret-access-key',
     uid: '10001',
   },
+};
+
+const canonicalSecretEnvironmentVariables = {
+  'cloudflare-tunnel-token': 'MLP_CLOUDFLARE_TUNNEL_TOKEN',
+  'postgres-app-password': 'MLP_POSTGRES_APP_PASSWORD',
+  'postgres-backup-password': 'MLP_POSTGRES_BACKUP_PASSWORD',
+  'postgres-bootstrap-password': 'MLP_POSTGRES_BOOTSTRAP_PASSWORD',
+  'postgres-migrator-password': 'MLP_POSTGRES_MIGRATOR_PASSWORD',
+  'restic-password': 'MLP_RESTIC_PASSWORD',
+  'restic-s3-access-key-id': 'MLP_RESTIC_S3_ACCESS_KEY_ID',
+  'restic-s3-secret-access-key': 'MLP_RESTIC_S3_SECRET_ACCESS_KEY',
 };
 
 const expectedNetworks = {
@@ -477,21 +488,27 @@ function assertTopologyAndImages(
 
   const { services } = config;
   assert.equal(services.postgres.image, postgresImage);
-  assert.equal(services.caddy.image, caddyImage);
   assert.equal(services['cloudflared-a'].image, cloudflaredImage);
   assert.equal(services['cloudflared-b'].image, cloudflaredImage);
   assert.equal(services.app.image, services.migrator.image);
   if (rendered) {
     assert.equal(services.app.image, interpolationValues.APP_IMAGE);
     assert.equal(services['db-backup'].image, interpolationValues.BACKUP_IMAGE);
+    assert.equal(services.caddy.image, interpolationValues.APP_CADDY_IMAGE);
+    assert.match(
+      services.caddy.image,
+      /^ghcr\.io\/martinlindblad\/mlp-caddy@sha256:[0-9a-f]{64}$/u,
+    );
   } else {
     assert.match(services.app.image, /^\$\{APP_IMAGE:\?[^}]+\}$/u);
     assert.match(services['db-backup'].image, /^\$\{BACKUP_IMAGE:\?[^}]+\}$/u);
+    assert.match(services.caddy.image, /^\$\{APP_CADDY_IMAGE:\?[^}]+\}$/u);
   }
 
   const renderedImages = Object.values(services).map(({ image }) =>
     image
       .replace(/^\$\{APP_IMAGE:\?[^}]+\}$/u, placeholderAppImage)
+      .replace(/^\$\{APP_CADDY_IMAGE:\?[^}]+\}$/u, placeholderCaddyImage)
       .replace(/^\$\{BACKUP_IMAGE:\?[^}]+\}$/u, placeholderBackupImage),
   );
   assert.equal(renderedImages.length, 7);
@@ -1134,8 +1151,8 @@ function assertRenderedProductionContract(config, source, interpolationValues) {
   assertWritableSurfaces(config);
 }
 
-function composeArguments(projectName, trailing) {
-  return [
+function composeArguments(projectName, trailing, overridePath) {
+  const argumentsList = [
     'compose',
     '--project-name',
     projectName,
@@ -1149,8 +1166,9 @@ function composeArguments(projectName, trailing) {
     path.join(repositoryRoot, 'infra/runtime.example/env/backup.env'),
     '--file',
     composePath,
-    ...trailing,
   ];
+  if (overridePath) argumentsList.push('--file', overridePath);
+  return [...argumentsList, ...trailing];
 }
 
 function assertNoSentinelLeak(result, sentinels, operation) {
@@ -1158,6 +1176,100 @@ function assertNoSentinelLeak(result, sentinels, operation) {
   if (sentinels.some((sentinel) => output.includes(sentinel))) {
     assert.fail(`${operation} exposed a Task 9 credential sentinel`);
   }
+}
+
+function sanitizedProcessDiagnostics(result, sentinels) {
+  assertNoSentinelLeak(result, sentinels, 'diagnostic collection');
+  let output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  for (const sentinel of sentinels) {
+    output = output.replaceAll(sentinel, '[REDACTED]');
+  }
+  output = output.trim().slice(-8192);
+  const errorCode = result.error?.code ?? 'none';
+  const status = result.status ?? 'none';
+  const signal = result.signal ?? 'none';
+  return `status=${status} signal=${signal} error=${errorCode}${
+    output ? `\n${output}` : ''
+  }`;
+}
+
+async function createComposeSecretFixture(environment, sentinels) {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'mlp-task9-secrets-'));
+  const secretDirectory = path.join(root, 'secrets');
+  const overridePath = path.join(root, 'compose.secrets.yml');
+  await mkdir(secretDirectory, { mode: 0o700 });
+
+  for (const [secretName, contract] of Object.entries(secretFiles)) {
+    const variable = canonicalSecretEnvironmentVariables[contract.canonical];
+    const value = environment[variable];
+    assert.equal(typeof value, 'string', `${secretName} requires ${variable}`);
+    assert.notEqual(
+      value.length,
+      0,
+      `${secretName} requires a non-empty value`,
+    );
+    assert.doesNotMatch(value, /[\r\n]/u, `${secretName} must be one line`);
+    await writeFile(path.join(secretDirectory, secretName), value, {
+      encoding: 'utf8',
+      mode: 0o600,
+    });
+  }
+
+  await writeFile(
+    overridePath,
+    YAML.stringify({
+      secrets: Object.fromEntries(
+        Object.keys(secretFiles).map((secretName) => [
+          secretName,
+          { file: path.join(secretDirectory, secretName) },
+        ]),
+      ),
+    }),
+    { encoding: 'utf8', mode: 0o600 },
+  );
+
+  const ownershipCommands = Object.entries(secretFiles)
+    .map(
+      ([secretName, { gid, uid }]) =>
+        `chown ${uid}:${gid} /secrets/${secretName}; chmod 0400 /secrets/${secretName}; test "$(stat -c '%u:%g:%a:%h' /secrets/${secretName})" = '${uid}:${gid}:400:1'`,
+    )
+    .join('\n');
+  const stage = spawnSync(
+    'docker',
+    [
+      'run',
+      '--rm',
+      '--pull',
+      'never',
+      '--network',
+      'none',
+      '--user',
+      '0:0',
+      '--mount',
+      `type=bind,source=${secretDirectory},target=/secrets`,
+      postgresImage,
+      '/bin/sh',
+      '-ceu',
+      ownershipCommands,
+    ],
+    {
+      encoding: 'utf8',
+      env: environment,
+      killSignal: 'SIGKILL',
+      timeout: commandTimeoutMs,
+    },
+  );
+  assertNoSentinelLeak(stage, sentinels, 'PostgreSQL secret staging');
+  if (stage.error || stage.status !== 0) {
+    await rm(root, { force: true, recursive: true });
+    assert.fail(
+      `PostgreSQL secret staging failed\n${sanitizedProcessDiagnostics(
+        stage,
+        sentinels,
+      )}`,
+    );
+  }
+  return { overridePath, root };
 }
 
 test('production Compose defines exactly seven immutable services and four networks', async () => {
@@ -1603,18 +1715,36 @@ test(
     const sentinels = Object.entries(environment)
       .filter(([name]) => name.startsWith('MLP_'))
       .map(([, value]) => value);
+    let secretFixture;
     let bodyError;
     try {
+      const pull = spawnSync(
+        'docker',
+        ['pull', '--platform', 'linux/amd64', postgresImage],
+        {
+          encoding: 'utf8',
+          env: environment,
+          killSignal: 'SIGKILL',
+          timeout: 120_000,
+        },
+      );
+      assertNoSentinelLeak(pull, sentinels, 'PostgreSQL image pull');
+      if (pull.error || pull.status !== 0) {
+        assert.fail(
+          `pinned PostgreSQL image pull failed\n${sanitizedProcessDiagnostics(
+            pull,
+            sentinels,
+          )}`,
+        );
+      }
+      secretFixture = await createComposeSecretFixture(environment, sentinels);
       const start = spawnSync(
         'docker',
-        composeArguments(projectName, [
-          'up',
-          '--detach',
-          '--wait',
-          '--wait-timeout',
-          '90',
-          'postgres',
-        ]),
+        composeArguments(
+          projectName,
+          ['up', '--detach', '--wait', '--wait-timeout', '90', 'postgres'],
+          secretFixture.overridePath,
+        ),
         {
           encoding: 'utf8',
           env: environment,
@@ -1624,19 +1754,43 @@ test(
       );
       assertNoSentinelLeak(start, sentinels, 'PostgreSQL bootstrap');
       if (start.error || start.status !== 0) {
-        assert.fail('fresh hardened PostgreSQL bootstrap failed');
+        const logs = spawnSync(
+          'docker',
+          composeArguments(
+            projectName,
+            ['logs', '--no-color', 'postgres'],
+            secretFixture.overridePath,
+          ),
+          {
+            encoding: 'utf8',
+            env: environment,
+            killSignal: 'SIGKILL',
+            timeout: commandTimeoutMs,
+          },
+        );
+        assertNoSentinelLeak(logs, sentinels, 'PostgreSQL bootstrap logs');
+        assert.fail(
+          `fresh hardened PostgreSQL bootstrap failed\nstart:\n${sanitizedProcessDiagnostics(
+            start,
+            sentinels,
+          )}\nlogs:\n${sanitizedProcessDiagnostics(logs, sentinels)}`,
+        );
       }
 
       const mountedSecret = spawnSync(
         'docker',
-        composeArguments(projectName, [
-          'exec',
-          '--no-TTY',
-          'postgres',
-          '/bin/sh',
-          '-ceu',
-          postgresHealthShell.replaceAll('$$', '$'),
-        ]),
+        composeArguments(
+          projectName,
+          [
+            'exec',
+            '--no-TTY',
+            'postgres',
+            '/bin/sh',
+            '-ceu',
+            postgresHealthShell.replaceAll('$$', '$'),
+          ],
+          secretFixture.overridePath,
+        ),
         {
           encoding: 'utf8',
           env: environment,
@@ -1657,25 +1811,29 @@ test(
 
       const wrongPassword = spawnSync(
         'docker',
-        composeArguments(projectName, [
-          'exec',
-          '--no-TTY',
-          '--env',
-          'PGPASSWORD=task9-deliberately-wrong',
-          'postgres',
-          'psql',
-          '-h',
-          '127.0.0.1',
-          '-w',
-          '-X',
-          '-qAt',
-          '-U',
-          'portfolio_migrator',
-          '-d',
-          'portfolio',
-          '-c',
-          'select 1',
-        ]),
+        composeArguments(
+          projectName,
+          [
+            'exec',
+            '--no-TTY',
+            '--env',
+            'PGPASSWORD=task9-deliberately-wrong',
+            'postgres',
+            'psql',
+            '-h',
+            '127.0.0.1',
+            '-w',
+            '-X',
+            '-qAt',
+            '-U',
+            'portfolio_migrator',
+            '-d',
+            'portfolio',
+            '-c',
+            'select 1',
+          ],
+          secretFixture.overridePath,
+        ),
         {
           encoding: 'utf8',
           env: environment,
@@ -1693,27 +1851,32 @@ test(
       bodyError = error;
     }
 
-    const cleanup = spawnSync(
-      'docker',
-      composeArguments(projectName, [
-        'down',
-        '--volumes',
-        '--remove-orphans',
-        '--timeout',
-        '10',
-      ]),
-      {
-        encoding: 'utf8',
-        env: environment,
-        killSignal: 'SIGKILL',
-        timeout: 60_000,
-      },
-    );
-    assertNoSentinelLeak(cleanup, sentinels, 'PostgreSQL cleanup');
-    if (cleanup.error || cleanup.status !== 0) {
-      throw new Error('Task 9 PostgreSQL test and cleanup failed', {
-        cause: bodyError,
-      });
+    if (secretFixture) {
+      const cleanup = spawnSync(
+        'docker',
+        composeArguments(
+          projectName,
+          ['down', '--volumes', '--remove-orphans', '--timeout', '10'],
+          secretFixture.overridePath,
+        ),
+        {
+          encoding: 'utf8',
+          env: environment,
+          killSignal: 'SIGKILL',
+          timeout: 60_000,
+        },
+      );
+      assertNoSentinelLeak(cleanup, sentinels, 'PostgreSQL cleanup');
+      await rm(secretFixture.root, { force: true, recursive: true });
+      if (cleanup.error || cleanup.status !== 0) {
+        throw new Error(
+          `Task 9 PostgreSQL test and cleanup failed\n${sanitizedProcessDiagnostics(
+            cleanup,
+            sentinels,
+          )}`,
+          { cause: bodyError },
+        );
+      }
     }
     if (bodyError) throw bodyError;
   },

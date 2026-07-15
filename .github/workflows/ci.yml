@@ -291,7 +291,7 @@ jobs:
         run: yarn test:compose
       - name: Verify all image-gate contracts
         run: yarn test:image-gates
-      - name: Build and exercise all three hardened amd64 images
+      - name: Build and exercise all four hardened amd64 images
         env:
           COMMIT_SHA: ${{ github.sha }}
         run: ./scripts/ci/verify-images.sh

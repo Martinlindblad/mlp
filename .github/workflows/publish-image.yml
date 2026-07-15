@@ -17,6 +17,7 @@ concurrency:
 env:
   APP_IMAGE: ghcr.io/martinlindblad/mlp
   BACKUP_IMAGE: ghcr.io/martinlindblad/mlp-backup
+  CADDY_IMAGE: ghcr.io/martinlindblad/mlp-caddy
   MIGRATION_IMAGE: ghcr.io/martinlindblad/mlp-migration
 
 jobs:
@@ -70,7 +71,7 @@ jobs:
           trivy --version | grep -F 'Version: 0.70.0'
       - name: Verify image-gate contract
         run: yarn test:image-gates
-      - name: Build and exercise all three hardened amd64 images
+      - name: Build and exercise all four hardened amd64 images
         env:
           COMMIT_SHA: ${{ github.sha }}
         run: ./scripts/ci/verify-images.sh
@@ -102,9 +103,11 @@ jobs:
             "mlp-image-gate-app:${COMMIT_SHA}" "${APP_IMAGE}:${COMMIT_SHA}"
           scan_and_save backup \
             "mlp-image-gate-backup:${COMMIT_SHA}" "${BACKUP_IMAGE}:${COMMIT_SHA}"
+          scan_and_save caddy \
+            "mlp-image-gate-caddy:${COMMIT_SHA}" "${CADDY_IMAGE}:${COMMIT_SHA}"
           scan_and_save migration \
             "mlp-image-gate-migration:${COMMIT_SHA}" "${MIGRATION_IMAGE}:${COMMIT_SHA}"
-          (cd verified && sha256sum -- app-image.tar backup-image.tar migration-image.tar >image-tars.sha256)
+          (cd verified && sha256sum -- app-image.tar backup-image.tar caddy-image.tar migration-image.tar >image-tars.sha256)
           printf '%s\n' "$COMMIT_SHA" >verified/git-commit.txt
       - name: Upload only verified images and SBOMs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -124,6 +127,7 @@ jobs:
     outputs:
       app-digest: ${{ steps.publish.outputs.app_digest }}
       backup-digest: ${{ steps.publish.outputs.backup_digest }}
+      caddy-digest: ${{ steps.publish.outputs.caddy_digest }}
       migration-digest: ${{ steps.publish.outputs.migration_digest }}
     steps:
       - name: Download the already verified images
@@ -149,6 +153,7 @@ jobs:
           (cd verified && sha256sum --check --strict image-tars.sha256)
           docker load --input verified/app-image.tar >/dev/null
           docker load --input verified/backup-image.tar >/dev/null
+          docker load --input verified/caddy-image.tar >/dev/null
           docker load --input verified/migration-image.tar >/dev/null
           mkdir -p published
           publish_one() {
@@ -174,6 +179,7 @@ jobs:
           }
           publish_one app "$APP_IMAGE" 1000:1000
           publish_one backup "$BACKUP_IMAGE" 10001:10001
+          publish_one caddy "$CADDY_IMAGE" 65532:65532
           publish_one migration "$MIGRATION_IMAGE" 1000:1000
           printf '%s\n' "$COMMIT_SHA" >published/git-commit.txt
       - name: Upload digest-qualified publication evidence
@@ -221,16 +227,19 @@ jobs:
         env:
           APP_DIGEST: ${{ needs.publish.outputs.app-digest }}
           BACKUP_DIGEST: ${{ needs.publish.outputs.backup-digest }}
+          CADDY_DIGEST: ${{ needs.publish.outputs.caddy-digest }}
           MIGRATION_DIGEST: ${{ needs.publish.outputs.migration-digest }}
         run: |
           set -Eeuo pipefail
           cosign version | grep -F 'v3.0.6'
           test "$(cat published/app-image-ref.txt)" = "${APP_IMAGE}@${APP_DIGEST}"
           test "$(cat published/backup-image-ref.txt)" = "${BACKUP_IMAGE}@${BACKUP_DIGEST}"
+          test "$(cat published/caddy-image-ref.txt)" = "${CADDY_IMAGE}@${CADDY_DIGEST}"
           test "$(cat published/migration-image-ref.txt)" = "${MIGRATION_IMAGE}@${MIGRATION_DIGEST}"
           test "$(cat published/git-commit.txt)" = "$GITHUB_SHA"
           cosign sign --yes "${APP_IMAGE}@${APP_DIGEST}"
           cosign sign --yes "${BACKUP_IMAGE}@${BACKUP_DIGEST}"
+          cosign sign --yes "${CADDY_IMAGE}@${CADDY_DIGEST}"
           cosign sign --yes "${MIGRATION_IMAGE}@${MIGRATION_DIGEST}"
       - name: Attest application provenance
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
@@ -260,6 +269,21 @@ jobs:
           subject-name: ${{ env.BACKUP_IMAGE }}
           subject-digest: ${{ needs.publish.outputs.backup-digest }}
           sbom-path: verified/backup.spdx.json
+          push-to-registry: true
+          create-storage-record: false
+      - name: Attest Caddy provenance
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ env.CADDY_IMAGE }}
+          subject-digest: ${{ needs.publish.outputs.caddy-digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: Attest Caddy SBOM
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ env.CADDY_IMAGE }}
+          subject-digest: ${{ needs.publish.outputs.caddy-digest }}
+          sbom-path: verified/caddy.spdx.json
           push-to-registry: true
           create-storage-record: false
       - name: Attest migration provenance
@@ -351,13 +375,14 @@ jobs:
           }
           verify_one "$(cat published/app-image-ref.txt)"
           verify_one "$(cat published/backup-image-ref.txt)"
+          verify_one "$(cat published/caddy-image-ref.txt)"
           verify_one "$(cat published/migration-image-ref.txt)"
       - name: Assemble the verified deployment lock artifact
         run: |
           mkdir -p production-images
           cp published/*.txt production-images/
           cp verified/*.spdx.json production-images/
-          test "$(find production-images -type f | wc -l)" -eq 10
+          test "$(find production-images -type f | wc -l)" -eq 13
       - name: Upload the only deployable image references
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

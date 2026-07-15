@@ -41,6 +41,14 @@ updates:
     open-pull-requests-limit: 5
 
   - package-ecosystem: docker
+    directory: /infra/caddy
+    schedule:
+      interval: weekly
+      day: monday
+    target-branch: main
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: docker
     directory: /infra/migration
     schedule:
       interval: weekly

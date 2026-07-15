@@ -19,9 +19,6 @@ services:
 
   caddy-enabled: &caddy
     image: ${MLP_CADDY_IMAGE:?MLP_CADDY_IMAGE is required}
-    entrypoint: ['/usr/bin/caddy']
-    command:
-      ['run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile']
     environment:
       CONTACT_MODE: contact-enabled
     user: '65532:65532'

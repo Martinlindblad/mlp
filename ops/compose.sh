@@ -79,7 +79,7 @@ validate_environment_file() {
   validate_file "$path"
   case "$path" in
     /etc/mlp/env/app.env)
-      expected='APP_CONTACT_MODE APP_IMAGE APP_PGCONNECT_TIMEOUT_MS APP_PGDATABASE APP_PGHOST APP_PGPOOL_MAX APP_PGPORT APP_PGUSER'
+      expected='APP_CADDY_IMAGE APP_CONTACT_MODE APP_IMAGE APP_PGCONNECT_TIMEOUT_MS APP_PGDATABASE APP_PGHOST APP_PGPOOL_MAX APP_PGPORT APP_PGUSER'
       ;;
     /etc/mlp/env/migrator.env)
       expected='MIGRATOR_PGCONNECT_TIMEOUT_MS MIGRATOR_PGDATABASE MIGRATOR_PGHOST MIGRATOR_PGPOOL_MAX MIGRATOR_PGPORT MIGRATOR_PGUSER'
@@ -234,18 +234,18 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-a 65532 65532 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-b 65532 65532 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/postgres-bootstrap-password postgres-bootstrap-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-migrator 1000 1000 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/restic-password restic-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/restic-s3-access-key-id restic-s3-access-key-id-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation'
-stage_secret /etc/mlp/secrets/restic-s3-secret-access-key restic-s3-secret-access-key-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation'
+stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-a 65532 65532 || fail 'runtime secret staging requires reviewed rotation: cloudflare-tunnel-token-cloudflared-a'
+stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-b 65532 65532 || fail 'runtime secret staging requires reviewed rotation: cloudflare-tunnel-token-cloudflared-b'
+stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: postgres-app-password-app'
+stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-app-password-postgres'
+stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: postgres-backup-password-db-backup'
+stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-backup-password-postgres'
+stage_secret /etc/mlp/secrets/postgres-bootstrap-password postgres-bootstrap-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-bootstrap-password-postgres'
+stage_secret /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-migrator 1000 1000 || fail 'runtime secret staging requires reviewed rotation: postgres-migrator-password-migrator'
+stage_secret /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-migrator-password-postgres'
+stage_secret /etc/mlp/secrets/restic-password restic-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-password-db-backup'
+stage_secret /etc/mlp/secrets/restic-s3-access-key-id restic-s3-access-key-id-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-s3-access-key-id-db-backup'
+stage_secret /etc/mlp/secrets/restic-s3-secret-access-key restic-s3-secret-access-key-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-s3-secret-access-key-db-backup'
 
 if [[ -n "$candidate_app_image" ]]; then
   export APP_IMAGE="$candidate_app_image"

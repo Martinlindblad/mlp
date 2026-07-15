@@ -6,6 +6,9 @@ import { describe, expect, it } from 'vitest';
 
 const commandTimeoutMs = 5_000;
 const ttyError = 'PostgreSQL role bootstrap requires a non-interactive session';
+const linuxCompatibleShell = fs.existsSync('/bin/dash')
+  ? '/bin/dash'
+  : '/bin/sh';
 
 interface PtyInvocation {
   command: string;
@@ -197,7 +200,7 @@ describe('PostgreSQL role bootstrap', () => {
 
   it('continues to secret reads without a controlling terminal', async () => {
     const result = await runWithoutControllingTerminal(
-      '/bin/sh',
+      linuxCompatibleShell,
       [scriptPath],
       {
         ...process.env,

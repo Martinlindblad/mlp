@@ -4,6 +4,10 @@ These files are harmless examples for configuration validation only. Never use
 their image digests, passwords, token, repository value, or backend keys in a
 deployment.
 
+Replace both `APP_IMAGE` and `APP_CADDY_IMAGE` with their reviewed publication
+artifact references before the first deploy; the repeated-`c` Caddy digest is
+an intentionally non-deployable placeholder.
+
 Create the production tree as `/etc/mlp`; keep its directories `root:root` mode `0700`.
 That includes persistent `/etc/mlp/compose-secrets` and
 `/etc/mlp/docker-client`, so systemd services with `ProtectHome=true` never

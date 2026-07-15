@@ -172,7 +172,7 @@ test('CI is pinned, read-only, and proves quality, PostgreSQL, browser, and Linu
   );
 });
 
-test('manual publication gates all three exact amd64 images before signing and anonymous verification', () => {
+test('manual publication gates all four exact amd64 images before signing and anonymous verification', () => {
   const source = fs.readFileSync(workflowPaths.publish, 'utf8');
   const workflow = parse(source);
 
@@ -209,6 +209,7 @@ test('manual publication gates all three exact amd64 images before signing and a
   for (const required of [
     'ghcr.io/martinlindblad/mlp',
     'ghcr.io/martinlindblad/mlp-backup',
+    'ghcr.io/martinlindblad/mlp-caddy',
     'ghcr.io/martinlindblad/mlp-migration',
     'linux/amd64',
     'COMMIT_SHA',
@@ -242,19 +243,35 @@ test('manual publication gates all three exact amd64 images before signing and a
     /imagetools inspect "\$\{image\}@\$\{digest\}" --format/u,
   );
   assert.doesNotMatch(source, /imagetools inspect "\$tagged" --format/u);
+  assert.match(source, /scan_and_save caddy\b/u);
+  assert.match(source, /publish_one caddy "\$CADDY_IMAGE" 65532:65532/u);
+  assert.match(
+    source,
+    /CADDY_DIGEST: \$\{\{ needs\.publish\.outputs\.caddy-digest \}\}/u,
+  );
+  assert.match(
+    source,
+    /cosign sign --yes "\$\{CADDY_IMAGE\}@\$\{CADDY_DIGEST\}"/u,
+  );
+  assert.match(
+    source,
+    /verify_one "\$\(cat published\/caddy-image-ref\.txt\)"/u,
+  );
+  assert.match(source, /find production-images -type f \| wc -l\)" -eq 13/u);
 });
 
 test('Dependabot covers root and nested npm, actions, and all Dockerfiles', () => {
   const config = readYaml(path.join(root, '.github', 'dependabot.yml'));
   assert.equal(config.version, 2);
   const updates = config.updates ?? [];
-  assert.equal(updates.length, 6);
+  assert.equal(updates.length, 7);
   const actual = updates
     .map((entry) => `${entry['package-ecosystem']}:${entry.directory}`)
     .sort();
   assert.deepEqual(actual, [
     'docker:/',
     'docker:/infra/backup',
+    'docker:/infra/caddy',
     'docker:/infra/migration',
     'github-actions:/',
     'npm:/',

@@ -28,9 +28,19 @@ if (: </dev/tty) 2>/dev/null; then
   exit 1
 fi
 
-migrator_password="$(tr -d '\n' <"$secret_dir/postgres-migrator-password")"
-app_password="$(tr -d '\n' <"$secret_dir/postgres-app-password")"
-backup_password="$(tr -d '\n' <"$secret_dir/postgres-backup-password")"
+migrator_secret="$secret_dir/postgres-migrator-password"
+app_secret="$secret_dir/postgres-app-password"
+backup_secret="$secret_dir/postgres-backup-password"
+for secret_path in "$migrator_secret" "$app_secret" "$backup_secret"; do
+  if [ ! -r "$secret_path" ]; then
+    printf 'PostgreSQL role secret is not readable: %s\n' "$secret_path" >&2
+    exit 1
+  fi
+done
+
+migrator_password="$(tr -d '\n' <"$migrator_secret")"
+app_password="$(tr -d '\n' <"$app_secret")"
+backup_password="$(tr -d '\n' <"$backup_secret")"
 if [ -z "$migrator_password" ] || [ -z "$app_password" ] || \
   [ -z "$backup_password" ]; then
   printf '%s\n' 'PostgreSQL role secrets must not be empty' >&2

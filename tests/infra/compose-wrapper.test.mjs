@@ -80,6 +80,7 @@ const environmentFiles = {
   'app.env': {
     prefix: 'APP_',
     required: [
+      'APP_CADDY_IMAGE',
       'APP_CONTACT_MODE',
       'APP_IMAGE',
       'APP_PGCONNECT_TIMEOUT_MS',
@@ -328,6 +329,14 @@ function assertFixedWrapperContract(source) {
       ),
       `${staged} must be a dedicated ${uid}:${uid} bind source`,
     );
+    assert.match(
+      source,
+      new RegExp(
+        `^stage_secret [^\n]* ${staged} ${uid} ${uid} \\|\\| fail 'runtime secret staging requires reviewed rotation: ${staged}'$`,
+        'mu',
+      ),
+      `${staged} staging diagnostics must identify only the non-secret destination`,
+    );
   }
   assert.doesNotMatch(
     source,
@@ -426,6 +435,18 @@ function assertNoSentinels(result, sentinels, operation) {
   if (sentinels.some((sentinel) => output.includes(sentinel))) {
     assert.fail(`${operation} exposed a Task 9 credential sentinel`);
   }
+}
+
+function sanitizedProcessDiagnostics(result, sentinels, operation) {
+  assertNoSentinels(result, sentinels, operation);
+  let output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  for (const sentinel of sentinels) {
+    output = output.replaceAll(sentinel, '[REDACTED]');
+  }
+  output = output.trim().slice(-8192);
+  return `status=${result.status ?? 'none'} signal=${
+    result.signal ?? 'none'
+  } error=${result.error?.code ?? 'none'}${output ? `\n${output}` : ''}`;
 }
 
 async function createDockerWrapperFixture() {
@@ -719,6 +740,10 @@ test('runtime examples use collision-free prefixes and keep the Restic provider 
     /^ghcr\.io\/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$/u,
   );
   assert.match(
+    parsed['app.env'].APP_CADDY_IMAGE,
+    /^ghcr\.io\/martinlindblad\/mlp-caddy@sha256:[0-9a-f]{64}$/u,
+  );
+  assert.match(
     parsed['backup.env'].BACKUP_IMAGE,
     /^ghcr\.io\/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$/u,
   );
@@ -832,7 +857,20 @@ test(
         ],
         'valid wrapper invocation',
       );
-      assert.equal(valid.status, 0, 'valid root-owned runtime tree must pass');
+      assert.equal(
+        valid.status,
+        0,
+        `valid root-owned runtime tree must pass\n${sanitizedProcessDiagnostics(
+          valid,
+          [
+            ...sentinelValues,
+            ...Object.values(inheritedVariables),
+            fixture.bashEnvSentinel,
+            traceSentinel,
+          ],
+          'valid wrapper diagnostics',
+        )}`,
+      );
       assert.deepEqual(
         (
           await readFile(

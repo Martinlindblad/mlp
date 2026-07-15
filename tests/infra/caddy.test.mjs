@@ -17,15 +17,14 @@ const fixtureComposePath = path.join(
   repositoryRoot,
   'tests/infra/fixtures/caddy.compose.yml',
 );
-const caddyReference =
+const officialCaddyReference =
   'caddy:2.10.2-alpine@sha256:' +
   '4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d';
 const nodeReference =
   'node:22.23.1-bookworm-slim@sha256:' +
   '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
-const fixtureEnvironment = {
+const baseFixtureEnvironment = {
   ...process.env,
-  MLP_CADDY_IMAGE: caddyReference,
   MLP_NODE_IMAGE: nodeReference,
   MLP_REPOSITORY_ROOT: repositoryRoot,
 };
@@ -521,7 +520,7 @@ async function dockerAvailabilityReason() {
 async function docker(args, options = {}) {
   return execFile('docker', args, {
     encoding: 'utf8',
-    env: fixtureEnvironment,
+    env: baseFixtureEnvironment,
     maxBuffer: 5 * 1024 * 1024,
     timeout: 120_000,
     ...options,
@@ -706,14 +705,20 @@ test(
     ]);
 
     const projectName = `mlp-caddy-${process.pid}-${Date.now()}`;
+    const fixtureImage = `mlp-caddy-fixture:${projectName}`;
+    const fixtureEnvironment = {
+      ...baseFixtureEnvironment,
+      MLP_CADDY_IMAGE: fixtureImage,
+    };
     const composeArgs = fixtureComposeArgs(projectName);
-    const runtimeOptions = { signal: context.signal };
+    const runtimeOptions = { env: fixtureEnvironment, signal: context.signal };
     const runDocker = (args, options = {}) =>
-      docker(args, { ...options, signal: context.signal });
+      docker(args, { ...runtimeOptions, ...options });
     const request = (options) =>
       fixtureRequest(composeArgs, options, runtimeOptions);
     const state = () => fixtureState(composeArgs, runtimeOptions);
     let cleaned = false;
+    let imageBuilt = false;
     const cleanup = async () => {
       if (cleaned) return;
       await docker(
@@ -725,21 +730,47 @@ test(
           '--timeout',
           '1',
         ],
-        { timeout: 30_000 },
+        { env: fixtureEnvironment, timeout: 30_000 },
       );
+      if (imageBuilt) {
+        await docker(['image', 'rm', fixtureImage], {
+          env: fixtureEnvironment,
+          timeout: 30_000,
+        });
+      }
       cleaned = true;
     };
     context.after(cleanup);
 
     try {
       await runDocker([...composeArgs, 'config', '--quiet']);
-      await runDocker([...composeArgs, 'pull']);
+      await runDocker(['pull', '--platform', 'linux/amd64', nodeReference]);
+      await runDocker([
+        'pull',
+        '--platform',
+        'linux/amd64',
+        officialCaddyReference,
+      ]);
+      await runDocker([
+        'build',
+        '--platform',
+        'linux/amd64',
+        '--build-arg',
+        `COMMIT_SHA=${'c'.repeat(40)}`,
+        '--tag',
+        fixtureImage,
+        '--file',
+        path.join(repositoryRoot, 'infra/caddy/Dockerfile'),
+        repositoryRoot,
+      ]);
+      imageBuilt = true;
       await runDocker([
         ...composeArgs,
         'run',
         '--rm',
         '--no-deps',
         'caddy-enabled',
+        'caddy',
         'validate',
         '--config',
         '/etc/caddy/Caddyfile',

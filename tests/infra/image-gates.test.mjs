@@ -389,11 +389,12 @@ exit 0
   );
 });
 
-test('image gate builds and inspects the exact three-image linux-amd64 matrix', async () => {
+test('image gate builds and inspects the exact four-image linux-amd64 matrix', async () => {
   const source = await readHarness();
   const expectedRows = [
     'app|Dockerfile|1000:1000|mlp-image-gate-app',
     'backup|infra/backup/Dockerfile|10001:10001|mlp-image-gate-backup',
+    'caddy|infra/caddy/Dockerfile|65532:65532|mlp-image-gate-caddy',
     'migration|infra/migration/Dockerfile|1000:1000|mlp-image-gate-migration',
   ];
 
@@ -483,6 +484,8 @@ test('image gate enforces hardened runtime settings and retains only verified su
     /docker container inspect --format='\{\{json \.HostConfig\.SecurityOpt\}\}'/u,
   );
   assert.match(source, /assert_runtime_hardening/u);
+  assert.match(source, /verify_caddy_runtime/u);
+  assert.match(source, /getcap \/usr\/bin\/caddy/u);
   assert.match(source, /RUN_RANDOM_SUFFIX=\$\{WORK_DIRECTORY##\*\.\}/u);
   assert.match(
     source,
@@ -506,6 +509,10 @@ test('image gate enforces hardened runtime settings and retains only verified su
   );
   assert.match(source, /assert_image_tag_absent/u);
   assert.match(source, /promote_image "\$APP_IMAGE" "\$APP_CANONICAL_IMAGE"/u);
+  assert.match(
+    source,
+    /promote_image "\$CADDY_IMAGE" "\$CADDY_CANONICAL_IMAGE"/u,
+  );
   assert.match(source, /acquire_promotion_lock/u);
   assert.match(source, /verify_promoted_image/u);
   assert.match(
@@ -831,7 +838,9 @@ test('node dispatcher target stub rejects absent and symlinked compiled targets'
 test('image gate cleanup is labeled, deterministic, redacted, and preserves only successful verified tags', async () => {
   const source = await readHarness();
   const cleanup = shellFunctionBody(source, 'cleanup');
-  const containerCleanup = source.indexOf('docker container rm --force');
+  const containerCleanup = source.indexOf(
+    'docker container rm --force --volumes',
+  );
   const networkCleanup = source.indexOf('docker network rm');
   const volumeCleanup = source.indexOf('docker volume rm --force');
   const imageCleanup = source.indexOf('docker image rm --force');
@@ -920,7 +929,7 @@ test('cleanup retries a stuck owned resource and converts nominal success to fai
 
   assert.equal(result.code, 1, `${result.stderr ?? ''}\n${log}`);
   assert.equal(
-    log.match(/^container rm --force owned-resource$/gmu)?.length,
+    log.match(/^container rm --force --volumes owned-resource$/gmu)?.length,
     3,
   );
   await assert.rejects(access(fixture.cleanupWork));
