@@ -1050,7 +1050,7 @@ test(
         runtimeOptions,
       );
 
-      for (const request of [
+      for (const requestOptions of [
         { method: 'GET', path: '/api/contact/route' },
         { method: 'POST', path: '/api/contact/route/extra' },
         { method: 'GET', path: '/api/projects_and_cases/route' },
@@ -1062,12 +1062,12 @@ test(
           },
           hostname: 'caddy-maintenance',
           port: 8080,
-          ...request,
+          ...requestOptions,
         });
         assert.equal(
           response.status,
           200,
-          `maintenance must not block ${request.method} ${request.path}`,
+          `maintenance must not block ${requestOptions.method} ${requestOptions.path}`,
         );
       }
     } finally {

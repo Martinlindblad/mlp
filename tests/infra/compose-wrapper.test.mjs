@@ -915,9 +915,14 @@ test(
       const processEnvironment = new Set(
         Object.keys(processEnvironmentEntries),
       );
+      const wrapperManagedEnvironment = new Set([
+        'DOCKER_CONFIG',
+        'DOCKER_HOST',
+      ]);
       for (const prefix of callerEnvironmentPrefixes) {
         const matchingNames = [...processEnvironment]
           .filter((name) => name.startsWith(prefix))
+          .filter((name) => !wrapperManagedEnvironment.has(name))
           .sort();
         assert.equal(
           matchingNames.length > 0,
