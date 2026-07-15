@@ -93,9 +93,13 @@ sudo --preserve-env=MANAGEMENT_CIDR,DNS_RESOLVERS,DOCKER_CE_VERSION,CONTAINERD_V
 
 The bootstrap accepts Debian's canonical `/etc/os-release -> ../usr/lib/os-release` symlink, but rejects any other symlink target or
 group/world-writable OS metadata. It rewrites the official Debian HTTP source
-locations to HTTPS. All active APT sources must use HTTPS. It configures
-`systemd-resolved` with exactly `DNS_RESOLVERS` before the nftables candidate is
-staged.
+locations to HTTPS. Direct active APT sources must use HTTPS. Debian's cloud
+image `mirror+file:///etc/apt/mirrors/` wrappers are accepted only for a simple
+filename directly in that directory. Each referenced mirror file must exist as
+a regular non-symlink file, be root-owned and not group or world writable, and
+contain exactly one HTTPS URL on every non-comment, nonblank line. Relative or
+other local sources remain rejected. The bootstrap configures `systemd-resolved`
+with exactly `DNS_RESOLVERS` before the nftables candidate is staged.
 
 The Docker repository key must contain exactly one primary key with the
 official reviewed fingerprint

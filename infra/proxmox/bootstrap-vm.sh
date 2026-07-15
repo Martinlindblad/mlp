@@ -260,9 +260,47 @@ DEBIAN_FRONTEND=noninteractive apt-get install --yes \
   qemu-guest-agent ca-certificates curl gnupg unattended-upgrades nftables git jq \
   xz-utils acl systemd-resolved
 
+validate_apt_mirror_file() {
+  local mirror_file=$1
+  local mirror_metadata
+  local mirror_mode
+  local mirror_name
+  local mirror_owner
+  local mirror_metadata_extra
+
+  [[ "$mirror_file" == /etc/apt/mirrors/* ]] || \
+    fail 'APT mirror+file URI must use an absolute path in /etc/apt/mirrors' 78
+  mirror_name=${mirror_file#/etc/apt/mirrors/}
+  [[ "$mirror_name" =~ ^[0-9A-Za-z][0-9A-Za-z._-]*$ ]] || \
+    fail 'APT mirror+file URI must name one reviewed mirror file' 78
+  [[ -e "$mirror_file" && -f "$mirror_file" && ! -L "$mirror_file" ]] || \
+    fail 'APT mirror file must be an existing regular non-symlink file' 78
+  mirror_metadata=$(stat -Lc '%U:%G %a' -- "$mirror_file") || \
+    fail 'unable to inspect APT mirror file metadata' 78
+  read -r mirror_owner mirror_mode mirror_metadata_extra <<<"$mirror_metadata"
+  [[ -z ${mirror_metadata_extra:-} && "$mirror_owner" == root:root && \
+    "$mirror_mode" =~ ^[0-7]{3,4}$ ]] || \
+    fail 'APT mirror file must be trusted root-owned metadata' 78
+  (( (8#$mirror_mode & 8#022) == 0 )) || \
+    fail 'APT mirror file must not be group or world writable' 78
+  awk '
+    /^[[:space:]]*(#|$)/ { next }
+    NF != 1 { bad = 1; next }
+    $1 !~ /^https:\/\/[^[:space:]]+$/ { bad = 1; next }
+    { found = 1 }
+    END {
+      if (bad || !found) exit 1
+    }
+  ' "$mirror_file" || \
+    fail 'APT mirror file entries must each be exactly one HTTPS URL' 78
+}
+
 secure_apt_sources() {
   local apt_source_status
+  local apt_source_uri
+  local apt_source_uris
   local found_https=false
+  local mirror_file
   local source_file
   local -a source_files
 
@@ -281,7 +319,7 @@ secure_apt_sources() {
       -e 's|http://security.debian.org/|https://security.debian.org/|g' \
       "$source_file"
     rm -f -- "$source_file.mlp-bootstrap"
-    if awk '
+    if apt_source_uris=$(awk '
       /^[[:space:]]*(#|$)/ { next }
       $1 == "deb" || $1 == "deb-src" {
         uri = ""
@@ -292,13 +330,14 @@ secure_apt_sources() {
           }
         }
         found = 1
-        if (uri !~ /^https:\/\//) bad = 1
+        if (uri == "") bad = 1
+        else print uri
       }
       tolower($1) == "uris:" {
         if (NF < 2) bad = 1
         for (field = 2; field <= NF; field += 1) {
           found = 1
-          if ($field !~ /^https:\/\//) bad = 1
+          print $field
         }
       }
       END {
@@ -306,12 +345,24 @@ secure_apt_sources() {
         if (found) exit 0
         exit 3
       }
-    ' "$source_file"; then
-      found_https=true
+    ' "$source_file"); then
+      while IFS= read -r apt_source_uri; do
+        case "$apt_source_uri" in
+          https://*) found_https=true ;;
+          mirror+file://*)
+            mirror_file=${apt_source_uri#mirror+file://}
+            validate_apt_mirror_file "$mirror_file"
+            found_https=true
+            ;;
+          *)
+            fail 'all active APT sources must use HTTPS or reviewed APT mirror files' 78
+            ;;
+        esac
+      done <<<"$apt_source_uris"
     else
       apt_source_status=$?
       [[ $apt_source_status -eq 3 ]] || \
-        fail 'all active APT sources must use HTTPS' 78
+        fail 'all active APT sources must use HTTPS or reviewed APT mirror files' 78
     fi
   done
   [[ "$found_https" == true ]] || fail 'no active HTTPS APT source found' 78

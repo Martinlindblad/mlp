@@ -314,6 +314,7 @@ async function makeBootstrapHarness(t, options = {}) {
   const trustedOsRelease = path.join(guestUsrLib, 'os-release');
   const aptSourceList = path.join(guestEtc, 'apt/sources.list');
   const aptSourcesDirectory = path.join(guestEtc, 'apt/sources.list.d');
+  const aptMirrorsDirectory = path.join(guestEtc, 'apt/mirrors');
   const debianSource = path.join(aptSourcesDirectory, 'debian.sources');
   const dockerDaemon = path.join(guestEtc, 'docker/daemon.json');
   const resolvConf = path.join(guestEtc, 'resolv.conf');
@@ -349,12 +350,44 @@ async function makeBootstrapHarness(t, options = {}) {
     );
   }
   await writeFile(aptSourceList, '');
-  await writeFile(
-    debianSource,
-    options.insecureAptSource === true
-      ? 'Types: deb\nURIs: http://packages.example.invalid/debian\nSuites: trixie\nComponents: main\n'
-      : 'Types: deb\nURIs: http://deb.debian.org/debian\nSuites: trixie trixie-updates\nComponents: main\n',
-  );
+  let debianSourceContents;
+  if (options.aptMirrorLayout) {
+    await mkdir(aptMirrorsDirectory, { recursive: true });
+    const debianMirror = path.join(aptMirrorsDirectory, 'debian.list');
+    const securityMirror = path.join(
+      aptMirrorsDirectory,
+      'debian-security.list',
+    );
+    if (options.aptMirrorLayout.omitDebianMirror !== true) {
+      if (options.aptMirrorLayout.symlinkDebianMirror === true) {
+        const symlinkTarget = path.join(
+          aptMirrorsDirectory,
+          'debian-target.list',
+        );
+        await writeFile(symlinkTarget, 'https://deb.debian.org/debian\n');
+        await symlink(symlinkTarget, debianMirror);
+      } else {
+        await writeFile(
+          debianMirror,
+          options.aptMirrorLayout.debianMirrorContents ??
+            'https://deb.debian.org/debian\n',
+        );
+      }
+    }
+    await writeFile(securityMirror, 'https://deb.debian.org/debian-security\n');
+    const debianMirrorUri =
+      options.aptMirrorLayout.debianMirrorUri ??
+      `mirror+file://${debianMirror}`;
+    debianSourceContents =
+      `Types: deb\nURIs: ${debianMirrorUri}\nSuites: trixie trixie-updates\nComponents: main\n\n` +
+      `Types: deb\nURIs: mirror+file://${securityMirror}\nSuites: trixie-security\nComponents: main\n`;
+  } else {
+    debianSourceContents =
+      options.insecureAptSource === true
+        ? 'Types: deb\nURIs: http://packages.example.invalid/debian\nSuites: trixie\nComponents: main\n'
+        : 'Types: deb\nURIs: http://deb.debian.org/debian\nSuites: trixie trixie-updates\nComponents: main\n';
+  }
+  await writeFile(debianSource, debianSourceContents);
   if (options.additionalAptSource) {
     await writeFile(
       path.join(aptSourcesDirectory, 'unreviewed.list'),
@@ -375,6 +408,7 @@ async function makeBootstrapHarness(t, options = {}) {
       .replaceAll('/etc/apt/sources.list.d', '__MLP_APT_SOURCES_DIRECTORY__')
       .replaceAll('/etc/apt/sources.list', aptSourceList)
       .replaceAll('__MLP_APT_SOURCES_DIRECTORY__', aptSourcesDirectory)
+      .replaceAll('/etc/apt/mirrors', aptMirrorsDirectory)
       .replaceAll('/etc/docker/daemon.json', dockerDaemon)
       .replaceAll('/etc/resolv.conf', resolvConf)
       .replaceAll('/etc/os-release', osRelease),
@@ -558,7 +592,12 @@ if [ "$target" = "$FAKE_OS_RELEASE" ]; then
 elif [ "$target" = "$FAKE_DOCKER_SOCKET" ]; then
   printf '%s\n' "$FAKE_DOCKER_SOCKET_METADATA"
 else
-  exit 64
+  case "$target" in
+    "$FAKE_APT_MIRRORS_DIRECTORY"/*)
+      printf '%s\n' "$FAKE_APT_MIRROR_METADATA"
+      ;;
+    *) exit 64 ;;
+  esac
 fi`,
   );
   await command(
@@ -664,6 +703,9 @@ cp "$file" "$FAKE_NFT_CAPTURE"
       DOCKER_COMPOSE_VERSION:
         options.composeVersion ?? `${composeRuntimeVersion}-1~debian.13~trixie`,
       FAKE_COMPOSE_RUNTIME_VERSION: composeRuntimeVersion,
+      FAKE_APT_MIRRORS_DIRECTORY: aptMirrorsDirectory,
+      FAKE_APT_MIRROR_METADATA:
+        options.aptMirrorLayout?.metadata ?? 'root:root 644',
       FAKE_CLOUD_INIT_EXIT: '0',
       FAKE_CLOUD_INIT_STATUS_JSON: cloudInitStatus(),
       FAKE_DOCKER_GROUP: 'no',
@@ -1215,6 +1257,71 @@ test('bootstrap installs pinned root-owned runtime and stages a checked firewall
   assert.match(result.stdout, /Reconnect successfully before persisting/u);
 });
 
+test('bootstrap accepts the Debian cloud-image deb822 mirror layout', async (t) => {
+  const harness = await makeBootstrapHarness(t, { aptMirrorLayout: {} });
+  const result = run(harness.script, { env: harness.env });
+
+  assert.equal(result.status, 0, result.stderr);
+  const trace = await harness.readTrace();
+  assert.match(trace, /https:\/\/download\.docker\.com/u);
+});
+
+test('bootstrap rejects unsafe or ambiguous apt mirror files', async (t) => {
+  for (const [name, aptMirrorLayout] of [
+    ['missing', { omitDebianMirror: true }],
+    ['relative', { debianMirrorUri: 'mirror+file://relative/debian.list' }],
+    [
+      'outside-reviewed-directory',
+      { debianMirrorUri: 'mirror+file:///srv/mirrors/debian.list' },
+    ],
+    ['unsafe-owner', { metadata: 'nobody:nogroup 644' }],
+    ['unsafe-mode', { metadata: 'root:root 666' }],
+    ['symlink', { symlinkDebianMirror: true }],
+    ['http-entry', { debianMirrorContents: 'http://deb.debian.org/debian\n' }],
+    [
+      'non-https-entry',
+      { debianMirrorContents: 'ftp://deb.debian.org/debian\n' },
+    ],
+    [
+      'extra-field',
+      { debianMirrorContents: 'https://deb.debian.org/debian extra\n' },
+    ],
+    [
+      'ambiguous-line',
+      {
+        debianMirrorContents:
+          'https://deb.debian.org/debian https://mirror.example.invalid/debian\n',
+      },
+    ],
+    [
+      'mixed-safe-unsafe',
+      {
+        debianMirrorContents:
+          'https://deb.debian.org/debian\nhttp://mirror.example.invalid/debian\n',
+      },
+    ],
+    [
+      'unsupported-wrapper-scheme',
+      { debianMirrorUri: 'file:///etc/apt/mirrors/debian.list' },
+    ],
+  ]) {
+    await t.test(name, async (subtest) => {
+      const harness = await makeBootstrapHarness(subtest, { aptMirrorLayout });
+      const result = run(harness.script, { env: harness.env });
+
+      assert.notEqual(result.status, 0);
+      assert.match(
+        result.stderr,
+        /APT mirror|active APT sources must use HTTPS/iu,
+      );
+      assert.doesNotMatch(
+        await harness.readTrace(),
+        /https:\/\/download\.docker\.com/u,
+      );
+    });
+  }
+});
+
 test('bootstrap refuses Docker TCP exposure and docker-group membership', async (t) => {
   for (const [name, override] of [
     ['unit', { FAKE_DOCKER_TCP_UNIT: 'yes' }],
@@ -1507,6 +1614,8 @@ test('firewall template and runbook preserve private staged activation', async (
   assert.match(readme, /mlp-deploy[\s\S]*\/usr\/bin\/node/u);
   assert.match(readme, new RegExp(dockerPrimaryFingerprint, 'u'));
   assert.match(readme, /active APT sources.*HTTPS/iu);
+  assert.match(readme, /mirror\+file:\/\/\/etc\/apt\/mirrors\//u);
+  assert.match(readme, /root-owned.*group or world writable/isu);
   assert.match(readme, /systemd-resolved/iu);
   assert.match(readme, /cloud-init status --wait --long --format json/u);
   assert.ok(readme.includes(reviewedCloudInitDeprecation));
