@@ -171,6 +171,7 @@ validate_origin_expectations() {
         cname = hosts[host] SUBSEP "CNAME"
         address = hosts[host] SUBSEP "A"
         address6 = hosts[host] SUBSEP "AAAA"
+        if (present[address] + present[address6] + present[cname] < 1) invalid()
         if (present[cname] > 0 &&
             (absent[address] != 1 || absent[address6] != 1)) invalid()
       }
@@ -257,6 +258,14 @@ query_dns() {
   /usr/bin/dig -r +time=5 +tries=1 +short "@$resolver" "$hostname" "$record_type"
 }
 
+query_origin_dns() {
+  local resolver=$1
+  local hostname=$2
+  local record_type=$3
+  /usr/bin/dig -r +time=5 +tries=1 +noall +answer \
+    "@$resolver" "$hostname" "$record_type"
+}
+
 verify_nameservers_and_soa() {
   local resolver
   local actual_nameservers
@@ -283,16 +292,36 @@ verify_nameservers_and_soa() {
 }
 
 normalize_origin_answers() {
-  local record_type=$1
-  if [[ "$record_type" == CNAME ]]; then
-    normalize_fqdn_lines
-  else
-    /usr/bin/awk '
-      NF != 1 { invalid = 1; next }
-      { print $1 }
-      END { exit invalid }
-    ' | /usr/bin/sort --unique
-  fi
+  local hostname=$1
+  local record_type=$2
+  /usr/bin/awk -v expected_hostname="$hostname" -v expected_type="$record_type" '
+    NF < 5 { invalid = 1; next }
+    {
+      owner = tolower($1)
+      if (owner !~ /[.]$/) owner = owner "."
+      class = toupper($3)
+      type = toupper($4)
+      if ($2 !~ /^(0|[1-9][0-9]*)$/ || class != "IN" ||
+          type !~ /^[A-Z][A-Z0-9]*$/) {
+        invalid = 1
+        next
+      }
+      if (owner != expected_hostname || type != expected_type) next
+      if (NF != 5) {
+        invalid = 1
+        next
+      }
+      value = $5
+      if (expected_type == "CNAME") {
+        value = tolower(value)
+        if (value !~ /[.]$/) value = value "."
+      } else if (expected_type == "AAAA") {
+        value = tolower(value)
+      }
+      print value
+    }
+    END { exit invalid }
+  ' | /usr/bin/sort --unique
 }
 
 verify_vercel_origin() {
@@ -307,11 +336,11 @@ verify_vercel_origin() {
       expected=$(
         /usr/bin/awk -F '\t' -v hostname="$hostname" -v record_type="$record_type" \
           '$1 == hostname && $2 == record_type && $3 != "-" { print $3 }' \
-          "$origin_expectations_file" | normalize_origin_answers "$record_type"
+          "$origin_expectations_file" | /usr/bin/sort --unique
       ) || return 1
       for resolver in "${public_resolvers[@]}"; do
-        actual=$(query_dns "$resolver" "$hostname" "$record_type" | \
-          normalize_origin_answers "$record_type") || return 1
+        actual=$(query_origin_dns "$resolver" "$hostname" "$record_type" | \
+          normalize_origin_answers "$hostname" "$record_type") || return 1
         [[ "$actual" == "$expected" ]] || return 1
       done
     done

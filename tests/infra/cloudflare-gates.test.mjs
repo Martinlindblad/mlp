@@ -56,6 +56,28 @@ function canonicalInventoryReport(overrides = {}) {
   };
 }
 
+function originExpectationsWithAbsentHosts(absentHostnames = []) {
+  const absent = new Set(absentHostnames);
+  const targets = new Map([
+    ['martin-lindblad.com.', { A: '76.76.21.21', AAAA: '-', CNAME: '-' }],
+    [
+      'www.martin-lindblad.com.',
+      { A: '-', AAAA: '-', CNAME: 'cname.vercel-dns.com.' },
+    ],
+  ]);
+  const rows = [];
+  for (const [hostname, defaults] of targets) {
+    for (const recordType of ['A', 'AAAA', 'CNAME']) {
+      rows.push(
+        `${hostname}\t${recordType}\t${
+          absent.has(hostname) ? '-' : defaults[recordType]
+        }`,
+      );
+    }
+  }
+  return `${rows.join('\n')}\n`;
+}
+
 async function readRequired(relativePath) {
   try {
     return await readFile(path.join(repositoryRoot, relativePath), 'utf8');
@@ -126,6 +148,21 @@ done
 name=\${@: -2:1}
 type=\${@: -1}
 printf '%s\\t%s\\t%s\\n' "$resolver" "$name" "$type" >>"$HARNESS_TRACE"
+answer_format=short
+if [[ " $* " == *' +noall '* && " $* " == *' +answer '* ]]; then
+  answer_format=records
+fi
+
+if [[ " $type " == ' A ' || " $type " == ' AAAA ' ||
+  " $type " == ' CNAME ' ]]; then
+  case " \${HARNESS_EMPTY_ORIGIN_HOSTS:-} " in
+    *" $name "*) exit 0 ;;
+  esac
+  if [[ \${HARNESS_REQUIRE_ANSWER_FORMAT:-no} == yes &&
+    "$answer_format" != records ]]; then
+    exit 66
+  fi
+fi
 
 if [[ "$type" == NS ]]; then
   if [[ \${HARNESS_BAD_NS_RESOLVER:-} == "$resolver" ]]; then
@@ -145,24 +182,54 @@ elif [[ "$type" == SOA ]]; then
   fi
 elif [[ "$name" == martin-lindblad.com. && "$type" == A ]]; then
   if [[ \${HARNESS_BAD_ORIGIN_RESOLVER:-} == "$resolver" ]]; then
-    printf '203.0.113.99\\n'
-  elif [[ \${HARNESS_EXTRA_ORIGIN_LINE:-} == "$resolver" ]]; then
-    printf '76.76.21.21\\nunexpected warning\\n'
+    address=203.0.113.99
   else
-    printf '76.76.21.21\\n'
+    address=76.76.21.21
+  fi
+  if [[ "$answer_format" == records ]]; then
+    printf 'martin-lindblad.com. 300 IN A %s\\n' "$address"
+  else
+    printf '%s\\n' "$address"
+  fi
+  if [[ \${HARNESS_EXTRA_ORIGIN_LINE:-} == "$resolver" ]]; then
+    printf 'unexpected warning\\n'
   fi
 elif [[ "$name" == martin-lindblad.com. && "$type" == AAAA ]]; then
   if [[ \${HARNESS_UNEXPECTED_AAAA_RESOLVER:-} == "$resolver" ]]; then
-    printf '2001:db8::76\\n'
+    if [[ "$answer_format" == records ]]; then
+      printf 'martin-lindblad.com. 300 IN AAAA 2001:db8::76\\n'
+    else
+      printf '2001:db8::76\\n'
+    fi
   fi
 elif [[ "$name" == martin-lindblad.com. && "$type" == CNAME ]]; then
   :
 elif [[ "$name" == www.martin-lindblad.com. && "$type" == A ]]; then
-  :
+  if [[ \${HARNESS_REALISTIC_CNAME_CHAIN:-no} == yes ]]; then
+    if [[ "$answer_format" == records ]]; then
+      printf '%s\\n' \\
+        'www.martin-lindblad.com. 300 IN CNAME cname.vercel-dns.com.' \\
+        'cname.vercel-dns.com. 60 IN A 76.76.21.21'
+    else
+      printf '%s\\n' 'cname.vercel-dns.com.' '76.76.21.21'
+    fi
+  fi
 elif [[ "$name" == www.martin-lindblad.com. && "$type" == AAAA ]]; then
-  :
+  if [[ \${HARNESS_REALISTIC_CNAME_CHAIN:-no} == yes ]]; then
+    if [[ "$answer_format" == records ]]; then
+      printf '%s\\n' \\
+        'www.martin-lindblad.com. 300 IN CNAME cname.vercel-dns.com.' \\
+        'cname.vercel-dns.com. 60 IN AAAA 2001:db8::76'
+    else
+      printf '%s\\n' 'cname.vercel-dns.com.' '2001:db8::76'
+    fi
+  fi
 elif [[ "$name" == www.martin-lindblad.com. && "$type" == CNAME ]]; then
-  printf 'cname.vercel-dns.com.\\n'
+  if [[ "$answer_format" == records ]]; then
+    printf 'www.martin-lindblad.com. 300 IN CNAME cname.vercel-dns.com.\\n'
+  else
+    printf 'cname.vercel-dns.com.\\n'
+  fi
 else
   exit 65
 fi
@@ -195,15 +262,7 @@ async function createDnsHarness(options = {}) {
   );
   await writeFile(
     expectedOrigin,
-    [
-      'martin-lindblad.com.\tA\t76.76.21.21',
-      'martin-lindblad.com.\tAAAA\t-',
-      'martin-lindblad.com.\tCNAME\t-',
-      'www.martin-lindblad.com.\tA\t-',
-      'www.martin-lindblad.com.\tAAAA\t-',
-      'www.martin-lindblad.com.\tCNAME\tcname.vercel-dns.com.',
-      '',
-    ].join('\n'),
+    options.originExpectations ?? originExpectationsWithAbsentHosts(),
     { mode: 0o600 },
   );
   await writeFile(
@@ -444,6 +503,62 @@ test('DNS authority gate checks A, AAAA, and CNAME presence and absence', async 
       `${unexpected.stdout}\n${unexpected.stderr}`,
     );
     await assert.rejects(readFile(harness.stateFile), { code: 'ENOENT' });
+  } finally {
+    await rm(harness.root, { force: true, recursive: true });
+  }
+});
+
+test('DNS authority gate rejects each origin hostname with no present target', async (t) => {
+  for (const fixture of [
+    {
+      absentHostnames: ['martin-lindblad.com.'],
+      label: 'apex all absent',
+    },
+    {
+      absentHostnames: ['www.martin-lindblad.com.'],
+      label: 'www all absent',
+    },
+    {
+      absentHostnames: ['martin-lindblad.com.', 'www.martin-lindblad.com.'],
+      label: 'apex and www all absent',
+    },
+  ]) {
+    await t.test(fixture.label, async () => {
+      const harness = await createDnsHarness({
+        originExpectations: originExpectationsWithAbsentHosts(
+          fixture.absentHostnames,
+        ),
+      });
+      try {
+        const result = harness.run({
+          HARNESS_EMPTY_ORIGIN_HOSTS: fixture.absentHostnames.join(' '),
+        });
+
+        assert.equal(result.status, 78, `${result.stdout}\n${result.stderr}`);
+        assert.match(result.stderr, /invalid Vercel origin expectation/iu);
+        await assert.rejects(readFile(harness.stateFile), { code: 'ENOENT' });
+        await assert.rejects(readFile(harness.trace), { code: 'ENOENT' });
+      } finally {
+        await rm(harness.root, { force: true, recursive: true });
+      }
+    });
+  }
+});
+
+test('DNS authority gate filters CNAME-chain answers by queried owner and type', async () => {
+  const harness = await createDnsHarness();
+  try {
+    const result = harness.run({
+      HARNESS_REALISTIC_CNAME_CHAIN: 'yes',
+      HARNESS_REQUIRE_ANSWER_FORMAT: 'yes',
+    });
+
+    assert.equal(result.status, 75, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /authority hold started/iu);
+    assert.match(
+      await readFile(harness.stateFile, 'utf8'),
+      /^2000000\t[0-9a-f]{64}\n$/u,
+    );
   } finally {
     await rm(harness.root, { force: true, recursive: true });
   }
