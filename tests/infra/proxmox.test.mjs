@@ -46,6 +46,19 @@ const nodeVersion = '22.23.1';
 const nodeArchive = `node-v${nodeVersion}-linux-x64.tar.xz`;
 const nodeSha256 =
   '9749e988f437343b7fa832c69ded82a312e41a03116d766797ac14f6f9eee578';
+const reviewedCloudInitDeprecation =
+  "'user' of type string is deprecated in 22.2 and scheduled to be removed in 27.2. Use 'users' list instead.";
+
+function cloudInitStatus(overrides = {}) {
+  return JSON.stringify({
+    errors: [],
+    extended_status: 'done',
+    recoverable_errors: {},
+    stage: null,
+    status: 'done',
+    ...overrides,
+  });
+}
 
 async function writeExecutable(file, source) {
   await writeFile(file, source, { mode: 0o755 });
@@ -353,7 +366,11 @@ printf '\n' >>"$FAKE_TRACE"`;
     'cloud-init',
     `${log}
 [ "$1" = status ] && [ "$2" = --wait ]
-[ "$FAKE_CLOUD_INIT_READY" = yes ]`,
+if [ "$#" -ne 2 ]; then
+  [ "$#" -eq 5 ] && [ "$3" = --long ] && [ "$4" = --format ] && [ "$5" = json ]
+fi
+printf '%s\n' "$FAKE_CLOUD_INIT_STATUS_JSON"
+exit "$FAKE_CLOUD_INIT_EXIT"`,
   );
   await command(
     binDirectory,
@@ -617,7 +634,8 @@ cp "$file" "$FAKE_NFT_CAPTURE"
       DOCKER_COMPOSE_VERSION:
         options.composeVersion ?? `${composeRuntimeVersion}-1~debian.13~trixie`,
       FAKE_COMPOSE_RUNTIME_VERSION: composeRuntimeVersion,
-      FAKE_CLOUD_INIT_READY: 'yes',
+      FAKE_CLOUD_INIT_EXIT: '0',
+      FAKE_CLOUD_INIT_STATUS_JSON: cloudInitStatus(),
       FAKE_DOCKER_GROUP: 'no',
       FAKE_DOCKER_FINGERPRINT: dockerPrimaryFingerprint,
       FAKE_DOCKER_SOCKET: '/run/docker.sock',
@@ -950,7 +968,7 @@ test('bootstrap installs pinned root-owned runtime and stages a checked firewall
     /apt-get\tinstall\t--yes\tqemu-guest-agent\tca-certificates\tcurl\tgnupg\tunattended-upgrades\tnftables\tgit\tjq\txz-utils\tacl\tsystemd-resolved/u,
   );
   assert.ok(
-    lineIndex(lines, 'cloud-init\tstatus\t--wait') <
+    lineIndex(lines, 'cloud-init\tstatus\t--wait\t--long\t--format\tjson') <
       lines.findIndex((line) => line === 'apt-get\tupdate'),
     'bootstrap must wait for cloud-init before touching apt or dpkg',
   );
@@ -1203,7 +1221,7 @@ test('bootstrap fails closed on unreviewed supply chain or network state', async
     [
       'cloud-init',
       {},
-      { FAKE_CLOUD_INIT_READY: 'no' },
+      { FAKE_CLOUD_INIT_EXIT: '1' },
       /cloud-init first boot did not complete/u,
     ],
     [
@@ -1266,6 +1284,125 @@ test('bootstrap fails closed on unreviewed supply chain or network state', async
         await harness.readTrace(),
         /systemctl\tenable\t--now\tnftables/u,
       );
+    });
+  }
+});
+
+test('bootstrap accepts the exact reviewed cloud-init deprecation', async (t) => {
+  const deprecation = {
+    DEPRECATED: [reviewedCloudInitDeprecation],
+  };
+  const harness = await makeBootstrapHarness(t);
+  const result = run(harness.script, {
+    env: {
+      ...harness.env,
+      FAKE_CLOUD_INIT_EXIT: '2',
+      FAKE_CLOUD_INIT_STATUS_JSON: cloudInitStatus({
+        extended_status: 'degraded done',
+        'modules-config': {
+          errors: [],
+          recoverable_errors: deprecation,
+        },
+        recoverable_errors: deprecation,
+      }),
+    },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const lines = traceLines(await harness.readTrace());
+  assert.ok(
+    lineIndex(lines, 'cloud-init\tstatus\t--wait\t--long\t--format\tjson') <
+      lines.findIndex((line) => line === 'apt-get\tupdate'),
+    'bootstrap must validate cloud-init JSON before touching apt or dpkg',
+  );
+});
+
+test('bootstrap explicitly gates the pinned cloud-init JSON parser', async () => {
+  const bootstrap = await readFile(bootstrapScript, 'utf8');
+
+  assert.match(
+    bootstrap,
+    /\[\[ -x \/usr\/bin\/python3 \]\].*cloud-init status JSON parser/su,
+  );
+  assert.match(bootstrap, /\/usr\/bin\/python3/u);
+});
+
+test('bootstrap rejects malformed or unreviewed cloud-init status before apt', async (t) => {
+  const exactDeprecation = {
+    DEPRECATED: [reviewedCloudInitDeprecation],
+  };
+  for (const [name, exitCode, statusJson] of [
+    ['malformed-json', '0', '{'],
+    ['real-error', '0', cloudInitStatus({ errors: ['modules-final failed'] })],
+    [
+      'incomplete',
+      '0',
+      cloudInitStatus({
+        extended_status: 'running',
+        stage: 'modules-final',
+        status: 'running',
+      }),
+    ],
+    [
+      'unknown-category',
+      '0',
+      cloudInitStatus({
+        recoverable_errors: { WARNING: ['unreviewed warning'] },
+      }),
+    ],
+    [
+      'unknown-message',
+      '2',
+      cloudInitStatus({
+        extended_status: 'degraded done',
+        recoverable_errors: { DEPRECATED: ['different deprecation'] },
+      }),
+    ],
+    [
+      'nested-unknown-message',
+      '2',
+      cloudInitStatus({
+        extended_status: 'degraded done',
+        'modules-config': {
+          errors: [],
+          recoverable_errors: { WARNING: ['unreviewed warning'] },
+        },
+        recoverable_errors: exactDeprecation,
+      }),
+    ],
+    [
+      'unreported-nested-deprecation',
+      '0',
+      cloudInitStatus({
+        'modules-config': {
+          errors: [],
+          recoverable_errors: exactDeprecation,
+        },
+      }),
+    ],
+    ['clean-json-wrong-exit', '2', cloudInitStatus()],
+    [
+      'degraded-json-wrong-exit',
+      '0',
+      cloudInitStatus({
+        extended_status: 'degraded done',
+        recoverable_errors: exactDeprecation,
+      }),
+    ],
+  ]) {
+    await t.test(name, async (subtest) => {
+      const harness = await makeBootstrapHarness(subtest);
+      const result = run(harness.script, {
+        env: {
+          ...harness.env,
+          FAKE_CLOUD_INIT_EXIT: exitCode,
+          FAKE_CLOUD_INIT_STATUS_JSON: statusJson,
+        },
+      });
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /cloud-init first boot did not complete/u);
+      assert.doesNotMatch(await harness.readTrace(), /apt-get/u);
     });
   }
 });
@@ -1334,7 +1471,9 @@ test('firewall template and runbook preserve private staged activation', async (
   assert.match(readme, new RegExp(dockerPrimaryFingerprint, 'u'));
   assert.match(readme, /active APT sources.*HTTPS/iu);
   assert.match(readme, /systemd-resolved/iu);
-  assert.match(readme, /cloud-init status --wait/u);
+  assert.match(readme, /cloud-init status --wait --long --format json/u);
+  assert.ok(readme.includes(reviewedCloudInitDeprecation));
+  assert.match(readme, /exit (?:code|status) 2/iu);
   assert.match(readme, /apt-daily-upgrade\.timer/u);
   assert.match(readme, /APP_CADDY_IMAGE/u);
   assert.match(readme, /caddy-image-ref\.txt/u);

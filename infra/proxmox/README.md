@@ -59,11 +59,22 @@ script never calls `qm destroy`.
 ## 2. Debian bootstrap
 
 Clone the reviewed repository as a root-owned checkout at `/opt/mlp`, then run
-the bootstrap from that checkout. First wait for `cloud-init status --wait` to
-complete; the bootstrap repeats this gate before it touches apt or dpkg because
-`ciupgrade=1` can still hold their locks after SSH becomes available. Choose
-all four exact package versions during the reviewed deployment change. Do not
-copy version examples from this runbook.
+the bootstrap from that checkout. The bootstrap runs
+`cloud-init status --wait --long --format json` and validates the JSON with the
+explicitly gated `/usr/bin/python3` from the pinned Debian image before it
+touches apt or dpkg. A clean `done` result must have exit status 0, no errors,
+and no recoverable errors. The pinned image's only accepted degraded result is
+exit status 2, `degraded done`, no errors, and exactly this deprecation:
+
+```text
+'user' of type string is deprecated in 22.2 and scheduled to be removed in 27.2. Use 'users' list instead.
+```
+
+Any other exit status, malformed or incomplete JSON, real error, recoverable
+category, or recoverable message fails closed before apt. This repeat gate is
+needed because `ciupgrade=1` can still hold apt and dpkg locks after SSH becomes
+available. Choose all four exact package versions during the reviewed deployment
+change. Do not copy version examples from this runbook.
 
 ```bash
 export MANAGEMENT_CIDR='10.23.0.0/24'
@@ -221,7 +232,7 @@ qm guest cmd "$VM_ID" get-osinfo
 On the VM:
 
 ```bash
-cloud-init status --wait
+cloud-init status --wait --long --format json
 test "$(stat -c '%U:%G %a' /etc/mlp)" = 'root:root 700'
 docker version
 docker compose version --short

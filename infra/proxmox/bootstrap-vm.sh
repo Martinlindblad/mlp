@@ -144,8 +144,103 @@ if ((${#dns_ipv6[@]} > 0)); then
   dns_ipv6_rule="ip6 daddr { $(join_addresses "${dns_ipv6[@]}") } meta l4proto { tcp, udp } th dport 53 accept"
 fi
 
-cloud-init status --wait >/dev/null || \
-  fail 'cloud-init first boot did not complete' 69
+cloud_init_status_json=
+cloud_init_status_code=
+if cloud_init_status_json=$(cloud-init status --wait --long --format json); then
+  cloud_init_status_code=0
+else
+  cloud_init_status_code=$?
+fi
+[[ -x /usr/bin/python3 ]] || \
+  fail 'trusted /usr/bin/python3 cloud-init status JSON parser is unavailable' 69
+if ! printf '%s' "$cloud_init_status_json" | /usr/bin/python3 -c '
+import json
+import sys
+
+reviewed_deprecation = (
+    "\u0027user\u0027 of type string is deprecated in 22.2 and scheduled to be "
+    "removed in 27.2. Use \u0027users\u0027 list instead."
+)
+reviewed_recoverable_errors = {"DEPRECATED": [reviewed_deprecation]}
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON object key")
+        result[key] = value
+    return result
+
+
+def reject_constant(value):
+    raise ValueError(f"non-standard JSON constant: {value}")
+
+
+def outcomes_are_reviewed(value, allowed_recoverable_errors):
+    if isinstance(value, dict):
+        if "errors" in value and value["errors"] != []:
+            return False
+        if (
+            "recoverable_errors" in value
+            and value["recoverable_errors"]
+            not in allowed_recoverable_errors
+        ):
+            return False
+        return all(
+            outcomes_are_reviewed(item, allowed_recoverable_errors)
+            for item in value.values()
+        )
+    if isinstance(value, list):
+        return all(
+            outcomes_are_reviewed(item, allowed_recoverable_errors)
+            for item in value
+        )
+    return True
+
+
+try:
+    command_status = int(sys.argv[1])
+    payload = json.load(
+        sys.stdin,
+        object_pairs_hook=unique_object,
+        parse_constant=reject_constant,
+    )
+except (TypeError, ValueError, UnicodeError):
+    raise SystemExit(1)
+
+missing = object()
+if (
+    not isinstance(payload, dict)
+    or payload.get("status", missing) != "done"
+    or payload.get("stage", missing) is not None
+    or payload.get("errors", missing) != []
+):
+    raise SystemExit(1)
+
+extended_status = payload.get("extended_status", missing)
+recoverable_errors = payload.get("recoverable_errors", missing)
+clean_done = (
+    command_status == 0
+    and extended_status == "done"
+    and recoverable_errors == {}
+)
+reviewed_degraded_done = (
+    command_status == 2
+    and extended_status == "degraded done"
+    and recoverable_errors == reviewed_recoverable_errors
+)
+if not (clean_done or reviewed_degraded_done):
+    raise SystemExit(1)
+allowed_recoverable_errors = (
+    ({}, reviewed_recoverable_errors) if reviewed_degraded_done else ({},)
+)
+if not outcomes_are_reviewed(payload, allowed_recoverable_errors):
+    raise SystemExit(1)
+' "$cloud_init_status_code"; then
+  fail 'cloud-init first boot did not complete with a reviewed status' 69
+fi
+unset cloud_init_status_json cloud_init_status_code
 
 DEBIAN_FRONTEND=noninteractive apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install --yes \
