@@ -55,7 +55,7 @@ if ! docker info >/dev/null 2>&1; then
   fail 'Docker daemon is required'
 fi
 
-for required_command in awk cat chmod cmp curl find flock grep jq mktemp mkdir python3 rm sed sha256sum sleep sort ssh-keygen tar tr wc; do
+for required_command in awk cat chmod cmp curl find flock grep jq mktemp mkdir openssl python3 rm sed sha256sum sleep sort ssh-keygen tar tr wc; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     fail "required host command is unavailable: $required_command"
   fi
@@ -507,7 +507,7 @@ track_volume() {
 report_build_failure() {
   image_name=$1
   build_log=$2
-  python3 - "$image_name" "$build_log" <<'PY'
+  python3 -I - "$image_name" "$build_log" <<'PY'
 from collections import deque
 import re
 import sys
@@ -525,24 +525,23 @@ categories = (
     ('architecture', re.compile(r'\b(?:architecture|platform)\b', re.IGNORECASE)),
     ('invalid-option', re.compile(r'\b(?:unknown|invalid|unrecognized) (?:flag|option|argument)\b', re.IGNORECASE)),
 )
-counts = {name: 0 for name, _ in categories}
-dockerfile_lines = set()
-with open(build_log, encoding='utf-8', errors='replace') as log_file:
-    bounded_lines = deque(log_file, maxlen=5000)
-for raw_line in bounded_lines:
-    line = raw_line[:4096]
-    for name, pattern in categories:
-        if pattern.search(line):
-            counts[name] += 1
-    for match in re.finditer(r'(?:Dockerfile:|\bline\s+)([0-9]{1,6})\b', line):
-        dockerfile_lines.add(int(match.group(1)))
+detected_categories = []
+try:
+    with open(build_log, encoding='utf-8', errors='replace') as log_file:
+        bounded_lines = deque(log_file, maxlen=5000)
+    for raw_line in bounded_lines:
+        line = raw_line[:4096]
+        for name, pattern in categories:
+            if pattern.search(line) and name not in detected_categories:
+                detected_categories.append(name)
+except OSError:
+    print(f'build diagnostics: {image_name}', file=sys.stderr)
+    print('build diagnostic categories: scanner-failure', file=sys.stderr)
+    sys.exit(2)
 
 print(f'build diagnostics: {image_name}', file=sys.stderr)
-summary = ' '.join(f'{name}={count}' for name, count in counts.items() if count)
-print(summary or 'categorized-errors=0', file=sys.stderr)
-if dockerfile_lines:
-    rendered_lines = ','.join(str(line) for line in sorted(dockerfile_lines)[:20])
-    print(f'dockerfile-lines={rendered_lines}', file=sys.stderr)
+summary = ' '.join(detected_categories) or 'unclassified'
+print(f'build diagnostic categories: {summary}', file=sys.stderr)
 PY
 }
 
@@ -684,19 +683,943 @@ assert_image_metadata() {
 }
 
 find_private_key_files() {
-  python3 - "$@" <<'PY'
+  python3 -I - "$@" <<'PY'
 import base64
+import binascii
+import math
 import os
 import re
 import stat
+import struct
+import subprocess
 import sys
 
-labels = rb'(?:PRIVATE KEY|RSA PRIVATE KEY|EC PRIVATE KEY|OPENSSH PRIVATE KEY|ENCRYPTED PRIVATE KEY)'
+labels = rb'(?:PRIVATE KEY|RSA PRIVATE KEY|EC PRIVATE KEY|DSA PRIVATE KEY|OPENSSH PRIVATE KEY|ENCRYPTED PRIVATE KEY)'
 private_key_block = re.compile(
     rb'-----BEGIN (?P<label>' + labels + rb')-----(?P<body>.*?)-----END (?P=label)-----',
     re.DOTALL,
 )
 base64_line = re.compile(rb'[A-Za-z0-9+/=]+')
+legacy_encryption_header = re.compile(
+    rb'DEK-Info:[ \t]*(?P<cipher>[A-Za-z0-9-]+),(?P<iv>[0-9A-Fa-f]+)',
+    re.IGNORECASE,
+)
+class ParseError(ValueError):
+    pass
+
+
+class ScannerError(RuntimeError):
+    pass
+
+
+class DerReader:
+    def __init__(self, data):
+        self.data = data
+        self.position = 0
+
+    def at_end(self):
+        return self.position == len(self.data)
+
+    def peek_tag(self):
+        if self.position >= len(self.data):
+            raise ParseError
+        return self.data[self.position]
+
+    def read(self, expected_tag=None):
+        if self.position >= len(self.data):
+            raise ParseError
+        tag = self.data[self.position]
+        self.position += 1
+        if tag & 0x1F == 0x1F or self.position >= len(self.data):
+            raise ParseError
+        first_length = self.data[self.position]
+        self.position += 1
+        if first_length < 0x80:
+            length = first_length
+        else:
+            length_bytes = first_length & 0x7F
+            if length_bytes == 0 or length_bytes > 4:
+                raise ParseError
+            length_end = self.position + length_bytes
+            if length_end > len(self.data) or self.data[self.position] == 0:
+                raise ParseError
+            length = int.from_bytes(self.data[self.position:length_end], 'big')
+            self.position = length_end
+            if length < 0x80:
+                raise ParseError
+        value_end = self.position + length
+        if value_end > len(self.data):
+            raise ParseError
+        value = self.data[self.position:value_end]
+        self.position = value_end
+        if expected_tag is not None and tag != expected_tag:
+            raise ParseError
+        return tag, value
+
+
+class SshReader:
+    def __init__(self, data):
+        self.data = data
+        self.position = 0
+
+    def at_end(self):
+        return self.position == len(self.data)
+
+    def remaining(self):
+        return self.data[self.position:]
+
+    def read_u32(self):
+        if self.position + 4 > len(self.data):
+            raise ParseError
+        value = struct.unpack_from('>I', self.data, self.position)[0]
+        self.position += 4
+        return value
+
+    def read_u8(self):
+        if self.position >= len(self.data):
+            raise ParseError
+        value = self.data[self.position]
+        self.position += 1
+        return value
+
+    def read_string(self):
+        length = self.read_u32()
+        value_end = self.position + length
+        if value_end > len(self.data):
+            raise ParseError
+        value = self.data[self.position:value_end]
+        self.position = value_end
+        return value
+
+
+def der_sequence(data):
+    outer = DerReader(data)
+    _, value = outer.read(0x30)
+    if not outer.at_end():
+        raise ParseError
+    return DerReader(value)
+
+
+def der_integer(reader):
+    _, value = reader.read(0x02)
+    if not value or value[0] & 0x80:
+        raise ParseError
+    if len(value) > 1 and value[0] == 0 and value[1] < 0x80:
+        raise ParseError
+    if len(value) > 1025:
+        raise ScannerError
+    return int.from_bytes(value, 'big')
+
+
+def decode_oid(encoded):
+    if not encoded:
+        raise ParseError
+    if len(encoded) > 256:
+        raise ScannerError
+    subidentifiers = []
+    component = 0
+    component_start = True
+    for byte in encoded:
+        if component_start and byte == 0x80:
+            raise ParseError
+        component = (component << 7) | (byte & 0x7F)
+        component_start = False
+        if byte & 0x80 == 0:
+            subidentifiers.append(component)
+            component = 0
+            component_start = True
+    if not component_start or not subidentifiers:
+        raise ParseError
+    first = min(subidentifiers[0] // 40, 2)
+    second = subidentifiers[0] - first * 40
+    return (first, second, *subidentifiers[1:])
+
+
+def der_oid(reader):
+    _, encoded = reader.read(0x06)
+    return decode_oid(encoded)
+
+
+def der_algorithm_identifier(reader):
+    _, encoded = reader.read(0x30)
+    algorithm = DerReader(encoded)
+    oid = der_oid(algorithm)
+    parameters = None
+    if not algorithm.at_end():
+        parameters = algorithm.read()
+    if not algorithm.at_end():
+        raise ParseError
+    return oid, parameters
+
+
+RSA_ENCRYPTION = (1, 2, 840, 113549, 1, 1, 1)
+RSA_PSS = (1, 2, 840, 113549, 1, 1, 10)
+EC_PUBLIC_KEY = (1, 2, 840, 10045, 2, 1)
+DSA = (1, 2, 840, 10040, 4, 1)
+DH_KEY_AGREEMENT = (1, 2, 840, 113549, 1, 3, 1)
+DH_PUBLIC_NUMBER = (1, 2, 840, 10046, 2, 1)
+PBES2 = (1, 2, 840, 113549, 1, 5, 13)
+PBKDF2 = (1, 2, 840, 113549, 1, 5, 12)
+SCRYPT = (1, 3, 6, 1, 4, 1, 11591, 4, 11)
+MODERN_CURVE_PRIVATE_KEY_SIZES = {
+    (1, 3, 101, 110): 32,
+    (1, 3, 101, 111): 56,
+    (1, 3, 101, 112): 32,
+    (1, 3, 101, 113): 57,
+ }
+NAMED_CURVE_ORDERS = {
+    (1, 2, 840, 10045, 3, 1, 1): int(
+        'FFFFFFFFFFFFFFFFFFFFFFFF99DEF836146BC9B1B4D22831', 16
+    ),
+    (1, 3, 132, 0, 33): int(
+        'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000000000000001', 16
+    ),
+    (1, 2, 840, 10045, 3, 1, 7): int(
+        'FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551', 16
+    ),
+    (1, 3, 132, 0, 34): int(
+        'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC7634D81F4372DDF'
+        '581A0DB248B0A77AECEC196ACCC52973', 16
+    ),
+    (1, 3, 132, 0, 35): int(
+        '01FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+        'FA51868783BF2F966B7FCC0148F709A5D03BB5C9B8899C47AEBB6FB71E91386409',
+        16,
+    ),
+    (1, 3, 132, 0, 10): int(
+        'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141', 16
+    ),
+ }
+
+
+def null_or_absent(parameters):
+    return parameters is None or parameters == (0x05, b'')
+
+
+def require_bounded_integers(*values):
+    if any(value.bit_length() > 8192 for value in values):
+        raise ScannerError
+
+
+def valid_pbkdf2_parameters(encoded):
+    parameters = DerReader(encoded)
+    parameters.read(0x04)
+    iterations = der_integer(parameters)
+    if iterations <= 0:
+        return False
+    if not parameters.at_end() and parameters.peek_tag() == 0x02:
+        if der_integer(parameters) <= 0:
+            return False
+    if not parameters.at_end():
+        prf, prf_parameters = der_algorithm_identifier(parameters)
+        hmac_algorithms = {
+            (1, 2, 840, 113549, 2, 7),
+            (1, 2, 840, 113549, 2, 8),
+            (1, 2, 840, 113549, 2, 9),
+            (1, 2, 840, 113549, 2, 10),
+            (1, 2, 840, 113549, 2, 11),
+            (1, 2, 840, 113549, 2, 12),
+            (1, 2, 840, 113549, 2, 13),
+            *((2, 16, 840, 1, 101, 3, 4, 2, suffix) for suffix in range(13, 17)),
+        }
+        if prf not in hmac_algorithms or not null_or_absent(prf_parameters):
+            return False
+    return parameters.at_end()
+
+
+def valid_scrypt_parameters(encoded):
+    parameters = DerReader(encoded)
+    parameters.read(0x04)
+    cost = der_integer(parameters)
+    block_size = der_integer(parameters)
+    parallelization = der_integer(parameters)
+    if (
+        cost < 2
+        or cost & (cost - 1)
+        or block_size <= 0
+        or parallelization <= 0
+    ):
+        return False
+    if not parameters.at_end() and der_integer(parameters) <= 0:
+        return False
+    return parameters.at_end()
+
+
+def pbes2_encryption_requirements(parameters):
+    if parameters is None or parameters[0] != 0x30:
+        return None
+    pbes2 = DerReader(parameters[1])
+    kdf, kdf_parameters = der_algorithm_identifier(pbes2)
+    if kdf_parameters is None or kdf_parameters[0] != 0x30:
+        return None
+    if kdf == PBKDF2:
+        if not valid_pbkdf2_parameters(kdf_parameters[1]):
+            return None
+    elif kdf == SCRYPT:
+        if not valid_scrypt_parameters(kdf_parameters[1]):
+            return None
+    else:
+        return None
+    cipher, cipher_parameters = der_algorithm_identifier(pbes2)
+    if not pbes2.at_end():
+        return None
+    cbc_blocks = {
+        (2, 16, 840, 1, 101, 3, 4, 1, 2): 16,
+        (2, 16, 840, 1, 101, 3, 4, 1, 22): 16,
+        (2, 16, 840, 1, 101, 3, 4, 1, 42): 16,
+        (1, 2, 840, 113549, 3, 7): 8,
+        (1, 2, 392, 200011, 61, 1, 1, 1, 2): 16,
+        (1, 2, 392, 200011, 61, 1, 1, 1, 3): 16,
+        (1, 2, 392, 200011, 61, 1, 1, 1, 4): 16,
+        (1, 2, 410, 200046, 1, 1, 2): 16,
+        (1, 2, 410, 200046, 1, 1, 7): 16,
+        (1, 2, 410, 200046, 1, 1, 12): 16,
+        (1, 2, 156, 10197, 1, 104, 2): 16,
+        (1, 2, 410, 200004, 1, 4): 16,
+    }
+    block_size = cbc_blocks.get(cipher)
+    if block_size is not None:
+        if (
+            cipher_parameters is None
+            or cipher_parameters[0] != 0x04
+            or len(cipher_parameters[1]) != block_size
+        ):
+            return None
+        return block_size, block_size
+    aes_suffixes = {*range(1, 9), *range(21, 29), *range(41, 49)}
+    camellia_suffixes = {1, 3, 4, 9, 21, 23, 24, 29, 41, 43, 44, 49}
+    recognized_cipher = (
+        cipher[:-1] == (2, 16, 840, 1, 101, 3, 4, 1)
+        and cipher[-1] in aes_suffixes
+        or cipher[:-1] == (1, 2, 410, 200046, 1, 1)
+        and 1 <= cipher[-1] <= 15
+        or cipher[:-1] == (1, 2, 156, 10197, 1, 104)
+        and 1 <= cipher[-1] <= 7
+        or cipher[:-1] == (0, 3, 4401, 5, 3, 1, 9)
+        and cipher[-1] in camellia_suffixes
+        or cipher == (1, 3, 14, 3, 2, 17)
+    )
+    if not recognized_cipher:
+        return None
+    if cipher_parameters is None:
+        return 8, None
+    parameter_tag, parameter_value = cipher_parameters
+    if parameter_tag == 0x04 and len(parameter_value) <= 32:
+        return 8, None
+    if parameter_tag != 0x30 or not parameter_value or len(parameter_value) > 256:
+        return None
+    structured_parameters = DerReader(parameter_value)
+    while not structured_parameters.at_end():
+        structured_parameters.read()
+    return 8, None
+
+
+def valid_dsa_private_key(parameters, private_key):
+    if parameters is None or parameters[0] != 0x30:
+        return False
+    domain = DerReader(parameters[1])
+    prime = der_integer(domain)
+    subgroup = der_integer(domain)
+    generator = der_integer(domain)
+    private = DerReader(private_key)
+    value = der_integer(private)
+    require_bounded_integers(prime, subgroup, generator, value)
+    return (
+        domain.at_end()
+        and private.at_end()
+        and prime > 2
+        and subgroup > 1
+        and (prime - 1) % subgroup == 0
+        and 1 < generator < prime
+        and 0 < value < subgroup
+    )
+
+
+def valid_dh_private_key(algorithm, parameters, private_key):
+    if parameters is None or parameters[0] != 0x30:
+        return False
+    domain = DerReader(parameters[1])
+    prime = der_integer(domain)
+    generator = der_integer(domain)
+    subgroup = None
+    if algorithm == DH_PUBLIC_NUMBER:
+        subgroup = der_integer(domain)
+        if not domain.at_end() and domain.peek_tag() == 0x02:
+            if der_integer(domain) <= 0:
+                return False
+        if not domain.at_end():
+            _, validation_data = domain.read(0x30)
+            validation = DerReader(validation_data)
+            _, seed = validation.read(0x03)
+            counter = der_integer(validation)
+            if len(seed) < 2 or seed[0] > 7 or counter < 0 or not validation.at_end():
+                return False
+    elif not domain.at_end():
+        private_value_length = der_integer(domain)
+        if private_value_length <= 0 or private_value_length > prime.bit_length():
+            return False
+    private = DerReader(private_key)
+    value = der_integer(private)
+    require_bounded_integers(
+        prime,
+        generator,
+        value,
+        *(value for value in (subgroup,) if value is not None),
+    )
+    if (
+        not domain.at_end()
+        or not private.at_end()
+        or prime <= 2
+        or not 1 < generator < prime
+        or not 0 < value < prime - 1
+    ):
+        return False
+    if subgroup is None:
+        return True
+    return subgroup > 1 and (prime - 1) % subgroup == 0 and value < subgroup
+
+
+def valid_modern_curve_private_key(oid, parameters, private_key):
+    if parameters is not None:
+        return False
+    wrapped = DerReader(private_key)
+    _, value = wrapped.read(0x04)
+    return len(value) == MODERN_CURVE_PRIVATE_KEY_SIZES[oid] and wrapped.at_end()
+
+
+def valid_pqc_private_key(algorithm, parameters, private_key):
+    structured_sizes = {
+        (2, 16, 840, 1, 101, 3, 4, 3, 17): (32, 2560),
+        (2, 16, 840, 1, 101, 3, 4, 3, 18): (32, 4032),
+        (2, 16, 840, 1, 101, 3, 4, 3, 19): (32, 4896),
+        (2, 16, 840, 1, 101, 3, 4, 4, 1): (64, 1632),
+        (2, 16, 840, 1, 101, 3, 4, 4, 2): (64, 2400),
+        (2, 16, 840, 1, 101, 3, 4, 4, 3): (64, 3168),
+    }
+    raw_sizes = {
+        **{
+            (2, 16, 840, 1, 101, 3, 4, 3, suffix): 64
+            for suffix in (20, 21, 26, 27)
+        },
+        **{
+            (2, 16, 840, 1, 101, 3, 4, 3, suffix): 96
+            for suffix in (22, 23, 28, 29)
+        },
+        **{
+            (2, 16, 840, 1, 101, 3, 4, 3, suffix): 128
+            for suffix in (24, 25, 30, 31)
+        },
+    }
+    if algorithm in raw_sizes:
+        return parameters is None and len(private_key) == raw_sizes[algorithm]
+    if algorithm not in structured_sizes:
+        return None
+    if parameters is not None:
+        return False
+    seed_size, expanded_size = structured_sizes[algorithm]
+    encoded = DerReader(private_key)
+    tag, value = encoded.read()
+    if not encoded.at_end():
+        return False
+    if tag == 0x80:
+        return len(value) == seed_size
+    if tag == 0x04:
+        return len(value) == expanded_size
+    if tag != 0x30:
+        return False
+    both = DerReader(value)
+    _, seed = both.read(0x04)
+    _, expanded = both.read(0x04)
+    return (
+        len(seed) == seed_size
+        and len(expanded) == expanded_size
+        and both.at_end()
+    )
+
+
+def valid_with_openssl(data, check_key=False):
+    environment = os.environ.copy()
+    for variable in ('OPENSSL_CONF', 'OPENSSL_ENGINES', 'OPENSSL_MODULES'):
+        environment.pop(variable, None)
+    try:
+        command = ['openssl', 'pkey', '-inform', 'DER', '-noout']
+        if check_key:
+            command.append('-check')
+        result = subprocess.run(
+            command,
+            input=data,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+            check=False,
+            env=environment,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ScannerError from error
+    if result.returncode not in (0, 1):
+        raise ScannerError
+    return result.returncode == 0
+
+
+def valid_pkcs8(data):
+    key = der_sequence(data)
+    version = der_integer(key)
+    if version not in (0, 1):
+        return False
+    algorithm, parameters = der_algorithm_identifier(key)
+    _, private_key = key.read(0x04)
+    if not private_key:
+        return False
+    if algorithm == RSA_ENCRYPTION:
+        if not null_or_absent(parameters) or not valid_pkcs1(private_key):
+            return False
+    elif algorithm == RSA_PSS:
+        if (
+            parameters is not None
+            and parameters[0] != 0x30
+            or not valid_pkcs1(private_key)
+        ):
+            return False
+    elif algorithm == EC_PUBLIC_KEY:
+        if parameters is None or parameters[0] != 0x06:
+            return False
+        if not valid_sec1(private_key, decode_oid(parameters[1])):
+            return False
+    elif algorithm == DSA:
+        if not valid_dsa_private_key(parameters, private_key):
+            return False
+    elif algorithm in (DH_KEY_AGREEMENT, DH_PUBLIC_NUMBER):
+        if not valid_dh_private_key(algorithm, parameters, private_key):
+            return False
+    elif algorithm in MODERN_CURVE_PRIVATE_KEY_SIZES:
+        if not valid_modern_curve_private_key(algorithm, parameters, private_key):
+            return False
+    else:
+        pqc_validity = valid_pqc_private_key(algorithm, parameters, private_key)
+        if pqc_validity is None:
+            if not valid_with_openssl(data):
+                return False
+        elif not pqc_validity:
+            return False
+    attributes_present = False
+    public_key_present = False
+    while not key.at_end():
+        tag, value = key.read()
+        if tag == 0xA0:
+            if attributes_present or public_key_present:
+                return False
+            attributes_present = True
+            attributes = DerReader(value)
+            while not attributes.at_end():
+                attributes.read(0x30)
+        elif tag == 0x81:
+            if public_key_present:
+                return False
+            public_key_present = True
+            if len(value) < 2 or value[0] != 0:
+                return False
+        else:
+            return False
+    return public_key_present == (version == 1)
+
+
+def valid_encrypted_pkcs8(data):
+    key = der_sequence(data)
+    algorithm, parameters = der_algorithm_identifier(key)
+    _, encrypted_data = key.read(0x04)
+    if algorithm == PBES2:
+        requirements = pbes2_encryption_requirements(parameters)
+        if requirements is None:
+            return False
+        minimum_size, block_size = requirements
+        return (
+            len(encrypted_data) >= minimum_size
+            and (block_size is None or len(encrypted_data) % block_size == 0)
+            and key.at_end()
+        )
+    legacy_pbe_algorithms = {
+        (1, 2, 840, 113549, 1, 5, 1),
+        (1, 2, 840, 113549, 1, 5, 3),
+        (1, 2, 840, 113549, 1, 5, 4),
+        (1, 2, 840, 113549, 1, 5, 6),
+        (1, 2, 840, 113549, 1, 5, 10),
+        (1, 2, 840, 113549, 1, 5, 11),
+        *((1, 2, 840, 113549, 1, 12, 1, index) for index in range(1, 7)),
+    }
+    if algorithm not in legacy_pbe_algorithms or parameters is None:
+        return False
+    if parameters[0] != 0x30:
+        return False
+    pbe = DerReader(parameters[1])
+    pbe.read(0x04)
+    iterations = der_integer(pbe)
+    return (
+        iterations > 0
+        and pbe.at_end()
+        and len(encrypted_data) >= 8
+        and key.at_end()
+    )
+
+
+def valid_pkcs1(data):
+    key = der_sequence(data)
+    version = der_integer(key)
+    if version not in (0, 1):
+        return False
+    modulus, exponent, private_exponent, prime1, prime2, exponent1, exponent2, coefficient = (
+        der_integer(key) for _ in range(8)
+    )
+    other_prime_values = []
+    if version == 1:
+        _, other_primes_data = key.read(0x30)
+        other_primes = DerReader(other_primes_data)
+        while not other_primes.at_end():
+            _, prime_data = other_primes.read(0x30)
+            prime = DerReader(prime_data)
+            values = tuple(der_integer(prime) for _ in range(3))
+            if not prime.at_end():
+                return False
+            other_prime_values.append(values)
+        if not other_prime_values:
+            return False
+    if not key.at_end():
+        return False
+    primes = [prime1, prime2, *(values[0] for values in other_prime_values)]
+    integer_values = (
+        modulus,
+        exponent,
+        private_exponent,
+        prime1,
+        prime2,
+        exponent1,
+        exponent2,
+        coefficient,
+        *(value for values in other_prime_values for value in values),
+    )
+    require_bounded_integers(*integer_values)
+    if (
+        any(value <= 0 for value in integer_values)
+        or any(prime <= 1 for prime in primes)
+        or len(set(primes)) != len(primes)
+        or exponent <= 1
+        or exponent % 2 == 0
+        or modulus != math.prod(primes)
+    ):
+        return False
+    totient_lcm = math.lcm(*(prime - 1 for prime in primes))
+    if (
+        math.gcd(exponent, totient_lcm) != 1
+        or exponent * private_exponent % totient_lcm != 1
+        or exponent1 != private_exponent % (prime1 - 1)
+        or exponent2 != private_exponent % (prime2 - 1)
+        or coefficient * prime2 % prime1 != 1
+    ):
+        return False
+    accumulated_primes = prime1 * prime2
+    for prime, prime_exponent, prime_coefficient in other_prime_values:
+        if (
+            prime_exponent != private_exponent % (prime - 1)
+            or prime_coefficient * accumulated_primes % prime != 1
+        ):
+            return False
+        accumulated_primes *= prime
+    return True
+
+
+def valid_traditional_dsa(data):
+    key = der_sequence(data)
+    if der_integer(key) != 0:
+        return False
+    prime, subgroup, generator, public_key, private_key = (
+        der_integer(key) for _ in range(5)
+    )
+    require_bounded_integers(
+        prime,
+        subgroup,
+        generator,
+        public_key,
+        private_key,
+    )
+    if (
+        not key.at_end()
+        or prime <= 2
+        or subgroup <= 1
+        or (prime - 1) % subgroup != 0
+        or not 1 < generator < prime
+        or not 1 < public_key < prime
+        or not 0 < private_key < subgroup
+    ):
+        return False
+    return valid_with_openssl(data, check_key=True)
+
+
+def valid_sec1(data, expected_curve=None):
+    key = der_sequence(data)
+    if der_integer(key) != 1:
+        return False
+    _, private_key = key.read(0x04)
+    if len(private_key) > 1024:
+        raise ScannerError
+    scalar = int.from_bytes(private_key, 'big')
+    if not private_key or scalar == 0:
+        return False
+    optional_tags = []
+    curve = None
+    while not key.at_end():
+        tag, value = key.read()
+        optional_tags.append(tag)
+        wrapped = DerReader(value)
+        if tag == 0xA0:
+            curve = der_oid(wrapped)
+        elif tag == 0xA1:
+            _, public_key = wrapped.read(0x03)
+            if len(public_key) < 2 or public_key[0] != 0:
+                return False
+        else:
+            return False
+        if not wrapped.at_end():
+            return False
+    if optional_tags != sorted(set(optional_tags)):
+        return False
+    if curve is not None and expected_curve is not None and curve != expected_curve:
+        return False
+    curve = curve or expected_curve
+    if curve is None:
+        return False
+    order = NAMED_CURVE_ORDERS.get(curve)
+    return order is None or (len(private_key) <= (order.bit_length() + 7) // 8 and scalar < order)
+
+
+def ssh_text(value):
+    try:
+        text = value.decode('ascii')
+    except UnicodeDecodeError as error:
+        raise ParseError from error
+    if not text:
+        raise ParseError
+    return text
+
+
+def ssh_mpint(reader):
+    value = reader.read_string()
+    if not value or value[0] & 0x80:
+        raise ParseError
+    if len(value) > 1 and value[0] == 0 and value[1] < 0x80:
+        raise ParseError
+    if len(value) > 1025:
+        raise ScannerError
+    return int.from_bytes(value, 'big')
+
+
+def ssh_public_key(data):
+    key = SshReader(data)
+    key_type = ssh_text(key.read_string())
+    if key_type == 'sk-ssh-ed25519@openssh.com':
+        public_key = key.read_string()
+        application = ssh_text(key.read_string())
+        if len(public_key) != 32:
+            raise ParseError
+        fields = (public_key, application)
+    elif key_type == 'sk-ecdsa-sha2-nistp256@openssh.com':
+        curve = ssh_text(key.read_string())
+        public_key = key.read_string()
+        application = ssh_text(key.read_string())
+        if curve != 'nistp256' or len(public_key) != 65 or public_key[0] != 0x04:
+            raise ParseError
+        fields = (curve, public_key, application)
+    elif key_type == 'ssh-ed25519':
+        public_key = key.read_string()
+        if len(public_key) != 32:
+            raise ParseError
+        fields = (public_key,)
+    elif key_type == 'ssh-rsa':
+        exponent = ssh_mpint(key)
+        modulus = ssh_mpint(key)
+        if exponent <= 1 or modulus <= 0:
+            raise ParseError
+        fields = (exponent, modulus)
+    elif key_type.startswith('ecdsa-sha2-'):
+        curve = ssh_text(key.read_string())
+        public_key = key.read_string()
+        if key_type != f'ecdsa-sha2-{curve}' or not public_key:
+            raise ParseError
+        fields = (curve, public_key)
+    elif key_type == 'ssh-dss':
+        fields = tuple(ssh_mpint(key) for _ in range(4))
+        if any(field <= 0 for field in fields):
+            raise ParseError
+    else:
+        raise ParseError
+    if not key.at_end():
+        raise ParseError
+    return key_type, fields
+
+
+def ssh_private_key(reader, public_key):
+    expected_type, expected_fields = public_key
+    key_type = ssh_text(reader.read_string())
+    if key_type != expected_type:
+        raise ParseError
+    if key_type == 'sk-ssh-ed25519@openssh.com':
+        public_value = reader.read_string()
+        application = ssh_text(reader.read_string())
+        reader.read_u8()
+        key_handle = reader.read_string()
+        reader.read_string()
+        if (
+            len(public_value) != 32
+            or not key_handle
+            or expected_fields != (public_value, application)
+        ):
+            raise ParseError
+    elif key_type == 'sk-ecdsa-sha2-nistp256@openssh.com':
+        curve = ssh_text(reader.read_string())
+        public_value = reader.read_string()
+        application = ssh_text(reader.read_string())
+        reader.read_u8()
+        key_handle = reader.read_string()
+        reader.read_string()
+        if (
+            curve != 'nistp256'
+            or len(public_value) != 65
+            or public_value[0] != 0x04
+            or not key_handle
+            or expected_fields != (curve, public_value, application)
+        ):
+            raise ParseError
+    elif key_type == 'ssh-ed25519':
+        public_value = reader.read_string()
+        private_value = reader.read_string()
+        if (
+            len(public_value) != 32
+            or len(private_value) != 64
+            or private_value[32:] != public_value
+            or expected_fields != (public_value,)
+        ):
+            raise ParseError
+    elif key_type == 'ssh-rsa':
+        modulus, exponent, private_exponent, inverse, prime1, prime2 = (
+            ssh_mpint(reader) for _ in range(6)
+        )
+        if (
+            any(value <= 0 for value in (
+                modulus,
+                exponent,
+                private_exponent,
+                inverse,
+                prime1,
+                prime2,
+            ))
+            or expected_fields != (exponent, modulus)
+        ):
+            raise ParseError
+    elif key_type.startswith('ecdsa-sha2-'):
+        curve = ssh_text(reader.read_string())
+        public_value = reader.read_string()
+        private_value = ssh_mpint(reader)
+        if private_value <= 0 or expected_fields != (curve, public_value):
+            raise ParseError
+    elif key_type == 'ssh-dss':
+        values = tuple(ssh_mpint(reader) for _ in range(5))
+        if any(value <= 0 for value in values) or expected_fields != values[:4]:
+            raise ParseError
+    reader.read_string()
+
+
+def valid_openssh(data):
+    magic = b'openssh-key-v1\x00'
+    if not data.startswith(magic):
+        return False
+    envelope = SshReader(data[len(magic):])
+    cipher_name = ssh_text(envelope.read_string())
+    kdf_name = ssh_text(envelope.read_string())
+    kdf_options = envelope.read_string()
+    key_count = envelope.read_u32()
+    if key_count == 0 or key_count > 1024:
+        return False
+    public_keys = [ssh_public_key(envelope.read_string()) for _ in range(key_count)]
+    private_keys = envelope.read_string()
+    authentication_tag = envelope.remaining()
+    if not private_keys:
+        return False
+    if cipher_name == 'none':
+        if kdf_name != 'none' or kdf_options or authentication_tag:
+            return False
+        unencrypted = SshReader(private_keys)
+        if unencrypted.read_u32() != unencrypted.read_u32():
+            return False
+        for public_key in public_keys:
+            ssh_private_key(unencrypted, public_key)
+        padding = unencrypted.remaining()
+        return (
+            len(padding) <= 255
+            and padding == bytes(range(1, len(padding) + 1))
+            and len(private_keys) % 8 == 0
+        )
+    cipher_specs = {
+        '3des-cbc': (8, 0),
+        'aes128-cbc': (16, 0),
+        'aes192-cbc': (16, 0),
+        'aes256-cbc': (16, 0),
+        'aes128-ctr': (16, 0),
+        'aes192-ctr': (16, 0),
+        'aes256-ctr': (16, 0),
+        'aes128-gcm@openssh.com': (16, 16),
+        'aes256-gcm@openssh.com': (16, 16),
+        'chacha20-poly1305@openssh.com': (8, 16),
+    }
+    if cipher_name not in cipher_specs or kdf_name != 'bcrypt':
+        return False
+    options = SshReader(kdf_options)
+    salt = options.read_string()
+    rounds = options.read_u32()
+    block_size, authentication_tag_size = cipher_specs[cipher_name]
+    return (
+        len(salt) > 0
+        and rounds > 0
+        and options.at_end()
+        and len(authentication_tag) == authentication_tag_size
+        and len(private_keys) >= block_size
+        and len(private_keys) % block_size == 0
+    )
+
+
+def normalized_pem_lines(block):
+    body = block.group('body')
+    body = body.replace(b'\\r\\n', b'\n').replace(b'\\n', b'\n').replace(b'\\r', b'\n')
+    return [line.strip() for line in body.splitlines() if line.strip()]
+
+
+def decoded_body(lines):
+    if not lines or any(base64_line.fullmatch(line) is None for line in lines):
+        raise ParseError
+    try:
+        return base64.b64decode(b''.join(lines), validate=True)
+    except (binascii.Error, ValueError) as error:
+        raise ParseError from error
+
+
+def valid_legacy_encrypted_key(label, lines):
+    if label not in (
+        b'RSA PRIVATE KEY',
+        b'EC PRIVATE KEY',
+        b'DSA PRIVATE KEY',
+    ) or len(lines) < 3:
+        return False
+    if lines[0].upper() != b'PROC-TYPE: 4,ENCRYPTED':
+        return False
+    header = legacy_encryption_header.fullmatch(lines[1])
+    if header is None:
+        return False
+    iv = header.group('iv')
+    if len(iv) < 16 or len(iv) > 64 or len(iv) % 2 != 0:
+        return False
+    encrypted = decoded_body(lines[2:])
+    return len(encrypted) >= 8
+
+
+def raise_walk_error(error):
+    raise error
 
 
 def regular_files(paths):
@@ -708,7 +1631,7 @@ def regular_files(paths):
         if not stat.S_ISDIR(supplied_stat.st_mode):
             continue
         for directory, child_directories, filenames in os.walk(
-            supplied_path, followlinks=False
+            supplied_path, followlinks=False, onerror=raise_walk_error
         ):
             child_directories[:] = [
                 name
@@ -722,29 +1645,128 @@ def regular_files(paths):
 
 
 def decoded_private_key(block):
-    body = block.group('body')
-    body = body.replace(b'\\r\\n', b'\n').replace(b'\\n', b'\n').replace(b'\\r', b'\n')
-    lines = [line.strip() for line in body.splitlines() if line.strip()]
-    if not lines or any(base64_line.fullmatch(line) is None for line in lines):
-        return False
-    encoded = b''.join(lines)
-    if len(encoded) < 64:
-        return False
     try:
-        decoded = base64.b64decode(encoded, validate=True)
-    except ValueError:
+        label = block.group('label')
+        lines = normalized_pem_lines(block)
+        if lines and b':' in lines[0]:
+            return valid_legacy_encrypted_key(label, lines)
+        decoded = decoded_body(lines)
+        validators = {
+            b'PRIVATE KEY': valid_pkcs8,
+            b'ENCRYPTED PRIVATE KEY': valid_encrypted_pkcs8,
+            b'RSA PRIVATE KEY': valid_pkcs1,
+            b'EC PRIVATE KEY': valid_sec1,
+            b'DSA PRIVATE KEY': valid_traditional_dsa,
+            b'OPENSSH PRIVATE KEY': valid_openssh,
+        }
+        return validators[label](decoded)
+    except (KeyError, ParseError):
         return False
-    if block.group('label') == b'OPENSSH PRIVATE KEY':
-        return decoded.startswith(b'openssh-key-v1\x00')
-    return len(decoded) >= 32 and decoded.startswith(b'0')
 
 
-for path in regular_files(sys.argv[1:]):
-    with open(path, 'rb') as candidate_file:
-        contents = candidate_file.read()
-    if any(decoded_private_key(block) for block in private_key_block.finditer(contents)):
-        print(path)
+try:
+    for path in regular_files(sys.argv[1:]):
+        with open(path, 'rb') as candidate_file:
+            contents = candidate_file.read()
+        if any(
+            decoded_private_key(block) for block in private_key_block.finditer(contents)
+        ):
+            print(path)
+except (OSError, ParseError, ScannerError):
+    sys.exit(2)
 PY
+}
+
+decode_image_environment() {
+  environment_json=$1
+  decoded_environment=$2
+  python3 -I - "$environment_json" "$decoded_environment" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], encoding='utf-8') as environment_file:
+        environment = json.load(environment_file)
+    if environment is None:
+        environment = []
+    if not isinstance(environment, list) or any(
+        not isinstance(entry, str) for entry in environment
+    ):
+        raise ValueError
+    with open(sys.argv[2], 'wb') as decoded_file:
+        for entry in environment:
+            encoded = entry.encode('utf-8')
+            if b'\x00' in encoded:
+                raise ValueError
+            decoded_file.write(encoded)
+            decoded_file.write(b'\n')
+except (OSError, UnicodeError, ValueError):
+    sys.exit(2)
+PY
+}
+
+assert_no_secret_metadata() {
+  image_name=$1
+  secret_sentinel=$2
+  credential_uri_pattern=$3
+  shift 3
+
+  if grep -F "$secret_sentinel" "$@" >/dev/null 2>&1; then
+    fail "secret-like metadata detected: $image_name"
+  else
+    grep_status=$?
+    [ "$grep_status" -eq 1 ] || fail "secret metadata scan failed: $image_name"
+  fi
+  if grep -Eiq -- "$credential_uri_pattern" "$@" >/dev/null 2>&1; then
+    fail "secret-like metadata detected: $image_name"
+  else
+    grep_status=$?
+    [ "$grep_status" -eq 1 ] || fail "secret metadata scan failed: $image_name"
+  fi
+}
+
+assert_no_forbidden_secret_paths() {
+  image_name=$1
+  forbidden_path_pattern=$2
+  path_listing=$3
+
+  if grep -Eq -- "$forbidden_path_pattern" "$path_listing" >/dev/null 2>&1; then
+    fail "forbidden secret path detected: $image_name"
+  else
+    grep_status=$?
+    [ "$grep_status" -eq 1 ] || fail "secret path scan failed: $image_name"
+  fi
+}
+
+find_secret_like_files() {
+  scan_root=$1
+  hits_file=$2
+  secret_sentinel=$3
+  credential_uri_pattern=$4
+
+  : >"$hits_file" || return 1
+  find "$scan_root" -type f -exec sh -c '
+    secret_sentinel=$1
+    credential_uri_pattern=$2
+    shift 2
+    for candidate_file do
+      matched=0
+      if grep -aF "$secret_sentinel" "$candidate_file" >/dev/null 2>&1; then
+        matched=1
+      else
+        grep_status=$?
+        [ "$grep_status" -eq 1 ] || exit 2
+      fi
+      if grep -aEi -- "$credential_uri_pattern" "$candidate_file" >/dev/null 2>&1; then
+        matched=1
+      else
+        grep_status=$?
+        [ "$grep_status" -eq 1 ] || exit 2
+      fi
+      [ "$matched" -eq 0 ] || printf "%s\n" "$candidate_file"
+    done
+  ' sh "$secret_sentinel" "$credential_uri_pattern" {} + \
+    >"$hits_file" 2>/dev/null
 }
 
 assert_no_image_secrets() {
@@ -752,24 +1774,29 @@ assert_no_image_secrets() {
   image_reference=$2
   history_file="$WORK_DIRECTORY/history-$image_name.txt"
   environment_file="$WORK_DIRECTORY/environment-$image_name.json"
+  decoded_environment_file="$WORK_DIRECTORY/environment-$image_name.txt"
   rootfs_archive="$WORK_DIRECTORY/rootfs-$image_name.tar"
   rootfs_listing="$WORK_DIRECTORY/rootfs-$image_name.txt"
   rootfs_directory="$WORK_DIRECTORY/rootfs-$image_name"
   container_name="mlp-image-gate-audit-$image_name-$$"
   credential_uri_pattern='postgresql://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb\+srv://[[:alnum:]_.~-]+:[^@[:space:]/]+@'
   private_key_hits="$WORK_DIRECTORY/private-key-hits-$image_name.txt"
+  secret_hits="$WORK_DIRECTORY/secret-hits-$image_name.txt"
 
   docker history --no-trunc "$image_reference" >"$history_file" 2>/dev/null ||
     fail "image history inspection failed: $image_name"
   docker image inspect --format='{{json .Config.Env}}' "$image_reference" >"$environment_file" 2>/dev/null ||
     fail "image environment inspection failed: $image_name"
+  decode_image_environment "$environment_file" "$decoded_environment_file" ||
+    fail "image environment decoding failed: $image_name"
 
-  if grep -F "$MLP_IMAGE_GATE_SECRET_SENTINEL" \
-    "$history_file" "$environment_file" >/dev/null 2>&1 ||
-    grep -Eiq -- "$credential_uri_pattern" "$history_file" "$environment_file"; then
-    fail "secret-like metadata detected: $image_name"
-  fi
-  find_private_key_files "$history_file" "$environment_file" >"$private_key_hits" ||
+  assert_no_secret_metadata \
+    "$image_name" \
+    "$MLP_IMAGE_GATE_SECRET_SENTINEL" \
+    "$credential_uri_pattern" \
+    "$history_file" \
+    "$decoded_environment_file"
+  find_private_key_files "$history_file" "$decoded_environment_file" >"$private_key_hits" ||
     fail "private-key metadata scan failed: $image_name"
   if [ -s "$private_key_hits" ]; then
     fail "private-key metadata detected: $image_name"
@@ -786,10 +1813,10 @@ assert_no_image_secrets() {
   tar -tf "$rootfs_archive" >"$rootfs_listing" 2>"$WORK_DIRECTORY/rootfs-list-errors-$image_name.txt" ||
     fail "image filesystem listing failed: $image_name"
 
-  if grep -Eq '(^|/)\.env($|[./])|(^|/)run/secrets(/|$)|(^|/)migration-artifacts(/|$)|(^|/)\.\.(/|$)|^/' \
-    "$rootfs_listing"; then
-    fail "forbidden secret path detected: $image_name"
-  fi
+  assert_no_forbidden_secret_paths \
+    "$image_name" \
+    '(^|/)\.env($|[./])|(^|/)run/secrets(/|$)|(^|/)migration-artifacts(/|$)|(^|/)\.\.(/|$)|^/' \
+    "$rootfs_listing"
 
   mkdir "$rootfs_directory"
   tar --no-same-owner --no-same-permissions \
@@ -799,20 +1826,18 @@ assert_no_image_secrets() {
     fail "image filesystem extraction failed: $image_name"
   chmod -R u+rwX "$rootfs_directory" ||
     fail "image filesystem permission normalization failed: $image_name"
-  find "$rootfs_directory" -type f \
-    -exec grep -aFl "$MLP_IMAGE_GATE_SECRET_SENTINEL" {} + \
-    >"$WORK_DIRECTORY/secret-hits-$image_name.txt" 2>/dev/null || :
-  find "$rootfs_directory" -type f \
-    -exec grep -aEil -- "$credential_uri_pattern" {} + \
-    >>"$WORK_DIRECTORY/secret-hits-$image_name.txt" 2>/dev/null || :
+  find_secret_like_files \
+    "$rootfs_directory" \
+    "$secret_hits" \
+    "$MLP_IMAGE_GATE_SECRET_SENTINEL" \
+    "$credential_uri_pattern" ||
+    fail "secret filesystem scan failed: $image_name"
   find_private_key_files "$rootfs_directory" >"$private_key_hits" ||
     fail "private-key filesystem scan failed: $image_name"
-  if [ -s "$WORK_DIRECTORY/secret-hits-$image_name.txt" ]; then
+  if [ -s "$secret_hits" ]; then
     fail "secret-like filesystem content detected: $image_name"
   fi
   if [ -s "$private_key_hits" ]; then
-    sed "s|^$rootfs_directory|/|" "$private_key_hits" | \
-      sed -n '1,20{s/^/private-key path: /;p;}' >&2
     fail "private-key filesystem content detected: $image_name"
   fi
 }
