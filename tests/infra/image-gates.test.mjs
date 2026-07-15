@@ -155,7 +155,7 @@ if [ "$kind" = image ]; then
     rm)
       [ "$last" = "$FAKE_RESOURCE_NAME" ] || exit 2
       if [ "\${FAKE_EXPECT_LOCK_OPEN:-0}" -eq 1 ]; then
-        if { : >&9; } 2>/dev/null; then
+        if ( : >&9 ) 2>/dev/null; then
           printf '%s\n' lock-open >>"$FAKE_DOCKER_LOG"
         else
           printf '%s\n' lock-closed >>"$FAKE_DOCKER_LOG"
@@ -1181,7 +1181,7 @@ LOCK_STATE=${shellQuote(statePath)}
 cleanup() {
   status=$?
   trap - 0 HUP INT TERM
-  if { : >&9; } 2>/dev/null; then
+  if ( : >&9 ) 2>/dev/null; then
     printf 'cleanup-open:%s\\n' "$PROMOTION_LOCK_HELD" >"$LOCK_STATE"
     exec 9>&-
   else
@@ -1196,7 +1196,7 @@ install_cleanup_traps() {
   trap 'exit 143' TERM
 }
 fail() {
-  if { : >&9; } 2>/dev/null; then
+  if ( : >&9 ) 2>/dev/null; then
     printf 'fail-open:%s\\n' "$PROMOTION_LOCK_HELD" >"$LOCK_STATE"
   else
     printf 'fail-closed:%s\\n' "$PROMOTION_LOCK_HELD" >"$LOCK_STATE"
@@ -1261,7 +1261,7 @@ install_cleanup_traps() {
   trap 'exit 143' TERM
 }
 fail() {
-  if { : >&9; } 2>/dev/null; then
+  if ( : >&9 ) 2>/dev/null; then
     printf 'fail-open:%s\\n' "$PROMOTION_LOCK_HELD" >"$LOCK_STATE"
   else
     printf 'fail-closed:%s\\n' "$PROMOTION_LOCK_HELD" >"$LOCK_STATE"
