@@ -151,11 +151,9 @@ labeled_resource_state() {
   case $resource_kind in
     container)
       label_format='{{index .Config.Labels "mlp.image-gate.run"}}'
-      list_arguments="container ls --all --quiet --filter name=^/$resource_name\$"
       ;;
     network | volume)
       label_format='{{index .Labels "mlp.image-gate.run"}}'
-      list_arguments="$resource_kind ls --quiet --filter name=^$resource_name\$"
       ;;
     *)
       printf '%s\n' unknown
@@ -173,14 +171,22 @@ labeled_resource_state() {
     return 0
   fi
 
-  # The arguments are fixed above; intentional splitting keeps this POSIX sh.
-  # shellcheck disable=SC2086
-  if resource_ids=$(docker $list_arguments 2>/dev/null); then
-    if [ -z "$resource_ids" ]; then
-      printf '%s\n' absent
-    else
+  if [ "$resource_kind" = container ]; then
+    resource_ids=$(docker container ls --all --quiet \
+      --filter "name=^/$resource_name\$" 2>/dev/null) || {
       printf '%s\n' unknown
-    fi
+      return 0
+    }
+  else
+    resource_ids=$(docker "$resource_kind" ls --quiet \
+      --filter "name=^$resource_name\$" 2>/dev/null) || {
+      printf '%s\n' unknown
+      return 0
+    }
+  fi
+
+  if [ -z "$resource_ids" ]; then
+    printf '%s\n' absent
   else
     printf '%s\n' unknown
   fi

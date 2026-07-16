@@ -176,6 +176,7 @@ if [ "$kind" = image ]; then
       ;;
     ls)
       [ -f "$state" ] && sed -n '1p' "$state"
+      exit 0
       ;;
     rm)
       [ "$last" = "$FAKE_RESOURCE_NAME" ] || exit 2
@@ -207,6 +208,7 @@ case $action in
     ;;
   ls)
     [ -f "$state" ] && printf '%s\\n' "$FAKE_RESOURCE_NAME"
+    exit 0
     ;;
   rm)
     [ "$last" = "$FAKE_RESOURCE_NAME" ] || exit 2
@@ -2484,6 +2486,35 @@ test('cleanup removes an extracted read-only filesystem tree', async (context) =
 
   assert.equal(result.code ?? 0, 0, result.stderr ?? '');
   await assert.rejects(access(fixture.cleanupWork));
+});
+
+test('cleanup detects absent labeled resources while IFS is newline-only', async (context) => {
+  const source = await readHarness();
+  const fixture = await createCleanupFixture(source, {
+    containers: 'owned-resource',
+    networks: 'owned-resource',
+    resourceLabel: 'owned-run',
+    resourceName: 'owned-resource',
+    success: 1,
+    volumes: 'owned-resource',
+  });
+  context.after(() =>
+    rm(fixture.fixtureRoot, { force: true, recursive: true }),
+  );
+
+  const result = await execFile('/bin/sh', [fixture.wrapperPath], {
+    encoding: 'utf8',
+    env: fixture.env,
+  }).catch((error) => error);
+  const log = await readFile(fixture.logPath, 'utf8');
+
+  assert.equal(result.code ?? 0, 0, `${result.stderr ?? ''}\n${log}`);
+  assert.match(
+    log,
+    /^container ls --all --quiet --filter name=\^\/owned-resource\$$/mu,
+  );
+  assert.match(log, /^network ls --quiet --filter name=\^owned-resource\$$/mu);
+  assert.match(log, /^volume ls --quiet --filter name=\^owned-resource\$$/mu);
 });
 
 test('cleanup retries a stuck owned resource and converts nominal success to failure', async (context) => {
