@@ -9,9 +9,11 @@ import {
 import {
   access,
   chmod,
+  lstat,
   mkdir,
   mkdtemp,
   readFile,
+  readlink,
   rm,
   symlink,
   writeFile,
@@ -481,7 +483,7 @@ test('image gate audits image history, configuration, and exported filesystem fo
   assert.match(source, /grep -Eiq -- "\$credential_uri_pattern"/u);
   assert.match(source, /find_private_key_files/u);
   assert.doesNotMatch(source, /private-key path:/u);
-  assert.equal(source.match(/python3 -I -/gu)?.length ?? 0, 3);
+  assert.equal(source.match(/python3 -I -/gu)?.length ?? 0, 4);
   assert.doesNotMatch(source, /python3 - (?!I)/u);
   assert.match(source, /chmod -R u\+rwX "\$WORK_DIRECTORY"/u);
   assert.doesNotMatch(source, /tar[^\n]*--mode=/u);
@@ -1819,6 +1821,104 @@ fi
     assert.match(output, /secret filesystem scan failed/u);
     assert.doesNotMatch(output, new RegExp(failureCanary, 'u'));
   }
+});
+
+test('rootfs extractor scans regular content and skips special filesystem roots', async (context) => {
+  const source = await readHarness();
+  const fixtureRoot = await mkdtemp(
+    path.join(os.tmpdir(), 'mlp-rootfs-extractor-test-'),
+  );
+  context.after(() => rm(fixtureRoot, { force: true, recursive: true }));
+  const archivePath = path.join(fixtureRoot, 'rootfs.tar');
+  const unsafeArchivePath = path.join(fixtureRoot, 'unsafe-rootfs.tar');
+  const outputRoot = path.join(fixtureRoot, 'rootfs');
+  const unsafeOutputRoot = path.join(fixtureRoot, 'unsafe-rootfs');
+  const errorPath = path.join(fixtureRoot, 'extract.err');
+  const unsafeErrorPath = path.join(fixtureRoot, 'unsafe-extract.err');
+  const wrapperPath = path.join(fixtureRoot, 'extract-rootfs.sh');
+
+  await execFile('python3', [
+    '-c',
+    String.raw`
+import io
+import tarfile
+import sys
+
+archive, unsafe = sys.argv[1:3]
+
+def add_file(tar, name, data):
+    payload = data.encode()
+    info = tarfile.TarInfo(name)
+    info.size = len(payload)
+    info.mode = 0o444
+    tar.addfile(info, io.BytesIO(payload))
+
+def add_dir(tar, name):
+    info = tarfile.TarInfo(name)
+    info.type = tarfile.DIRTYPE
+    info.mode = 0o555
+    tar.addfile(info)
+
+def add_symlink(tar, name, target):
+    info = tarfile.TarInfo(name)
+    info.type = tarfile.SYMTYPE
+    info.linkname = target
+    info.mode = 0o777
+    tar.addfile(info)
+
+with tarfile.open(archive, "w") as tar:
+    add_dir(tar, "app")
+    add_file(tar, "app/clean.txt", "ordinary image content\n")
+    add_dir(tar, "dev")
+    add_file(tar, "dev/secret.txt", "must be skipped\n")
+    add_dir(tar, "proc")
+    add_file(tar, "proc/secret.txt", "must be skipped\n")
+    add_dir(tar, "sys")
+    add_file(tar, "sys/secret.txt", "must be skipped\n")
+    add_symlink(tar, "bin", "usr/bin")
+
+with tarfile.open(unsafe, "w") as tar:
+    add_file(tar, "../escape.txt", "must fail\n")
+`,
+    archivePath,
+    unsafeArchivePath,
+  ]);
+  await mkdir(outputRoot);
+  await mkdir(unsafeOutputRoot);
+  await writeFile(
+    wrapperPath,
+    `#!/bin/sh
+set -eu
+${shellFunction(source, 'extract_rootfs_for_scan')}
+extract_rootfs_for_scan "$@"
+`,
+  );
+  await chmod(wrapperPath, 0o755);
+
+  const result = await execFile(
+    '/bin/sh',
+    [wrapperPath, archivePath, outputRoot, errorPath],
+    { encoding: 'utf8' },
+  );
+  assert.equal(`${result.stdout}${result.stderr}`, '');
+  assert.equal(
+    await readFile(path.join(outputRoot, 'app', 'clean.txt'), 'utf8'),
+    'ordinary image content\n',
+  );
+  assert.equal((await lstat(path.join(outputRoot, 'bin'))).isSymbolicLink(), true);
+  assert.equal(await readlink(path.join(outputRoot, 'bin')), 'usr/bin');
+  await assert.rejects(readFile(path.join(outputRoot, 'dev', 'secret.txt')));
+  await assert.rejects(readFile(path.join(outputRoot, 'proc', 'secret.txt')));
+  await assert.rejects(readFile(path.join(outputRoot, 'sys', 'secret.txt')));
+
+  const unsafeResult = await execFile(
+    '/bin/sh',
+    [wrapperPath, unsafeArchivePath, unsafeOutputRoot, unsafeErrorPath],
+    { encoding: 'utf8' },
+  ).catch((error) => error);
+  assert.notEqual(unsafeResult?.code ?? 0, 0);
+  assert.match(await readFile(unsafeErrorPath, 'utf8'), /unsafe tar path/u);
+  await assert.rejects(access(path.join(fixtureRoot, 'escape.txt')));
 });
 
 test('failed image builds emit only bounded categorized diagnostics', async (context) => {

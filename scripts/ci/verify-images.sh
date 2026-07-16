@@ -1791,6 +1791,89 @@ find_secret_like_files() {
     >"$hits_file" 2>/dev/null
 }
 
+extract_rootfs_for_scan() {
+  rootfs_archive=$1
+  rootfs_directory=$2
+  extract_errors=$3
+
+  python3 -I - "$rootfs_archive" "$rootfs_directory" \
+    >"$extract_errors" 2>&1 <<'PY'
+import os
+import shutil
+import sys
+import tarfile
+
+archive_path, output_root = sys.argv[1:3]
+ignored_roots = {"dev", "proc", "sys"}
+
+
+def fail(message):
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def safe_member_name(name):
+    normalized = os.path.normpath(name)
+    if os.path.isabs(name) or normalized == ".." or normalized.startswith("../"):
+        fail(f"unsafe tar path: {name}")
+    if normalized in ("", "."):
+        return None
+    parts = normalized.split(os.sep)
+    if ".." in parts:
+        fail(f"unsafe tar path: {name}")
+    if parts[0] in ignored_roots:
+        return None
+    return normalized
+
+
+def destination_for(name):
+    safe_name = safe_member_name(name)
+    if safe_name is None:
+        return None
+    return os.path.join(output_root, safe_name)
+
+
+try:
+    with tarfile.open(archive_path, "r:*") as archive:
+        for member in archive:
+            destination = destination_for(member.name)
+            if destination is None:
+                continue
+
+            if member.isdir():
+                os.makedirs(destination, exist_ok=True)
+                continue
+
+            parent = os.path.dirname(destination)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+
+            if member.isfile():
+                source = archive.extractfile(member)
+                if source is None:
+                    fail(f"unreadable tar member: {member.name}")
+                with source, open(destination, "wb") as target:
+                    shutil.copyfileobj(source, target)
+                os.chmod(destination, member.mode & 0o777)
+            elif member.issym():
+                if os.path.lexists(destination):
+                    os.unlink(destination)
+                os.symlink(member.linkname, destination)
+            elif member.islnk():
+                link_destination = destination_for(member.linkname)
+                if link_destination is not None and os.path.exists(link_destination):
+                    if os.path.lexists(destination):
+                        os.unlink(destination)
+                    os.link(link_destination, destination)
+            else:
+                continue
+except SystemExit:
+    raise
+except Exception as error:
+    fail(f"rootfs extraction failed: {error}")
+PY
+}
+
 assert_no_image_secrets() {
   image_name=$1
   image_reference=$2
@@ -1841,10 +1924,10 @@ assert_no_image_secrets() {
     "$rootfs_listing"
 
   mkdir "$rootfs_directory"
-  tar --no-same-owner --no-same-permissions \
-    --exclude='dev/*' --exclude='proc/*' --exclude='sys/*' \
-    -xf "$rootfs_archive" -C "$rootfs_directory" \
-    2>"$WORK_DIRECTORY/rootfs-extract-errors-$image_name.txt" ||
+  extract_rootfs_for_scan \
+    "$rootfs_archive" \
+    "$rootfs_directory" \
+    "$WORK_DIRECTORY/rootfs-extract-errors-$image_name.txt" ||
     fail "image filesystem extraction failed: $image_name"
   chmod -R u+rwX "$rootfs_directory" ||
     fail "image filesystem permission normalization failed: $image_name"
