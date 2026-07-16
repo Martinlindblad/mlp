@@ -51,6 +51,9 @@ RUN set -eu; \
     if [ "$resolved" != "$library" ]; then cp -a "$resolved" "$target_directory/"; fi; \
   done
 
+FROM restic/restic:0.18.1@sha256:39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76 AS ca-certificates
+RUN test -r /etc/ssl/certs/ca-certificates.crt
+
 FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS runner
 ARG COMMIT_SHA
 RUN printf '%s\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'
@@ -69,7 +72,7 @@ COPY --from=builder --chown=0:0 --chmod=0555 /app/migration/asset-paths.mjs ./mi
 COPY --from=builder --chown=0:0 --chmod=0555 /app/scripts/migration/export-mongo.sh ./scripts/migration/export-mongo.sh
 COPY --from=production-dependencies --chown=0:0 --chmod=0555 /app/node_modules ./node_modules
 COPY --from=mongodump-libraries --chown=0:0 --chmod=0555 /mongodump-runtime/ /
-COPY --from=mongodump-libraries --chown=0:0 --chmod=0444 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=ca-certificates --chown=0:0 --chmod=0444 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder --chown=0:0 --chmod=0555 /app/public ./public
 COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/mongodump /usr/local/bin/mongodump
 COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age

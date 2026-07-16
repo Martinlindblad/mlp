@@ -40,6 +40,9 @@ const nodeReference =
 const postgresBookwormReference =
   'postgres:18.4-bookworm@sha256:' +
   '1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296';
+const resticReference =
+  'restic/restic:0.18.1@sha256:' +
+  '39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76';
 const mongoToolsUrl =
   'https://fastdl.mongodb.org/tools/db/' +
   'mongodb-database-tools-debian12-x86_64-100.17.0.tgz';
@@ -280,6 +283,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     nodeReference,
     nodeReference,
     postgresBookwormReference,
+    resticReference,
     nodeReference,
   ]);
   assert.deepEqual(
@@ -288,6 +292,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       'production-dependencies',
       'builder',
       'mongodump-libraries',
+      'ca-certificates',
       'runner',
     ],
   );
@@ -349,7 +354,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       destination: '/',
     },
     {
-      from: 'mongodump-libraries',
+      from: 'ca-certificates',
       source: '/etc/ssl/certs/ca-certificates.crt',
       destination: '/etc/ssl/certs/ca-certificates.crt',
     },
@@ -370,7 +375,8 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     },
   ]);
 
-  const [dependencies, builder, mongodumpLibraries] = dockerStages(source);
+  const [dependencies, builder, mongodumpLibraries, caCertificates] =
+    dockerStages(source);
   assert.match(
     dependencies.instructions.join('\n'),
     /^RUN yarn install --frozen-lockfile --production=true --ignore-scripts --non-interactive$/mu,
@@ -428,6 +434,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     copiedMongodumpLibraries,
     /libgnutls/u,
     'mongodump closure must not import libgnutls private-key fixtures',
+  );
+  assert.match(
+    caCertificates.instructions.join('\n'),
+    /ca-certificates\.crt/u,
+    'operator CA stage must expose the reviewed CA bundle path',
   );
   assert.equal(
     dockerStages(source)
@@ -522,7 +533,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   assertRequiredOperatorCopy(copies, '/app/public', './public');
   const caCopy = copies.find(
     (instruction) =>
-      instruction.includes('--from=mongodump-libraries') &&
+      instruction.includes('--from=ca-certificates') &&
       instruction.includes('/etc/ssl/certs/ca-certificates.crt') &&
       instruction.endsWith('/etc/ssl/certs/ca-certificates.crt'),
   );
