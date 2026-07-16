@@ -517,6 +517,30 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     /@npmcli\/config\/lib\/definitions\/definitions\.js/u,
     'operator runner must prune npm config definitions with private-key examples',
   );
+  assert.match(
+    finalSource,
+    /apt-get purge -y --allow-remove-essential[\s\S]*\bapt\b[\s\S]*\blibgnutls30\b/u,
+    'operator runner must remove apt and libgnutls so base-image private-key fixtures are not shipped',
+  );
+  assert.match(
+    finalSource,
+    /test ! -e \/usr\/lib\/x86_64-linux-gnu\/libgnutls\.so\.30\.34\.3/u,
+    'operator runner must prove the known libgnutls private-key fixture is absent',
+  );
+  assert.match(
+    finalSource,
+    /test ! -e \/usr\/bin\/apt-get/u,
+    'operator runner must prove apt-get is absent after the package-manager purge',
+  );
+  assertOrdered(
+    finalSource,
+    [
+      'apt-get purge -y --allow-remove-essential',
+      'test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30.34.3',
+      'USER 1000:1000',
+    ],
+    'operator package-manager/private-key-fixture purge must run as root before dropping to the runtime user',
+  );
   const copies = final.instructions.filter((line) => /^COPY\s/iu.test(line));
   assertRequiredOperatorCopy(
     copies,
