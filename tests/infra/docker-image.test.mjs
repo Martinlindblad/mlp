@@ -824,6 +824,44 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     /test ! -e \/usr\/bin\/apt-get/u,
     'runtime image must prove apt-get is absent after the package-manager purge',
   );
+  for (const packageName of [
+    'bsdutils',
+    'gzip',
+    'libacl1',
+    'libblkid1',
+    'libtinfo6',
+    'libuuid1',
+    'ncurses-base',
+    'perl-base',
+    'util-linux',
+    'zlib1g',
+  ]) {
+    assert.match(
+      finalSource,
+      new RegExp(`\\b${packageName}\\b`, 'u'),
+      `${packageName} must be removed from the app runtime image`,
+    );
+  }
+  assert.match(
+    finalSource,
+    /rm -rf[\s\S]*\/usr\/local\/lib\/node_modules\/npm[\s\S]*\/usr\/local\/bin\/npm[\s\S]*\/usr\/local\/bin\/npx/u,
+    'runtime image must remove npm and npx from the final Node image',
+  );
+  assert.match(
+    finalSource,
+    /test ! -e \/usr\/local\/lib\/node_modules\/npm/u,
+    'runtime image must prove npm global modules are absent',
+  );
+  assert.match(
+    finalSource,
+    /test ! -e \/usr\/local\/bin\/npm/u,
+    'runtime image must prove npm is absent',
+  );
+  assert.match(
+    finalSource,
+    /test ! -e \/usr\/local\/bin\/npx/u,
+    'runtime image must prove npx is absent',
+  );
   assertOrdered(
     finalSource,
     [

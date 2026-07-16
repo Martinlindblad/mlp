@@ -29,21 +29,40 @@ RUN apt-get purge -y --allow-remove-essential \
     apt \
     libgnutls30 \
     adduser \
+    bsdutils \
     debian-archive-keyring \
+    gzip \
     gpgv \
     libapt-pkg6.0 \
+    libacl1 \
+    libblkid1 \
     libffi8 \
     libhogweed6 \
     libnettle8 \
     libp11-kit0 \
     libseccomp2 \
     libtasn1-6 \
-    libxxhash0 && \
-  rm -rf /var/lib/apt/lists/* /var/cache/apt/* /var/log/apt/* && \
+    libtinfo6 \
+    libuuid1 \
+    libxxhash0 \
+    ncurses-base \
+    perl-base \
+    util-linux \
+    zlib1g && \
+  rm -rf \
+    /usr/local/lib/node_modules/npm \
+    /usr/local/bin/npm \
+    /usr/local/bin/npx \
+    /var/lib/apt/lists/* \
+    /var/cache/apt/* \
+    /var/log/apt/* && \
   node --version >/dev/null && \
   ! ldd /usr/local/bin/node | grep -q 'not found' && \
   test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30.34.3 && \
-  test ! -e /usr/bin/apt-get
+  test ! -e /usr/bin/apt-get && \
+  test ! -e /usr/local/lib/node_modules/npm && \
+  test ! -e /usr/local/bin/npm && \
+  test ! -e /usr/local/bin/npx
 ARG COMMIT_SHA
 RUN printf '%s\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'
 LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" org.opencontainers.image.revision="$COMMIT_SHA"
