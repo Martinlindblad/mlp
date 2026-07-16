@@ -2010,6 +2010,21 @@ test('image gate migrates a source database and exercises app health, precache, 
     source,
     /POSTGRES_IMAGE='postgres:18\.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15'/u,
   );
+  assert.doesNotMatch(
+    source,
+    /target=\/var\/lib\/postgresql\/data/u,
+    'PostgreSQL 18 containers must not mount volumes at the legacy PGDATA path',
+  );
+  assert.match(
+    source,
+    /source=\$SOURCE_DATABASE_VOLUME,target=\/var\/lib\/postgresql"/u,
+    'source PostgreSQL 18 volume must mount at the parent data directory',
+  );
+  assert.match(
+    source,
+    /source=\$TARGET_DATABASE_VOLUME,target=\/var\/lib\/postgresql"/u,
+    'target PostgreSQL 18 volume must mount at the parent data directory',
+  );
   assert.match(source, /create role portfolio_app login/u);
   assert.match(source, /create role portfolio_backup login/u);
   assert.match(source, /node \/app\/dist\/scripts\/db\/migrate\.js/u);

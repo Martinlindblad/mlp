@@ -2192,7 +2192,7 @@ prepare_source_database() {
     --platform linux/amd64 \
     --network "$NETWORK_NAME" \
     --network-alias source-postgres \
-    --mount "type=volume,source=$SOURCE_DATABASE_VOLUME,target=/var/lib/postgresql/data" \
+    --mount "type=volume,source=$SOURCE_DATABASE_VOLUME,target=/var/lib/postgresql" \
     --mount "type=bind,source=$POSTGRES_PASSWORD_FILE,target=/run/secrets/postgres-password,readonly" \
     --mount "type=bind,source=$MIGRATOR_PASSWORD_FILE,target=/run/secrets/postgres-migrator-password,readonly" \
     --mount "type=bind,source=$APP_PASSWORD_FILE,target=/run/secrets/postgres-app-password,readonly" \
@@ -2505,7 +2505,7 @@ run_backup_restore_cycle() {
     --platform linux/amd64 \
     --network "$NETWORK_NAME" \
     --network-alias target-postgres \
-    --mount "type=volume,source=$TARGET_DATABASE_VOLUME,target=/var/lib/postgresql/data" \
+    --mount "type=volume,source=$TARGET_DATABASE_VOLUME,target=/var/lib/postgresql" \
     --mount "type=bind,source=$POSTGRES_PASSWORD_FILE,target=/run/secrets/postgres-password,readonly" \
     --mount "type=bind,source=$MIGRATOR_PASSWORD_FILE,target=/run/secrets/postgres-migrator-password,readonly" \
     --mount "type=bind,source=$APP_PASSWORD_FILE,target=/run/secrets/postgres-app-password,readonly" \
