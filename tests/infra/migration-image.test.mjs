@@ -393,6 +393,21 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     'operator dependencies must not install the full application manifest',
   );
   assert.match(
+    dependencies.instructions.join('\n'),
+    /pg-connection-string\/README\.md/u,
+    'operator dependencies must prune pg connection README credential fixtures',
+  );
+  assert.match(
+    dependencies.instructions.join('\n'),
+    /pg-pool\/README\.md/u,
+    'operator dependencies must prune pg pool README credential fixtures',
+  );
+  assert.match(
+    dependencies.instructions.join('\n'),
+    /zod\/src\/v4\/classic\/tests/u,
+    'operator dependencies must prune zod source tests with URI fixtures',
+  );
+  assert.match(
     builder.instructions.join('\n'),
     /^RUN yarn build:migration$/mu,
     'operator builder must use the deterministic compiled build',
