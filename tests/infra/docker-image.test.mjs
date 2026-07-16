@@ -61,9 +61,6 @@ const golangReference =
 const postgresReference =
   'postgres:18.4-alpine@sha256:' +
   '9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15';
-const resticReference =
-  'restic/restic:0.18.1@sha256:' +
-  '39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76';
 const alpineReference =
   'alpine:3.24.1@sha256:' +
   '28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b';
@@ -111,12 +108,12 @@ function assertSafeMuslStaticResticProof(resticProof) {
     resticProof,
     [
       'set +e',
-      'ldd_output="$(ldd /usr/bin/restic 2>&1)"',
+      'ldd_output="$(ldd /usr/local/bin/restic 2>&1)"',
       'ldd_status=$?',
       'set -e',
       'test "$ldd_status" -ne 0',
       'case "$ldd_output" in',
-      '*": /usr/bin/restic: Not a valid dynamic program") : ;;',
+      '*": /usr/local/bin/restic: Not a valid dynamic program") : ;;',
       '*) exit 1 ;;',
       'esac',
     ],
@@ -991,7 +988,7 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
     'infra/backup/Dockerfile',
   );
   assertLiteralDigestBases(source, [
-    resticReference,
+    golangReference,
     postgresReference,
     alpineReference,
   ]);
@@ -1011,7 +1008,7 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
     },
     {
       from: 'restic',
-      source: '/usr/bin/restic',
+      source: '/usr/local/bin/restic',
       destination: '/usr/local/bin/restic',
     },
     {
@@ -1032,8 +1029,20 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
   const resticProof = dockerStages(source)[0].instructions.find(
     (instruction) =>
       /^RUN\s/iu.test(instruction) &&
-      instruction.includes('ldd /usr/bin/restic'),
+      instruction.includes('ldd /usr/local/bin/restic'),
   );
+  assert.match(resticProof, /go version go1\.26\.5 linux\/amd64/u);
+  assert.match(resticProof, /go get github\.com\/restic\/restic\/cmd\/restic@v0\.18\.1/u);
+  for (const patchedModule of [
+    'go.opentelemetry.io/otel@v1.43.0',
+    'go.opentelemetry.io/otel/sdk@v1.43.0',
+    'golang.org/x/crypto@v0.52.0',
+    'golang.org/x/net@v0.55.0',
+    'github.com/go-jose/go-jose/v4@v4.1.4',
+    'google.golang.org/grpc@v1.79.3',
+  ]) {
+    assert.match(resticProof, new RegExp(patchedModule.replaceAll('.', '\\.'), 'u'));
+  }
   assertSafeMuslStaticResticProof(resticProof);
   const postgresTools = dockerStages(source)[1].instructions.join('\n');
   assert.match(postgresTools, /ldd[^\n]*pg_dump/u);
@@ -1141,7 +1150,7 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
     /test ! -w \/etc\/ssl\/certs\/ca-certificates\.crt/u,
   );
   for (const [sourcePath, destination] of [
-    ['/usr/bin/restic', '/usr/local/bin/restic'],
+    ['/usr/local/bin/restic', '/usr/local/bin/restic'],
     ['infra/backup/backup.sh', '/usr/local/bin/mlp-backup'],
     ['infra/backup/restic.sh', '/usr/local/bin/mlp-restic'],
   ]) {
@@ -1167,10 +1176,10 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
 
 test('backup validators reject Bash, owner/ACL stripping, and retained PGPASSWORD', async () => {
   const safeResticProof =
-    `RUN set +e; ldd_output="$(ldd /usr/bin/restic 2>&1)"; ` +
+    `RUN set +e; ldd_output="$(ldd /usr/local/bin/restic 2>&1)"; ` +
     `ldd_status=$?; set -e; test "$ldd_status" -ne 0; ` +
     `case "$ldd_output" in ` +
-    `*": /usr/bin/restic: Not a valid dynamic program") : ;; ` +
+    `*": /usr/local/bin/restic: Not a valid dynamic program") : ;; ` +
     `*) exit 1 ;; esac`;
   assertSafeMuslStaticResticProof(safeResticProof);
   assert.throws(
