@@ -2381,7 +2381,7 @@ start_and_verify_app() {
 
   manifest_file="$WORK_DIRECTORY/sw-manifest.json"
   manifest_paths="$WORK_DIRECTORY/sw-manifest-paths.txt"
-  app_curl http://app:3000/sw-manifest.json --output "$manifest_file" ||
+  app_curl http://app:3000/sw-manifest.json >"$manifest_file" ||
     fail 'service worker manifest request failed'
   jq --exit-status \
     'type == "array" and length > 0 and all(.[]; type == "string" and startswith("/"))' \

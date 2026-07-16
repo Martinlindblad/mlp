@@ -2049,6 +2049,16 @@ test('image gate migrates a source database and exercises app health, precache, 
     /http:\/\/app:3000/u,
     'application verification must exercise the Docker network route',
   );
+  assert.doesNotMatch(
+    appVerification,
+    /app_curl http:\/\/app:3000\/sw-manifest\.json --output "\$manifest_file"/u,
+    'sidecar curl must not write host manifest paths inside the container',
+  );
+  assert.match(
+    appVerification,
+    /app_curl http:\/\/app:3000\/sw-manifest\.json >"\$manifest_file"/u,
+    'sidecar curl must stream the manifest back to the host for jq validation',
+  );
   for (const pathName of [
     '/api/health/live',
     '/api/health/ready',
