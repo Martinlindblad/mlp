@@ -10,7 +10,6 @@ Group=root
 UMask=0077
 ExecStart=/usr/local/sbin/mlp-status
 TimeoutStartSec=90s
-RuntimeMaxSec=90s
 NoNewPrivileges=true
 PrivateTmp=true
 PrivateDevices=true

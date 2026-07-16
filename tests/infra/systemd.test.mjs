@@ -65,6 +65,19 @@ const serviceContracts = {
   },
 };
 
+test('oneshot services omit ineffective runtime limits', async () => {
+  for (const name of Object.keys(serviceContracts)) {
+    const source = await readUnit(name);
+
+    assert.equal(oneDirective(source, 'Type'), 'oneshot', name);
+    assert.equal(
+      directives(source, 'RuntimeMaxSec').length,
+      0,
+      `${name}: RuntimeMaxSec is ineffective with Type=oneshot`,
+    );
+  }
+});
+
 test('operations services run fixed root commands inside narrow sandboxes', async () => {
   for (const [name, contract] of Object.entries(serviceContracts)) {
     const source = await readUnit(name);
