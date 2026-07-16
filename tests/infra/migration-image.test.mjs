@@ -37,6 +37,9 @@ const nodeTag = 'node:22.23.1-bookworm-slim';
 const nodeReference =
   `${nodeTag}@sha256:` +
   '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
+const postgresBookwormReference =
+  'postgres:18.4-bookworm@sha256:' +
+  '1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296';
 const mongoToolsUrl =
   'https://fastdl.mongodb.org/tools/db/' +
   'mongodb-database-tools-debian12-x86_64-100.17.0.tgz';
@@ -119,6 +122,7 @@ function assertNarrowOperatorBuilder(stage) {
     'server/db/config.ts',
     'server/db/database.types.ts',
     'server/journal',
+    'server/repositories/contact-repository.ts',
     'types/DBTypes.ts',
     'public',
   ].sort();
@@ -275,11 +279,17 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   assertLiteralDigestBases(source, [
     nodeReference,
     nodeReference,
+    postgresBookwormReference,
     nodeReference,
   ]);
   assert.deepEqual(
     dockerStages(source).map(({ name }) => name),
-    ['production-dependencies', 'builder', 'runner'],
+    [
+      'production-dependencies',
+      'builder',
+      'mongodump-libraries',
+      'runner',
+    ],
   );
   assertNoSecretDockerMetadata(source);
   assertOciRevisionMetadata(source);
@@ -333,6 +343,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       source: '/app/node_modules',
       destination: './node_modules',
     },
+    {
+      from: 'mongodump-libraries',
+      source: '/mongodump-runtime/',
+      destination: '/',
+    },
     { from: 'builder', source: '/app/public', destination: './public' },
     {
       from: 'builder',
@@ -350,7 +365,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     },
   ]);
 
-  const [dependencies, builder] = dockerStages(source);
+  const [dependencies, builder, mongodumpLibraries] = dockerStages(source);
   assert.match(
     dependencies.instructions.join('\n'),
     /^RUN yarn install --frozen-lockfile --production=true --ignore-scripts --non-interactive$/mu,
@@ -377,6 +392,38 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     'operator builder dependencies must be deterministic and script-free',
   );
   assertNarrowOperatorBuilder(builder);
+  const mongodumpLibrarySource = mongodumpLibraries.instructions.join('\n');
+  assert.match(
+    mongodumpLibrarySource,
+    /libgssapi_krb5\.so\.2/u,
+    'operator must provide the digest-pinned GSSAPI library required by mongodump',
+  );
+  for (const library of [
+    'libkrb5.so.3',
+    'libk5crypto.so.3',
+    'libcom_err.so.2',
+    'libkrb5support.so.0',
+    'libkeyutils.so.1',
+  ]) {
+    assert.match(
+      mongodumpLibrarySource,
+      new RegExp(library.replaceAll('.', '\\.'), 'u'),
+      `operator must copy mongodump transitive library ${library}`,
+    );
+  }
+  const copiedMongodumpLibraries =
+    mongodumpLibrarySource.match(/for library in (?<libraries>.*?)\s*; do/u)
+      ?.groups?.libraries ?? '';
+  assert.notEqual(
+    copiedMongodumpLibraries,
+    '',
+    'operator must expose the reviewed mongodump library copy list',
+  );
+  assert.doesNotMatch(
+    copiedMongodumpLibraries,
+    /libgnutls/u,
+    'mongodump closure must not import libgnutls private-key fixtures',
+  );
   assert.equal(
     dockerStages(source)
       .filter(({ name }) => name !== 'builder')

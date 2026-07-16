@@ -31,6 +31,26 @@ RUN mkdir -p /tmp/mongodb-tools /tmp/age-tools \
   && rm -rf /tmp/mongodb-tools /tmp/age-tools /tmp/mongodb-tools.tgz /tmp/age.tgz
 RUN yarn build:migration
 
+FROM postgres:18.4-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296 AS mongodump-libraries
+RUN set -eu; \
+  for library in \
+    /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 \
+    /usr/lib/x86_64-linux-gnu/libkrb5.so.3 \
+    /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 \
+    /usr/lib/x86_64-linux-gnu/libcom_err.so.2 \
+    /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 \
+    /usr/lib/x86_64-linux-gnu/libkeyutils.so.1; \
+  do \
+    case "$library" in *libgnutls*) exit 1 ;; esac; \
+    resolved="$(readlink -f "$library")"; \
+    test -f "$resolved"; \
+    test "${resolved%/*}" = "${library%/*}"; \
+    target_directory="/mongodump-runtime${library%/*}"; \
+    mkdir -p "$target_directory"; \
+    cp -a "$library" "$target_directory/"; \
+    if [ "$resolved" != "$library" ]; then cp -a "$resolved" "$target_directory/"; fi; \
+  done
+
 FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS runner
 ARG COMMIT_SHA
 RUN printf '%s\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'
@@ -48,6 +68,7 @@ COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/server/journal .
 COPY --from=builder --chown=0:0 --chmod=0555 /app/migration/asset-paths.mjs ./migration/asset-paths.mjs
 COPY --from=builder --chown=0:0 --chmod=0555 /app/scripts/migration/export-mongo.sh ./scripts/migration/export-mongo.sh
 COPY --from=production-dependencies --chown=0:0 --chmod=0555 /app/node_modules ./node_modules
+COPY --from=mongodump-libraries --chown=0:0 --chmod=0555 /mongodump-runtime/ /
 COPY --from=builder --chown=0:0 --chmod=0555 /app/public ./public
 COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/mongodump /usr/local/bin/mongodump
 COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
