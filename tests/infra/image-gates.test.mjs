@@ -2059,10 +2059,16 @@ test('image gate uses the restricted migrator as owner and proves the production
     'verify_database_security_contract',
   );
   const restore = shellFunctionBody(source, 'run_backup_restore_cycle');
+  const postgresWait = shellFunctionBody(source, 'wait_for_postgres');
 
   assert.match(
     bootstrap,
     /create role portfolio_migrator login nosuperuser nocreatedb nocreaterole noreplication nobypassrls/u,
+  );
+  assert.match(
+    postgresWait,
+    /psql[\s\S]*--dbname "\$database_name"[\s\S]*select 1/u,
+    'PostgreSQL readiness must prove the requested database exists',
   );
   assert.match(
     bootstrap,

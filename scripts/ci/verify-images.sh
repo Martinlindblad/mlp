@@ -1970,8 +1970,13 @@ wait_for_postgres() {
   attempt=0
 
   while [ "$attempt" -lt 60 ]; do
-    if docker exec "$container_name" pg_isready \
-      --username postgres --dbname "$database_name" >/dev/null 2>&1; then
+    if docker exec --user postgres "$container_name" psql \
+      --no-psqlrc \
+      --tuples-only \
+      --no-align \
+      --username postgres \
+      --dbname "$database_name" \
+      --command 'select 1' 2>/dev/null | grep -Fx 1 >/dev/null 2>&1; then
       return 0
     fi
     attempt=$((attempt + 1))
