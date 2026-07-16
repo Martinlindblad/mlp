@@ -54,6 +54,7 @@
     ]
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1087.0",
     "@iconify/react": "^4.1.1",
     "@svgr/webpack": "^6.5.1",
     "@typescript-eslint/eslint-plugin": "^6.7.3",
