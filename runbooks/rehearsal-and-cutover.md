@@ -217,10 +217,10 @@ may the operator drop `portfolio_rehearsal` and revoke its credentials.
 ### Gate 5: 48-hour DNS authority proof
 
 Leave apex and `www` pointed at Vercel. Run Task 13's authority gate against
-the saved two-name-server file. `/usr/local/sbin/mlp-cloudflare-authority-start`
-owns the fixed `/var/lib/mlp/cloudflare-authority-start` state path; callers
-cannot override it. Require Cloudflare NS/SOA at 1.1.1.1, 8.8.8.8, and 9.9.9.9,
-a complete cloned zone, and continuous Vercel service during the hold.
+the saved two-name-server file. `scripts/acceptance/dns-authority.sh` owns the
+fixed `/var/lib/mlp/cloudflare-authority-start` state path; callers cannot
+override it. Require Cloudflare NS/SOA at 1.1.1.1, 8.8.8.8, and 9.9.9.9, a
+complete cloned zone, and continuous Vercel service during the hold.
 
 ```bash
 sudo EXPECTED_NS_FILE=/etc/mlp/cloudflare-nameservers \

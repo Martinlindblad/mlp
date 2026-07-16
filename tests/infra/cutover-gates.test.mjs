@@ -13,6 +13,8 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { logicalShellLines } from './docker-contract-helpers.mjs';
+
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../..',
@@ -316,14 +318,66 @@ test('runbook has a timed pre-write rollback branch and a one-way commit point',
   }
 });
 
-test('authority commands cannot override the fixed script-owned state path', async () => {
+function fencedShellCommands(source) {
+  return [...source.matchAll(/```(?:bash|sh)\r?\n([\s\S]*?)```/gu)].flatMap(
+    (match) => logicalShellLines(match[1]),
+  );
+}
+
+function assertAuthorityDocContract(source) {
+  assert.doesNotMatch(source, /mlp-cloudflare-authority-start/u);
+  assert.match(
+    source,
+    /`scripts\/acceptance\/dns-authority\.sh` owns\s+the\s+fixed[\s\S]{0,120}`\/var\/lib\/mlp\/cloudflare-authority-start`/u,
+  );
+
+  const commands = fencedShellCommands(source).filter((command) =>
+    command.includes('dns-authority.sh'),
+  );
+  assert.ok(commands.length > 0, 'authority docs must show the gate command');
+  for (const command of commands) {
+    assert.doesNotMatch(command, /\bSTATE_FILE\b/u);
+    assert.doesNotMatch(
+      command,
+      /(?:^|\s)sudo\s+(?:-E\s|--preserve-env(?:=|\s))/u,
+    );
+  }
+}
+
+test('authority command contract is scoped to fenced gate commands', () => {
+  const owner =
+    '`scripts/acceptance/dns-authority.sh` owns the fixed ' +
+    '`/var/lib/mlp/cloudflare-authority-start` path.';
+  assert.doesNotThrow(() =>
+    assertAuthorityDocContract(`${owner}
+Do not use STATE_FILE=/tmp; that caller override is forbidden.
+
+\`\`\`bash
+sudo scripts/acceptance/dns-authority.sh martin-lindblad.com
+\`\`\``),
+  );
+  assert.throws(() =>
+    assertAuthorityDocContract(`${owner}
+\`\`\`bash
+sudo STATE_FILE=/tmp/state scripts/acceptance/dns-authority.sh martin-lindblad.com
+\`\`\``),
+  );
+  assert.throws(() =>
+    assertAuthorityDocContract(`${owner}
+\`\`\`bash
+sudo --preserve-env=STATE_FILE scripts/acceptance/dns-authority.sh martin-lindblad.com
+\`\`\``),
+  );
+});
+
+test('authority docs bind commands and state ownership to dns-authority.sh', async () => {
   const [runbook, implementationPlan] = await Promise.all([
     readRequired(runbookRelativePath),
     readRequired(implementationPlanRelativePath),
   ]);
 
   for (const source of [runbook, implementationPlan]) {
-    assert.doesNotMatch(source, /\bSTATE_FILE=/u);
+    assertAuthorityDocContract(source);
   }
 });
 
