@@ -15,6 +15,16 @@ const legacyInteger = z.preprocess((value) => {
   }
   return value;
 }, z.number().int());
+const legacyLocalAssetPath = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  if (/^\/?Images\//.test(value)) {
+    return value.replace(/^\/?Images\//, '/images/');
+  }
+  if (/^images\//.test(value)) {
+    return `/${value}`;
+  }
+  return value;
+}, z.string());
 
 const projectLinkSchema = z
   .object({ title: z.string(), path: z.string() })
@@ -30,8 +40,8 @@ export const projectDetailsSchema = z
     videoID: z.string().optional(),
     videoTitle: z.string().optional(),
     videoDescription: z.string().optional(),
-    imageSources: z.array(z.string()).optional(),
-    imagesSources: z.array(z.string()).optional(),
+    imageSources: z.array(legacyLocalAssetPath).optional(),
+    imagesSources: z.array(legacyLocalAssetPath).optional(),
     roleDetails: z.array(z.string()),
     roleTitle: z.string(),
     links: z.array(projectLinkSchema).optional(),
@@ -117,7 +127,7 @@ const projectSchema = z
     ...base,
     title: z.string(),
     description: z.string(),
-    imageSource: z.string(),
+    imageSource: legacyLocalAssetPath,
     from: z.string().optional(),
     to: z.string().optional(),
     projectDetails: projectDetailsSchema,

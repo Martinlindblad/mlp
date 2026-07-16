@@ -350,6 +350,24 @@ describe('strict source schemas', () => {
     }
   });
 
+  it('normalizes legacy local project asset paths to the tracked public path casing', () => {
+    const parsed = parseSourceDocument('projects_and_cases', {
+      ...validFixtures.projects_and_cases,
+      imageSource: '/Images/radio.webp',
+      projectDetails: {
+        ...validFixtures.projects_and_cases.projectDetails,
+        imageSources: ['Images/mac.webp'],
+        imagesSources: ['images/woman-water.webp'],
+      },
+    });
+
+    expect(parsed.imageSource).toBe('/images/radio.webp');
+    expect(parsed.projectDetails.imageSources).toEqual(['/images/mac.webp']);
+    expect(parsed.projectDetails.imagesSources).toEqual([
+      '/images/woman-water.webp',
+    ]);
+  });
+
   it('exposes only registered top-level source keys', () => {
     expect(Array.from(allowedSourceKeys('contact')).sort()).toEqual([
       '_id',
