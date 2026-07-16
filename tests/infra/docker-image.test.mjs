@@ -799,6 +799,30 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     /(?:scripts\/migration|mongo-client|export-mongo|dist-migration|\/app\/migration(?:\/|\s)|\/app\/dist(?:\s|$))/iu,
     'application image must exclude Task 6 ETL/Mongo/operator code',
   );
+  assert.match(
+    finalSource,
+    /apt-get purge -y --allow-remove-essential[\s\S]*\bapt\b[\s\S]*\blibgnutls30\b/u,
+    'runtime image must remove apt and libgnutls so base-image private-key fixtures are not shipped',
+  );
+  assert.match(
+    finalSource,
+    /test ! -e \/usr\/lib\/x86_64-linux-gnu\/libgnutls\.so\.30\.34\.3/u,
+    'runtime image must prove the known libgnutls private-key fixture is absent',
+  );
+  assert.match(
+    finalSource,
+    /test ! -e \/usr\/bin\/apt-get/u,
+    'runtime image must prove apt-get is absent after the package-manager purge',
+  );
+  assertOrdered(
+    finalSource,
+    [
+      'apt-get purge -y --allow-remove-essential',
+      'test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30.34.3',
+      'USER 1000:1000',
+    ],
+    'package-manager/private-key-fixture purge must run as root before dropping to the runtime user',
+  );
   assert.match(finalSource, /ENV\s[^\n]*NODE_ENV=production/u);
   assert.match(finalSource, /ENV\s[^\n]*HOSTNAME=0\.0\.0\.0/u);
   assert.match(finalSource, /ENV\s[^\n]*PORT=3000/u);
