@@ -695,10 +695,10 @@ test('Docker contract rejects overridable bases, broad copies, writable ownershi
 
 test('runtime JavaScript dependencies stay on scanner-fixed releases', async () => {
   const manifest = await readRequiredJson(repositoryRoot, 'package.json');
-  assert.equal(manifest.dependencies.next, '15.5.16');
+  assert.equal(manifest.dependencies.next, '15.5.18');
   assert.equal(manifest.dependencies.sharp, '0.34.5');
   assert.equal(manifest.dependencies.swiper, '12.1.2');
-  assert.equal(manifest.devDependencies['eslint-config-next'], '15.5.16');
+  assert.equal(manifest.devDependencies['eslint-config-next'], '15.5.18');
 });
 
 test('application image is immutable, non-root, read-only, and narrowly packaged', async () => {
