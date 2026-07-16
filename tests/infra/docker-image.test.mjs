@@ -722,6 +722,11 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
       destination: './dist/server/db',
     },
     {
+      from: 'builder',
+      source: '/app/node_modules/kysely/dist/migration',
+      destination: './node_modules/kysely/dist/migration',
+    },
+    {
       from: 'age',
       source: '/usr/local/bin/age',
       destination: '/usr/local/bin/age',
@@ -792,6 +797,11 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     copyLines,
     '/app/dist/server/db',
     './dist/server/db',
+  );
+  assertRequiredRuntimeCopy(
+    copyLines,
+    '/app/node_modules/kysely/dist/migration',
+    './node_modules/kysely/dist/migration',
   );
   assertRequiredRuntimeCopy(copyLines, '/usr/local/bin/age', '/usr/local/bin/age');
   assert.doesNotMatch(

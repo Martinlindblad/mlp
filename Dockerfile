@@ -54,6 +54,7 @@ COPY --from=builder --chown=0:0 --chmod=0555 /app/.next/static ./.next/static
 COPY --from=builder --chown=0:0 --chmod=0555 /app/public ./public
 COPY --from=builder --chown=0:0 --chmod=0555 /app/dist/scripts/db ./dist/scripts/db
 COPY --from=builder --chown=0:0 --chmod=0555 /app/dist/server/db ./dist/server/db
+COPY --from=builder --chown=0:0 --chmod=0555 /app/node_modules/kysely/dist/migration ./node_modules/kysely/dist/migration
 COPY --from=age --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
 USER 1000:1000
 RUN test "$(age --version)" = "v1.3.1" && test ! -w /usr/local/bin/age
