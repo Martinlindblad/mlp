@@ -9,6 +9,12 @@ const objectId = z.custom<ObjectId>(
 );
 
 const base = { _id: objectId };
+const legacyInteger = z.preprocess((value) => {
+  if (typeof value === 'string' && /^(?:0|[1-9]\d*)$/.test(value)) {
+    return Number(value);
+  }
+  return value;
+}, z.number().int());
 
 const projectLinkSchema = z
   .object({ title: z.string(), path: z.string() })
@@ -102,7 +108,7 @@ const timelineSchema = z
     duration: z.string(),
     title: z.string(),
     description: z.string(),
-    index: z.number().int(),
+    index: legacyInteger,
   })
   .strict();
 

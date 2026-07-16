@@ -333,6 +333,23 @@ describe('strict source schemas', () => {
     ).not.toHaveProperty('content');
   });
 
+  it('normalizes legacy timeline integer strings without accepting loose numbers', () => {
+    const parsed = parseSourceDocument('proffessional_timeline', {
+      ...validFixtures.proffessional_timeline,
+      index: '6',
+    });
+
+    expect(parsed.index).toBe(6);
+    for (const index of [' 6', '6 ', '6.5', '', 'six']) {
+      expect(() =>
+        parseSourceDocument('proffessional_timeline', {
+          ...validFixtures.proffessional_timeline,
+          index,
+        }),
+      ).toThrow(MigrationValidationError);
+    }
+  });
+
   it('exposes only registered top-level source keys', () => {
     expect(Array.from(allowedSourceKeys('contact')).sort()).toEqual([
       '_id',
