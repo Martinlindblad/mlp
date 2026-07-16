@@ -1009,6 +1009,16 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
   assert.match(postgresTools, /ldd[^\n]*pg_restore/u);
   assert.match(postgresTools, /readlink -f/u);
   assert.match(postgresTools, /\/pg-runtime/u);
+  assert.match(
+    postgresTools,
+    /ld-musl-\.\*\\\.so\\\.1/u,
+    'postgres tool closure must use a BusyBox awk-compatible musl interpreter exclusion',
+  );
+  assert.doesNotMatch(
+    postgresTools,
+    /ld-musl-\[\^\//u,
+    'BusyBox awk treats an unescaped slash inside a bracket expression as the regex delimiter',
+  );
   for (const library of [
     'libpq',
     'libzstd',

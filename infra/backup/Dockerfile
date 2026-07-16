@@ -10,7 +10,7 @@ RUN set -eu; \
     ldd /usr/local/bin/pg_dump > /tmp/pg-dump.ldd; \
     ldd /usr/local/bin/pg_restore > /tmp/pg-restore.ldd; \
     cat /tmp/pg-dump.ldd /tmp/pg-restore.ldd > /tmp/pg-tools.ldd; \
-    awk '$2 == "=>" && $3 ~ /^\/(lib|usr\/lib|usr\/local\/lib)\// && $3 !~ /\/ld-musl-[^/]+\.so\.1$/ { print $3 }' /tmp/pg-tools.ldd | sort -u > /tmp/pg-libraries; \
+    awk '$2 == "=>" && $3 ~ /^\/(lib|usr\/lib|usr\/local\/lib)\// && $3 !~ /\/ld-musl-.*\.so\.1$/ { print $3 }' /tmp/pg-tools.ldd | sort -u > /tmp/pg-libraries; \
     for soname in \
       libpq.so \
       libzstd.so \
