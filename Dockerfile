@@ -47,8 +47,7 @@ RUN apt-get purge -y --allow-remove-essential \
     libxxhash0 \
     ncurses-base \
     perl-base \
-    util-linux \
-    zlib1g && \
+    util-linux && \
   rm -rf \
     /usr/local/lib/node_modules/npm \
     /usr/local/bin/npm \

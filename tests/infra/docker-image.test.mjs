@@ -834,7 +834,6 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     'ncurses-base',
     'perl-base',
     'util-linux',
-    'zlib1g',
   ]) {
     assert.match(
       finalSource,
@@ -842,6 +841,11 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
       `${packageName} must be removed from the app runtime image`,
     );
   }
+  assert.doesNotMatch(
+    finalSource,
+    /\bzlib1g\b/u,
+    'runtime image must not purge zlib1g because dpkg pre-depends on it',
+  );
   assert.match(
     finalSource,
     /rm -rf[\s\S]*\/usr\/local\/lib\/node_modules\/npm[\s\S]*\/usr\/local\/bin\/npm[\s\S]*\/usr\/local\/bin\/npx/u,
