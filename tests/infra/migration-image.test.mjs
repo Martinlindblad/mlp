@@ -90,7 +90,7 @@ function assertNoBroadOperatorOutputCopy(source) {
     if (!line.includes('/app/operator-dist')) continue;
     assert.match(
       line,
-      /\/app\/operator-dist\/(?:migration(?:\/|\s)|scripts\/migration(?:\/|\s)|server\/api\/serializers\.js(?:\s|$)|server\/db\/(?:client|config|database\.types)\.js(?:\s|$))/u,
+      /\/app\/operator-dist\/(?:migration(?:\/|\s)|scripts\/journal(?:\/|\s)|scripts\/migration(?:\/|\s)|server\/api\/serializers\.js(?:\s|$)|server\/db\/(?:client|config|database\.types)\.js(?:\s|$)|server\/journal(?:\/|\s))/u,
       `operator must copy only an allowlisted compiled subtree: ${line}`,
     );
   }
@@ -112,11 +112,13 @@ function assertNarrowOperatorBuilder(stage) {
     'tsconfig.base.json',
     'tsconfig.migration-build.json',
     'migration',
+    'scripts/journal',
     'scripts/migration',
     'server/api/serializers.ts',
     'server/db/client.ts',
     'server/db/config.ts',
     'server/db/database.types.ts',
+    'server/journal',
     'types/DBTypes.ts',
     'public',
   ].sort();
@@ -168,6 +170,7 @@ function assertExactDispatcherLabels(source) {
       'rehearsal',
       'preload',
       'contacts',
+      'journal-recover',
       'remove-synthetic',
       '*',
     ].sort(),
@@ -297,6 +300,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     },
     {
       from: 'builder',
+      source: '/app/operator-dist/scripts/journal',
+      destination: './scripts/journal',
+    },
+    {
+      from: 'builder',
       source: '/app/operator-dist/server/api/serializers.js',
       destination: './server/api/serializers.js',
     },
@@ -305,6 +313,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       source: `/app/operator-dist/server/db/${filename}`,
       destination: `./server/db/${filename}`,
     })),
+    {
+      from: 'builder',
+      source: '/app/operator-dist/server/journal',
+      destination: './server/journal',
+    },
     {
       from: 'builder',
       source: '/app/migration/asset-paths.mjs',
@@ -414,6 +427,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   );
   assertRequiredOperatorCopy(
     copies,
+    '/app/operator-dist/scripts/journal',
+    './scripts/journal',
+  );
+  assertRequiredOperatorCopy(
+    copies,
     '/app/operator-dist/server/api/serializers.js',
     './server/api/serializers.js',
   );
@@ -424,6 +442,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       `./server/db/${filename}`,
     );
   }
+  assertRequiredOperatorCopy(
+    copies,
+    '/app/operator-dist/server/journal',
+    './server/journal',
+  );
   assertRequiredOperatorCopy(
     copies,
     '/app/migration/asset-paths.mjs',
@@ -519,7 +542,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   });
 });
 
-test('POSIX migration entrypoint dispatches only five reviewed commands', async () => {
+test('POSIX migration entrypoint dispatches only six reviewed commands', async () => {
   const relativePath = 'infra/migration/entrypoint.sh';
   const source = await readRequiredText(repositoryRoot, relativePath);
   assertPosixScript(source);
@@ -547,6 +570,10 @@ test('POSIX migration entrypoint dispatches only five reviewed commands', async 
       'contacts',
       'exec /usr/local/bin/node /app/scripts/migration/finalize-contacts.js',
     ],
+    [
+      'journal-recover',
+      'exec /usr/local/bin/node /app/scripts/journal/recover.js',
+    ],
   ]);
   for (const [command, invocation] of mappings) {
     const arm = shellCaseArm(source, command);
@@ -568,6 +595,23 @@ test('POSIX migration entrypoint dispatches only five reviewed commands', async 
     /(?:MONGO_URI_FILE|MONGO_DATABASE|\b(?:cat|read)\b|<)/u,
     'remove-synthetic must not read Mongo settings or files',
   );
+  const journalRecoverArm = shellCaseArm(source, 'journal-recover');
+  assertOrdered(
+    journalRecoverArm,
+    [
+      'unset MONGO_URI_FILE MONGO_DATABASE MONGODB_URI MONGO_URI',
+      'exec /usr/local/bin/node /app/scripts/journal/recover.js',
+    ],
+    'journal-recover must discard Mongo settings before recovery',
+  );
+  assert.doesNotMatch(
+    journalRecoverArm.replace(
+      'unset MONGO_URI_FILE MONGO_DATABASE MONGODB_URI MONGO_URI',
+      '',
+    ),
+    /(?:MONGO_URI_FILE|MONGO_DATABASE|MONGODB_URI|MONGO_URI|\b(?:cat|read)\b|<)/u,
+    'journal-recover must not read Mongo settings or files',
+  );
   assert.match(shellCaseArm(source, '*'), /\busage\b/u);
   const usage = source.match(/^usage\(\)\s*\{([\s\S]*?)^\}/mu)?.[1];
   assert.ok(usage, 'dispatcher must define usage()');
@@ -586,12 +630,13 @@ test('POSIX migration entrypoint dispatches only five reviewed commands', async 
   ]);
 });
 
-test('operator runtime manifest and lock contain only four exact direct dependencies', async () => {
+test('operator runtime manifest and lock contain only five exact direct dependencies', async () => {
   const manifest = await readRequiredJson(
     repositoryRoot,
     'infra/migration/package.json',
   );
   const expectedDependencies = {
+    '@aws-sdk/client-s3': '3.1087.0',
     kysely: '0.29.3',
     mongodb: '6.21.0',
     pg: '8.22.0',
@@ -635,10 +680,13 @@ test('operator runtime manifest and lock contain only four exact direct dependen
   for (const [dependency, version] of Object.entries(expectedDependencies)) {
     const escapedName = dependency.replace('/', '\\/');
     const escapedVersion = version.replaceAll('.', '\\.');
+    const heading = dependency.startsWith('@')
+      ? `"${escapedName}@${escapedVersion}":`
+      : `${escapedName}@${escapedVersion}:`;
     assert.match(
       lock,
       new RegExp(
-        `^${escapedName}@${escapedVersion}:\\n  version "${escapedVersion}"$`,
+        `^${heading}\\n  version "${escapedVersion}"$`,
         'mu',
       ),
       `operator lock must pin ${dependency} exactly to ${version}`,
@@ -695,11 +743,13 @@ test('compiled migration build has deterministic output and a narrow source boun
   assert.equal(config.extends, './tsconfig.base.json');
   assert.deepEqual(config.include, [
     'migration/**/*.ts',
+    'scripts/journal/**/*.ts',
     'scripts/migration/**/*.ts',
     'server/api/serializers.ts',
     'server/db/client.ts',
     'server/db/config.ts',
     'server/db/database.types.ts',
+    'server/journal/**/*.ts',
     'types/DBTypes.ts',
   ]);
   assert.equal(config.compilerOptions?.rootDir, '.');

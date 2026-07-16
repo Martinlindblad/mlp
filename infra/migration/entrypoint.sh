@@ -3,7 +3,7 @@ set -eu
 umask 077
 
 usage() {
-  printf '%s\n' 'usage: mlp-migration {export|rehearsal|preload|contacts|remove-synthetic UUID}' >&2
+  printf '%s\n' 'usage: mlp-migration {export|rehearsal|preload|contacts|journal-recover|remove-synthetic UUID}' >&2
   exit 64
 }
 
@@ -23,6 +23,11 @@ case "${1-}" in
   contacts)
     [ "$#" -eq 1 ] || usage
     exec /usr/local/bin/node /app/scripts/migration/finalize-contacts.js
+    ;;
+  journal-recover)
+    [ "$#" -eq 1 ] || usage
+    unset MONGO_URI_FILE MONGO_DATABASE MONGODB_URI MONGO_URI
+    exec /usr/local/bin/node /app/scripts/journal/recover.js
     ;;
   remove-synthetic)
     [ "$#" -eq 2 ] || usage

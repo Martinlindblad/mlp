@@ -9,9 +9,11 @@ WORKDIR /app
 COPY package.json yarn.lock ./
 COPY tsconfig.base.json tsconfig.migration-build.json ./
 COPY migration ./migration
+COPY scripts/journal ./scripts/journal
 COPY scripts/migration ./scripts/migration
 COPY server/api/serializers.ts ./server/api/serializers.ts
 COPY server/db/client.ts server/db/config.ts server/db/database.types.ts ./server/db/
+COPY server/journal ./server/journal
 COPY types/DBTypes.ts ./types/DBTypes.ts
 COPY public ./public
 RUN yarn install --frozen-lockfile --ignore-scripts --non-interactive
@@ -35,11 +37,13 @@ LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" or
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/migration ./migration
+COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/scripts/journal ./scripts/journal
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/scripts/migration ./scripts/migration
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/server/api/serializers.js ./server/api/serializers.js
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/server/db/client.js ./server/db/client.js
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/server/db/config.js ./server/db/config.js
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/server/db/database.types.js ./server/db/database.types.js
+COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/server/journal ./server/journal
 COPY --from=builder --chown=0:0 --chmod=0555 /app/migration/asset-paths.mjs ./migration/asset-paths.mjs
 COPY --from=builder --chown=0:0 --chmod=0555 /app/scripts/migration/export-mongo.sh ./scripts/migration/export-mongo.sh
 COPY --from=production-dependencies --chown=0:0 --chmod=0555 /app/node_modules ./node_modules

@@ -11,11 +11,13 @@
   },
   "include": [
     "migration/**/*.ts",
+    "scripts/journal/**/*.ts",
     "scripts/migration/**/*.ts",
     "server/api/serializers.ts",
     "server/db/client.ts",
     "server/db/config.ts",
     "server/db/database.types.ts",
+    "server/journal/**/*.ts",
     "types/DBTypes.ts"
   ]
 }
