@@ -36,6 +36,7 @@ const digestPattern =
 const migrationImage = `ghcr.io/martinlindblad/mlp-migration@sha256:${'c'.repeat(
   64,
 )}`;
+const localMigrationImage = `mlp-image-gate-migration:${'a'.repeat(40)}`;
 const migrationImageId = `sha256:${'d'.repeat(64)}`;
 const services = [
   'migration-contacts',
@@ -910,6 +911,22 @@ async function dockerContainerFiles(harness) {
 }
 
 test('migration image verification pulls the exact digest before inspect and fails closed', async (t) => {
+  await t.test('local image gate tag skips registry pull and still inspects image ID', async () => {
+    const harness = await makeHarness('portfolio', 'mlp_db', localMigrationImage);
+    try {
+      const result = runHarness(harness, ['export']);
+      const trace = await traceFor(harness);
+      assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+      assert.doesNotMatch(trace, /image pull/u);
+      assert.match(
+        trace,
+        new RegExp(`image inspect --format \\{\\{\\.Id\\}\\} ${localMigrationImage}`, 'u'),
+      );
+    } finally {
+      await rm(harness.root, { force: true, recursive: true });
+    }
+  });
+
   await t.test('cold cache', async () => {
     const harness = await makeHarness();
     try {

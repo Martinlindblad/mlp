@@ -160,14 +160,16 @@ validate_secret_file() {
   unset value
 }
 
-read_validated_secret_payload() {
-  local path=$1
-  /usr/bin/python3 - "$path" <<'PY'
+write_validated_secret_payload() {
+  local mode=$1
+  local path=$2
+  /usr/bin/python3 - "$mode" "$path" <<'PY'
 import os
 import stat
 import sys
 
-path = sys.argv[1]
+mode = sys.argv[1]
+path = sys.argv[2]
 try:
     before = os.lstat(path)
     fd = os.open(
@@ -200,12 +202,22 @@ try:
         payload = data[:-1]
         if b"\n" in payload or b"\r" in payload:
             raise SystemExit(1)
-        sys.stdout.buffer.write(payload)
+        if mode == "strip-newline":
+            sys.stdout.buffer.write(payload)
+        elif mode == "preserve-newline":
+            sys.stdout.buffer.write(data)
+        else:
+            raise SystemExit(1)
     finally:
         os.close(fd)
 except OSError:
     raise SystemExit(1)
 PY
+}
+
+read_validated_secret_payload() {
+  local path=$1
+  write_validated_secret_payload strip-newline "$path"
 }
 
 validate_staged_secret() {
@@ -218,11 +230,12 @@ validate_staged_secret() {
   [[ "$metadata" == "$uid:$gid:400:1" ]]
 }
 
-stage_secret() {
-  local source=$1
-  local name=$2
-  local uid=$3
-  local gid=$4
+stage_secret_with_payload() {
+  local payload_mode=$1
+  local source=$2
+  local name=$3
+  local uid=$4
+  local gid=$5
   local destination=/etc/mlp/compose-secrets/$name
   local destination_inode=
   local prior_inode=
@@ -230,7 +243,7 @@ stage_secret() {
 
   source_inode=$(/usr/bin/stat -c '%d:%i' -- "$source") || return 78
   STAGING_TEMP=$(/usr/bin/mktemp /etc/mlp/compose-secrets/.stage.XXXXXXXXXX) || return 70
-  read_validated_secret_payload "$source" > "$STAGING_TEMP" || return 70
+  write_validated_secret_payload "$payload_mode" "$source" > "$STAGING_TEMP" || return 70
   /bin/chown "$uid:$gid" -- "$STAGING_TEMP" || return 70
   /bin/chmod 0400 -- "$STAGING_TEMP" || return 70
   validate_staged_secret "$STAGING_TEMP" "$uid" "$gid" || return 78
@@ -250,6 +263,14 @@ stage_secret() {
   /bin/rm -f -- "$STAGING_TEMP" || return 70
   STAGING_TEMP=
   validate_staged_secret "$destination" "$uid" "$gid"
+}
+
+stage_secret_strip_newline() {
+  stage_secret_with_payload strip-newline "$@"
+}
+
+stage_secret_preserve_newline() {
+  stage_secret_with_payload preserve-newline "$@"
 }
 
 cleanup_staging_temp() {
@@ -325,21 +346,21 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-a 65532 65532 || fail 'runtime secret staging requires reviewed rotation: cloudflare-tunnel-token-cloudflared-a'
-stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-b 65532 65532 || fail 'runtime secret staging requires reviewed rotation: cloudflare-tunnel-token-cloudflared-b'
-stage_secret /etc/mlp/secrets/journal-r2-access-key-id journal-r2-access-key-id-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-r2-access-key-id-app'
-stage_secret /etc/mlp/secrets/journal-r2-secret-access-key journal-r2-secret-access-key-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-r2-secret-access-key-app'
-stage_secret /etc/mlp/secrets/journal-mac-keyring journal-mac-keyring-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-mac-keyring-app'
-stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: postgres-app-password-app'
-stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-app-password-postgres'
-stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: postgres-backup-password-db-backup'
-stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-backup-password-postgres'
-stage_secret /etc/mlp/secrets/postgres-bootstrap-password postgres-bootstrap-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-bootstrap-password-postgres'
-stage_secret /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-migrator 1000 1000 || fail 'runtime secret staging requires reviewed rotation: postgres-migrator-password-migrator'
-stage_secret /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-migrator-password-postgres'
-stage_secret /etc/mlp/secrets/restic-password restic-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-password-db-backup'
-stage_secret /etc/mlp/secrets/restic-s3-access-key-id restic-s3-access-key-id-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-s3-access-key-id-db-backup'
-stage_secret /etc/mlp/secrets/restic-s3-secret-access-key restic-s3-secret-access-key-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-s3-secret-access-key-db-backup'
+stage_secret_strip_newline /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-a 65532 65532 || fail 'runtime secret staging requires reviewed rotation: cloudflare-tunnel-token-cloudflared-a'
+stage_secret_strip_newline /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-b 65532 65532 || fail 'runtime secret staging requires reviewed rotation: cloudflare-tunnel-token-cloudflared-b'
+stage_secret_preserve_newline /etc/mlp/secrets/journal-r2-access-key-id journal-r2-access-key-id-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-r2-access-key-id-app'
+stage_secret_preserve_newline /etc/mlp/secrets/journal-r2-secret-access-key journal-r2-secret-access-key-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-r2-secret-access-key-app'
+stage_secret_strip_newline /etc/mlp/secrets/journal-mac-keyring journal-mac-keyring-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-mac-keyring-app'
+stage_secret_strip_newline /etc/mlp/secrets/postgres-app-password postgres-app-password-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: postgres-app-password-app'
+stage_secret_strip_newline /etc/mlp/secrets/postgres-app-password postgres-app-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-app-password-postgres'
+stage_secret_strip_newline /etc/mlp/secrets/postgres-backup-password postgres-backup-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: postgres-backup-password-db-backup'
+stage_secret_strip_newline /etc/mlp/secrets/postgres-backup-password postgres-backup-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-backup-password-postgres'
+stage_secret_strip_newline /etc/mlp/secrets/postgres-bootstrap-password postgres-bootstrap-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-bootstrap-password-postgres'
+stage_secret_strip_newline /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-migrator 1000 1000 || fail 'runtime secret staging requires reviewed rotation: postgres-migrator-password-migrator'
+stage_secret_strip_newline /etc/mlp/secrets/postgres-migrator-password postgres-migrator-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-migrator-password-postgres'
+stage_secret_strip_newline /etc/mlp/secrets/restic-password restic-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-password-db-backup'
+stage_secret_strip_newline /etc/mlp/secrets/restic-s3-access-key-id restic-s3-access-key-id-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-s3-access-key-id-db-backup'
+stage_secret_strip_newline /etc/mlp/secrets/restic-s3-secret-access-key restic-s3-secret-access-key-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: restic-s3-secret-access-key-db-backup'
 
 if [[ -n "$candidate_app_image" ]]; then
   export APP_IMAGE="$candidate_app_image"

@@ -118,7 +118,7 @@ validate_migration_environment() {
     [[ "$seen" == *" $key "* ]] || return 78
   done
   [[ $count -eq 9 ]] || return 78
-  [[ $CONFIG_MIGRATION_IMAGE =~ ^ghcr\.io/martinlindblad/mlp-migration@sha256:[0-9a-f]{64}$ ]] || return 78
+  is_allowed_migration_image "$CONFIG_MIGRATION_IMAGE" || return 78
   [[ $CONFIG_MIGRATION_ARCHIVE_RECIPIENT =~ ^age1[0-9a-z]{58}$ ]] || return 78
   [[ $CONFIG_MIGRATION_MONGO_DATABASE == mlp_db ]] || return 78
   [[ $CONFIG_MIGRATION_PGHOST == postgres ]] || return 78
@@ -127,6 +127,18 @@ validate_migration_environment() {
   [[ $CONFIG_MIGRATION_PGUSER == portfolio_migrator ]] || return 78
   [[ $CONFIG_MIGRATION_PGPOOL_MAX == 2 ]] || return 78
   [[ $CONFIG_MIGRATION_PGCONNECT_TIMEOUT_MS == 5000 ]] || return 78
+}
+
+is_ghcr_migration_image() {
+  [[ ${1-} =~ ^ghcr\.io/martinlindblad/mlp-migration@sha256:[0-9a-f]{64}$ ]]
+}
+
+is_local_image_gate_migration_image() {
+  [[ ${1-} =~ ^mlp-image-gate-migration:[0-9a-f]{40}$ ]]
+}
+
+is_allowed_migration_image() {
+  is_ghcr_migration_image "$1" || is_local_image_gate_migration_image "$1"
 }
 
 require_operation_database() {
@@ -226,6 +238,9 @@ reconcile_migration_secrets() {
 }
 
 pull_migration_image() {
+  if is_local_image_gate_migration_image "$CONFIG_MIGRATION_IMAGE"; then
+    return 0
+  fi
   /usr/bin/timeout --foreground --signal=TERM --kill-after=5s 600s \
     /usr/bin/docker image pull "$CONFIG_MIGRATION_IMAGE" >/dev/null 2>&1
 }

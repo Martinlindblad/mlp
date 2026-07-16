@@ -58,8 +58,18 @@ const secretSources = {
 const stagedSecrets = [
   ['cloudflare-tunnel-token', 'cloudflare-tunnel-token-cloudflared-a', 65532],
   ['cloudflare-tunnel-token', 'cloudflare-tunnel-token-cloudflared-b', 65532],
-  ['journal-r2-access-key-id', 'journal-r2-access-key-id-app', 1000],
-  ['journal-r2-secret-access-key', 'journal-r2-secret-access-key-app', 1000],
+  [
+    'journal-r2-access-key-id',
+    'journal-r2-access-key-id-app',
+    1000,
+    'preserve-newline',
+  ],
+  [
+    'journal-r2-secret-access-key',
+    'journal-r2-secret-access-key-app',
+    1000,
+    'preserve-newline',
+  ],
   ['journal-mac-keyring', 'journal-mac-keyring-app', 1000],
   ['postgres-app-password', 'postgres-app-password-app', 1000],
   ['postgres-app-password', 'postgres-app-password-postgres', 70],
@@ -292,9 +302,9 @@ function assertFixedWrapperContract(source) {
   assert.match(validateSecret, /\/usr\/bin\/stat[^\n]*%s/u);
   assert.match(validateSecret, /\$\{#[A-Za-z_][A-Za-z0-9_]*\}/u);
 
-  const stageSecret = shellFunctionBody(source, 'stage_secret');
+  const stageSecret = shellFunctionBody(source, 'stage_secret_with_payload');
   assert.match(stageSecret, /\/usr\/bin\/mktemp/u);
-  assert.match(stageSecret, /read_validated_secret_payload/u);
+  assert.match(stageSecret, /write_validated_secret_payload/u);
   assert.match(stageSecret, /\/bin\/chown/u);
   assert.match(stageSecret, /\/bin\/chmod[^\n]*0400/u);
   assert.match(stageSecret, /\/usr\/bin\/cmp[^\n]*--silent/u);
@@ -343,11 +353,15 @@ function assertFixedWrapperContract(source) {
       `${filename} must be fully validated before staging starts`,
     );
   }
-  for (const [canonical, staged, uid] of stagedSecrets) {
+  for (const [canonical, staged, uid, payloadMode] of stagedSecrets) {
+    const stageCommand =
+      payloadMode === 'preserve-newline'
+        ? 'stage_secret_preserve_newline'
+        : 'stage_secret_strip_newline';
     assert.match(
       source,
       new RegExp(
-        `^stage_secret /etc/mlp/secrets/${canonical} ${staged} ${uid} ${uid}\\b`,
+        `^${stageCommand} /etc/mlp/secrets/${canonical} ${staged} ${uid} ${uid}\\b`,
         'mu',
       ),
       `${staged} must be a dedicated ${uid}:${uid} bind source`,
@@ -355,7 +369,7 @@ function assertFixedWrapperContract(source) {
     assert.match(
       source,
       new RegExp(
-        `^stage_secret [^\n]* ${staged} ${uid} ${uid} \\|\\| fail 'runtime secret staging requires reviewed rotation: ${staged}'$`,
+        `^${stageCommand} [^\n]* ${staged} ${uid} ${uid} \\|\\| fail 'runtime secret staging requires reviewed rotation: ${staged}'$`,
         'mu',
       ),
       `${staged} staging diagnostics must identify only the non-secret destination`,
@@ -378,7 +392,7 @@ function assertFixedWrapperContract(source) {
   const lastEnvironmentValidation = source.lastIndexOf(
     'validate_environment_file /etc/mlp/env/',
   );
-  const firstSecretStage = source.indexOf('\nstage_secret ');
+  const firstSecretStage = source.search(/\nstage_secret_(?:strip|preserve)_newline /u);
   assert.ok(
     callerEnvironmentClear > argumentValidation,
     'caller environment must be cleared after the root and argument gates',
@@ -1009,9 +1023,11 @@ test(
           }),
       );
       assert.equal(capturedStagedSecrets.size, stagedSecrets.length);
-      for (const [canonical, staged, uid] of stagedSecrets) {
+      for (const [canonical, staged, uid, payloadMode] of stagedSecrets) {
         const sentinel = fixture.sentinels[canonicalSecretVariables[canonical]];
-        const digest = createHash('sha256').update(sentinel).digest('hex');
+        const digest = createHash('sha256')
+          .update(payloadMode === 'preserve-newline' ? `${sentinel}\n` : sentinel)
+          .digest('hex');
         assert.deepEqual(capturedStagedSecrets.get(staged), {
           digest,
           metadata: `${uid}:${uid}:400:1`,

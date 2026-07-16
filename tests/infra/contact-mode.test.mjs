@@ -322,6 +322,7 @@ test('contact probe sends the public Host while connecting directly to Caddy', a
   assert.match(program, /statusCode\s*===\s*400/u);
   assert.match(probe, /CF-Connecting-IP/u);
   assert.match(probe, /Content-Type/u);
+  assert.match(probe, /exec mlp-prod-app-1\s+\\\n\s+\/nodejs\/bin\/node --input-type=module/u);
 
   let observed;
   const server = createServer((request, response) => {

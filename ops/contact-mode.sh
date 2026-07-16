@@ -169,7 +169,7 @@ probe_contact_mode() {
   request.end('{}');
 JS
   run_bounded 15 "$docker_command" exec mlp-prod-app-1 \
-    node --input-type=module -e "$probe" caddy 8080 "$expected" >/dev/null
+    /nodejs/bin/node --input-type=module -e "$probe" caddy 8080 "$expected" >/dev/null
 }
 
 recreate_caddy() {
