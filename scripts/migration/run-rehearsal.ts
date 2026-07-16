@@ -1,4 +1,3 @@
-import { importSnapshot } from '../../migration/importer';
 import { captureSnapshot, inventorySource } from '../../migration/inventory';
 import { withSourceDatabase } from '../../migration/mongo-client';
 import { reportPath, writeReport } from '../../migration/report';
@@ -6,7 +5,7 @@ import {
   SOURCE_COLLECTIONS,
   type SourceCollection,
 } from '../../migration/source-collections';
-import { verifySnapshot } from '../../migration/verification';
+import { finalizeSnapshot } from '../../migration/verification';
 import {
   migrationPublicRoot,
   runId,
@@ -23,8 +22,7 @@ async function main(): Promise<void> {
       // capture is only valid after traffic has been drained.
       const inventory = await inventorySource(source);
       const snapshot = await captureSnapshot(source, collections);
-      const migrated = await importSnapshot(target, snapshot);
-      const validated = await verifySnapshot(target, snapshot, {
+      const { migrated, validated } = await finalizeSnapshot(target, snapshot, {
         publicRoot: migrationPublicRoot(),
       });
       await writeReport(reportPath(`${id}-inventory.json`), inventory);

@@ -43,15 +43,18 @@ export interface VerificationOptions {
   publicRoot: string;
 }
 
-export interface ContactFinalizationResult {
+export interface SnapshotFinalizationResult {
   migrated: MigrationReport;
   validated: ValidationReport;
 }
+
+export type ContactFinalizationResult = SnapshotFinalizationResult;
 
 const sourceCollections = Object.keys(SOURCE_COLLECTIONS) as SourceCollection[];
 
 async function assertSerializableTransaction(
   trx: Transaction<Database>,
+  collection: SourceCollection,
 ): Promise<void> {
   const result = await sql<{ isolation: string }>`
     select current_setting('transaction_isolation') as isolation
@@ -59,7 +62,7 @@ async function assertSerializableTransaction(
   if (result.rows[0]?.isolation !== 'serializable') {
     throw new MigrationValidationError([
       {
-        collection: 'contact',
+        collection,
         id: 'unknown',
         code: 'invalid_value',
         path: 'transaction_isolation',
@@ -281,14 +284,38 @@ export async function finalizeContactSnapshot(
       },
     ]);
   }
+  return finalizeSnapshot(db, snapshot, options);
+}
+
+export async function finalizeSnapshot(
+  db: Kysely<Database>,
+  snapshot: Partial<SourceSnapshot>,
+  options: VerificationOptions = {
+    publicRoot: path.resolve(process.cwd(), 'public'),
+  },
+): Promise<SnapshotFinalizationResult> {
   const prepared = prepareSnapshot(snapshot);
+  const requested = sourceCollections.filter(
+    (collection) => prepared[collection] !== undefined,
+  );
+  const firstRequested = requested[0];
+  if (firstRequested === undefined) {
+    throw new MigrationValidationError([
+      {
+        collection: 'contact',
+        id: 'unknown',
+        code: 'invalid_value',
+        path: '$',
+      },
+    ]);
+  }
 
   try {
     return await db
       .transaction()
       .setIsolationLevel('serializable')
       .execute(async (trx) => {
-        await assertSerializableTransaction(trx);
+        await assertSerializableTransaction(trx, firstRequested);
         const migrated = await importPreparedSnapshot(trx, prepared);
         const validated = await verifyPreparedSnapshot(trx, prepared, options);
         return { migrated, validated };
@@ -297,7 +324,7 @@ export async function finalizeContactSnapshot(
     if (error instanceof MigrationValidationError) throw error;
     throw new MigrationValidationError([
       {
-        collection: 'contact',
+        collection: firstRequested,
         id: 'unknown',
         code: 'invalid_value',
         path: 'database',

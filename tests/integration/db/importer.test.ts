@@ -16,6 +16,7 @@ import { reportPath, writeReport } from '../../../migration/report';
 import { parseSourceDocument } from '../../../migration/source-schemas';
 import {
   finalizeContactSnapshot,
+  finalizeSnapshot,
   verifySnapshot,
 } from '../../../migration/verification';
 import { migrateToLatest } from '../../../server/db/migrator';
@@ -568,6 +569,49 @@ describe('transactional snapshot importer and verification', () => {
     });
     expect(JSON.stringify(failure)).not.toContain('EXTRA_DESTINATION_VALUE');
     expectRedacted(failure);
+  });
+
+  it('rolls back new snapshot rows when complete atomic verification finds a pre-existing extra row', async () => {
+    const snapshot = fullSnapshot();
+    const unexpected = parseSourceDocument('about', {
+      _id: objectId(999),
+      title: 'EXTRA_DESTINATION_VALUE',
+      info: 'Extra info',
+      name: 'Extra name',
+      surname: 'Extra surname',
+      key: 'about',
+    });
+    await isolated.db
+      .insertInto('profile_sections')
+      .values(mapSourceDocument('about', unexpected, 1000))
+      .execute();
+    const before = await isolated.db
+      .selectFrom('profile_sections')
+      .selectAll()
+      .execute();
+
+    let failure: unknown;
+    try {
+      await finalizeSnapshot(isolated.db, { about: snapshot.about });
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toMatchObject({
+      name: 'MigrationValidationError',
+      issues: [
+        expect.objectContaining({
+          collection: 'about',
+          code: 'hash_mismatch',
+          path: 'destination',
+        }),
+      ],
+    });
+    expect(JSON.stringify(failure)).not.toContain('EXTRA_DESTINATION_VALUE');
+    expectRedacted(failure);
+    expect(
+      await isolated.db.selectFrom('profile_sections').selectAll().execute(),
+    ).toEqual(before);
   });
 
   it('rejects a missing destination row', async () => {

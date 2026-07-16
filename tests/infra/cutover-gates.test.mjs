@@ -170,6 +170,27 @@ test('runbook binds rehearsal to strict migration and redacted evidence contract
   assert.doesNotMatch(source, /(?:password|token)\s*=\s*["'][^"'$]+["']/iu);
 });
 
+test('runbook makes rehearsal and content preload verification atomic', async () => {
+  const source = await readRequired(runbookRelativePath);
+
+  assert.match(
+    source,
+    /rehearsal and content preload each run import and complete verification in one\s+serializable transaction/iu,
+  );
+  assert.match(
+    source,
+    /Any verification mismatch rolls back all newly\s+inserted rows/iu,
+  );
+  assert.match(
+    source,
+    /Redacted report writing begins only after the verified database\s+commit/iu,
+  );
+  assert.match(
+    source,
+    /A report-write failure requires an idempotent rerun and does not claim a\s+database rollback/iu,
+  );
+});
+
 test('runbook requires the reviewed atomic contact finalizer before Gate 14', async () => {
   const source = await readRequired(runbookRelativePath);
 

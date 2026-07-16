@@ -1,9 +1,8 @@
-import { importSnapshot } from '../../migration/importer';
 import { captureSnapshot } from '../../migration/inventory';
 import { withSourceDatabase } from '../../migration/mongo-client';
 import { reportPath, writeReport } from '../../migration/report';
 import { CONTENT_COLLECTIONS } from '../../migration/source-collections';
-import { verifySnapshot } from '../../migration/verification';
+import { finalizeSnapshot } from '../../migration/verification';
 import {
   migrationPublicRoot,
   runId,
@@ -16,8 +15,7 @@ async function main(): Promise<void> {
   await withMigrationTarget(async (target) =>
     withSourceDatabase(async (source) => {
       const snapshot = await captureSnapshot(source, CONTENT_COLLECTIONS);
-      const migrated = await importSnapshot(target, snapshot);
-      const validated = await verifySnapshot(target, snapshot, {
+      const { migrated, validated } = await finalizeSnapshot(target, snapshot, {
         publicRoot: migrationPublicRoot(),
       });
       await writeReport(reportPath(`${id}-preload-migration.json`), migrated);

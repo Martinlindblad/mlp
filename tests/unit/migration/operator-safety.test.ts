@@ -367,9 +367,23 @@ printf NEW_CIPHERTEXT >"$output"
       expect(source).toContain('runOperator');
       expect(source).not.toContain('console.error');
     }
-    expect(rehearsal.indexOf('verifySnapshot')).toBeLessThan(
-      rehearsal.indexOf('writeReport('),
-    );
+    for (const source of [rehearsal, preload]) {
+      expect(source.match(/finalizeSnapshot\(/g)).toHaveLength(1);
+      expect(source).toContain(
+        'const { migrated, validated } = await finalizeSnapshot(',
+      );
+      expect(source).not.toContain('importSnapshot');
+      expect(source).not.toContain('verifySnapshot');
+      const atomicResultIndex = source.indexOf('finalizeSnapshot(');
+      const reportIndexes = Array.from(
+        source.matchAll(/await writeReport\(/g),
+        ({ index }) => index,
+      );
+      expect(reportIndexes.length).toBeGreaterThan(0);
+      expect(reportIndexes.every((index) => index > atomicResultIndex)).toBe(
+        true,
+      );
+    }
     const finalizerIndex = finalize.indexOf('finalizeContactSnapshot(');
     const reportIndex = finalize.indexOf('writeReport(');
     expect(finalizerIndex).toBeGreaterThanOrEqual(0);

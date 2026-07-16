@@ -93,6 +93,11 @@ Do not use Compose overrides, mutable image tags, raw secret environment
 values, an exposed Docker socket, or a production application image for the
 one-time MongoDB tooling. The rehearsal runs against a disposable PostgreSQL
 18.4 database; production wrappers are used later for preload and finalization.
+Rehearsal and content preload each run import and complete verification in one
+serializable transaction. Any verification mismatch rolls back all newly
+inserted rows. Redacted report writing begins only after the verified database
+commit. A report-write failure requires an idempotent rerun and does not claim a
+database rollback; the already verified commit remains authoritative.
 
 ## Pre-write rollback branch
 
