@@ -4,8 +4,6 @@ WORKDIR /app
 COPY infra/migration/package.json infra/migration/yarn.lock ./
 RUN yarn install --frozen-lockfile --production=true --ignore-scripts --non-interactive
 RUN rm -f \
-    node_modules/mongodb/lib/client-side-encryption/crypto_callbacks.js \
-    node_modules/mongodb/src/client-side-encryption/crypto_callbacks.ts \
     node_modules/pg-connection-string/README.md \
     node_modules/pg-pool/README.md \
   && rm -rf node_modules/zod/src/v4/classic/tests

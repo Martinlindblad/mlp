@@ -413,15 +413,15 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     /zod\/src\/v4\/classic\/tests/u,
     'operator dependencies must prune zod source tests with URI fixtures',
   );
-  assert.match(
+  assert.doesNotMatch(
     dependencies.instructions.join('\n'),
     /mongodb\/lib\/client-side-encryption\/crypto_callbacks\.js/u,
-    'operator dependencies must prune MongoDB private-key callback fixtures',
+    'operator dependencies must retain MongoDB runtime crypto callbacks required by the driver import graph',
   );
-  assert.match(
+  assert.doesNotMatch(
     dependencies.instructions.join('\n'),
     /mongodb\/src\/client-side-encryption\/crypto_callbacks\.ts/u,
-    'operator dependencies must prune MongoDB TypeScript private-key fixtures',
+    'operator dependencies must retain MongoDB runtime crypto callback sources when present',
   );
   assert.match(
     builder.instructions.join('\n'),
