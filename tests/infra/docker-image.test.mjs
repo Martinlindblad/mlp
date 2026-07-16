@@ -771,7 +771,7 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
   );
   assert.match(
     stages[2].instructions.join('\n'),
-    /go get filippo\.io\/age@v1\.3\.1 golang\.org\/x\/crypto@v0\.52\.0/u,
+    /go get filippo\.io\/age\/cmd\/age@v1\.3\.1 golang\.org\/x\/crypto@v0\.52\.0/u,
     'age must be rebuilt with scanner-fixed Go module dependencies',
   );
   assert.match(

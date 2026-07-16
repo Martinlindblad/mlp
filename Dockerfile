@@ -18,7 +18,7 @@ RUN test "$(uname -m)" = "x86_64" && \
   mkdir /tmp/age-build && \
   cd /tmp/age-build && \
   go mod init mlp-age-build && \
-  go get filippo.io/age@v1.3.1 golang.org/x/crypto@v0.52.0 && \
+  go get filippo.io/age/cmd/age@v1.3.1 golang.org/x/crypto@v0.52.0 && \
   go install filippo.io/age/cmd/age && \
   install -o root -g root -m 0555 /go/bin/age /usr/local/bin/age && \
   rm -rf /tmp/age-build /go/pkg/mod /root/.cache/go-build && \

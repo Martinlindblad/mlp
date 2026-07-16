@@ -436,7 +436,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   assertNarrowOperatorBuilder(builder);
   assert.match(
     ageBuilder.instructions.join('\n'),
-    /go get filippo\.io\/age@v1\.3\.1 golang\.org\/x\/crypto@v0\.52\.0/u,
+    /go get filippo\.io\/age\/cmd\/age@v1\.3\.1 golang\.org\/x\/crypto@v0\.52\.0/u,
     'operator age must be rebuilt with scanner-fixed Go module dependencies',
   );
   assert.match(
