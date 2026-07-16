@@ -2192,7 +2192,7 @@ test('image gate verifies the operator tools, exact public tree, and fail-closed
   assert.match(source, /\[ "\$dispatcher_status" -eq 64 \]/u);
   assert.match(
     source,
-    /usage: mlp-migration \{export\|rehearsal\|preload\|contacts\|remove-synthetic UUID\}/u,
+    /usage: mlp-migration \{export\|rehearsal\|preload\|contacts\|journal-recover\|remove-synthetic UUID\}/u,
   );
   assert.match(source, /verify_migration_operator/u);
 });

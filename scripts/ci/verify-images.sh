@@ -2636,7 +2636,7 @@ assert_operator_rejected() {
 
   assert_container_hardening migration 1000:1000 "$dispatcher_container"
   [ "$dispatcher_status" -eq 64 ] || fail 'operator dispatcher did not fail closed'
-  expected_usage='usage: mlp-migration {export|rehearsal|preload|contacts|remove-synthetic UUID}'
+  expected_usage='usage: mlp-migration {export|rehearsal|preload|contacts|journal-recover|remove-synthetic UUID}'
   dispatcher_message=$(cat "$dispatcher_output")
   [ "$dispatcher_message" = "$expected_usage" ] ||
     fail 'operator dispatcher error was not generic'
