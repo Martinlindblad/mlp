@@ -907,6 +907,10 @@ test('Next standalone output preserves five-second ISR on a read-only root', asy
 
 test('database migrator build is deterministic and tsconfig output is narrow', async () => {
   const packageJson = await readRequiredJson(repositoryRoot, 'package.json');
+  const migrationDockerfile = await readRequiredText(
+    repositoryRoot,
+    'infra/migration/Dockerfile',
+  );
   assert.equal(
     packageJson.scripts?.['build:scripts'],
     'rm -rf dist && tsc --project tsconfig.scripts.json',
@@ -932,6 +936,25 @@ test('database migrator build is deterministic and tsconfig output is narrow', a
     JSON.stringify(config).includes('migration'),
     false,
     'app migrator build must exclude Task 6 migration code',
+  );
+
+  const migrationBuilder = dockerStages(migrationDockerfile).find(
+    ({ name }) => name === 'builder',
+  );
+  assert.ok(migrationBuilder, 'migration image requires a builder stage');
+  assert.ok(
+    migrationBuilder.instructions.some((instruction) =>
+      instruction.includes('server/repositories/contact-repository.ts'),
+    ),
+    'migration builder must include type-only contact repository imports used by journal recovery',
+  );
+  const migrationFinal = finalDockerStage(migrationDockerfile).instructions.join(
+    '\n',
+  );
+  assert.doesNotMatch(
+    migrationFinal,
+    /server\/repositories/u,
+    'migration runtime must not copy repository implementation code for type-only imports',
   );
 });
 

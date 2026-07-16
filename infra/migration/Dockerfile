@@ -14,6 +14,7 @@ COPY scripts/migration ./scripts/migration
 COPY server/api/serializers.ts ./server/api/serializers.ts
 COPY server/db/client.ts server/db/config.ts server/db/database.types.ts ./server/db/
 COPY server/journal ./server/journal
+COPY server/repositories/contact-repository.ts ./server/repositories/contact-repository.ts
 COPY types/DBTypes.ts ./types/DBTypes.ts
 COPY public ./public
 RUN yarn install --frozen-lockfile --ignore-scripts --non-interactive
