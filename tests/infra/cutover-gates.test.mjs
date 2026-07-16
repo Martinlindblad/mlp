@@ -337,9 +337,11 @@ function assertAuthorityDocContract(source) {
   assert.ok(commands.length > 0, 'authority docs must show the gate command');
   for (const command of commands) {
     assert.doesNotMatch(command, /\bSTATE_FILE\b/u);
+    const gateCommandIndex = command.indexOf('dns-authority.sh');
+    assert.ok(gateCommandIndex >= 0);
     assert.doesNotMatch(
-      command,
-      /(?:^|\s)sudo\s+(?:-E\s|--preserve-env(?:=|\s))/u,
+      command.slice(0, gateCommandIndex),
+      /(?:^|\s)(?:-[A-Za-z]*E[A-Za-z]*|--preserve-env(?:=\S*)?)(?=\s|$)/u,
     );
   }
 }
@@ -366,6 +368,18 @@ sudo STATE_FILE=/tmp/state scripts/acceptance/dns-authority.sh martin-lindblad.c
     assertAuthorityDocContract(`${owner}
 \`\`\`bash
 sudo --preserve-env=STATE_FILE scripts/acceptance/dns-authority.sh martin-lindblad.com
+\`\`\``),
+  );
+  assert.throws(() =>
+    assertAuthorityDocContract(`${owner}
+\`\`\`bash
+sudo -n -E scripts/acceptance/dns-authority.sh martin-lindblad.com
+\`\`\``),
+  );
+  assert.throws(() =>
+    assertAuthorityDocContract(`${owner}
+\`\`\`bash
+sudo -nE scripts/acceptance/dns-authority.sh martin-lindblad.com
 \`\`\``),
   );
 });
