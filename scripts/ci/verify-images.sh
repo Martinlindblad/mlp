@@ -1978,6 +1978,20 @@ assert_runtime_hardening() {
   image_reference=$3
   container_name="$RUN_ID-hardening-$image_name"
 
+  case $image_name in
+    app)
+      hardening_entrypoint=/nodejs/bin/node
+      hardening_probe_argument=--version
+      ;;
+    backup|caddy|migration)
+      hardening_entrypoint=/bin/true
+      hardening_probe_argument=
+      ;;
+    *)
+      fail "unknown hardened runtime probe: $image_name"
+      ;;
+  esac
+
   track_container "$container_name"
   docker create \
     --name "$container_name" \
@@ -1986,8 +2000,8 @@ assert_runtime_hardening() {
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
     --user "$expected_user" \
-    --entrypoint /bin/true \
-    "$image_reference" >"$WORK_DIRECTORY/hardening-create-$image_name.txt" 2>&1 ||
+    --entrypoint "$hardening_entrypoint" \
+    "$image_reference" $hardening_probe_argument >"$WORK_DIRECTORY/hardening-create-$image_name.txt" 2>&1 ||
     fail "hardened container creation failed: $image_name"
 
   assert_container_hardening "$image_name" "$expected_user" "$container_name"

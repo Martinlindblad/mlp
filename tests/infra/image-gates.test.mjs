@@ -2065,6 +2065,18 @@ test('image gate enforces hardened runtime settings and retains only verified su
     /docker container inspect --format='\{\{json \.HostConfig\.SecurityOpt\}\}'/u,
   );
   assert.match(source, /assert_runtime_hardening/u);
+  const runtimeHardening = shellFunctionBody(source, 'assert_runtime_hardening');
+  assert.match(runtimeHardening, /case \$image_name in/u);
+  assert.match(
+    runtimeHardening,
+    /app\)\s+hardening_entrypoint=\/nodejs\/bin\/node\s+hardening_probe_argument=--version/u,
+  );
+  assert.match(
+    runtimeHardening,
+    /backup\|caddy\|migration\)\s+hardening_entrypoint=\/bin\/true\s+hardening_probe_argument=/u,
+  );
+  assert.match(runtimeHardening, /--entrypoint "\$hardening_entrypoint"/u);
+  assert.match(runtimeHardening, /"\$image_reference" \$hardening_probe_argument/u);
   assert.match(source, /verify_caddy_runtime/u);
   assert.match(source, /getcap \/usr\/bin\/caddy/u);
   assert.match(source, /RUN_RANDOM_SUFFIX=\$\{WORK_DIRECTORY##\*\.\}/u);
