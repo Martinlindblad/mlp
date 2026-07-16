@@ -766,6 +766,16 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     /install[^\n]*-o root -g root -m 0555[^\n]*\/usr\/local\/bin\/age/u,
     'age executable must be installed as root-owned 0555',
   );
+  assert.match(
+    stages[2].instructions.join('\n'),
+    /stat -c '%U:%G %a' \/usr\/local\/bin\/age/u,
+    'age build stage must prove root ownership and 0555 mode without root writability checks',
+  );
+  assert.doesNotMatch(
+    stages[2].instructions.join('\n'),
+    /test ! -w \/usr\/local\/bin\/age/u,
+    'root build stage cannot prove non-writability with test -w because root bypasses mode bits',
+  );
 
   const final = finalDockerStage(source);
   const finalSource = final.instructions.join('\n');

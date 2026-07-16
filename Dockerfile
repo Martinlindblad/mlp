@@ -22,7 +22,7 @@ RUN test "$(uname -m)" = "x86_64" && \
   install -o root -g root -m 0555 /tmp/age-extract/age/age /usr/local/bin/age && \
   rm -rf /tmp/age.tgz /tmp/age-extract && \
   test "$(/usr/local/bin/age --version)" = "v1.3.1" && \
-  test ! -w /usr/local/bin/age
+  test "$(stat -c '%U:%G %a' /usr/local/bin/age)" = "root:root 555"
 
 FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS runner
 ARG COMMIT_SHA
