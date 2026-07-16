@@ -3397,13 +3397,12 @@ Keep apex and `www` pointed at their current Vercel target and DNS-only while de
 
 - [ ] **Step 3: Change nameservers and enforce the 48-hour authority gate**
 
-Store the two Cloudflare nameservers in root-only `/etc/mlp/cloudflare-nameservers`, one per line. Change only the registrar delegation. Create `scripts/acceptance/dns-authority.sh` to query all three public resolvers, the zone's SOA, and the current app origin; on the first complete success atomically write epoch seconds to `/var/lib/mlp/cloudflare-authority-start`. Subsequent runs print elapsed seconds and exit 75 until `elapsed >= 172800`.
+Store the two Cloudflare nameservers in root-only `/etc/mlp/cloudflare-nameservers`, one per line. Change only the registrar delegation. Create `scripts/acceptance/dns-authority.sh` to query all three public resolvers, the zone's SOA, and the current app origin; on the first complete success atomically write epoch seconds to `/var/lib/mlp/cloudflare-authority-start`. `/usr/local/sbin/mlp-cloudflare-authority-start` owns that fixed state path, and callers cannot override it. Subsequent runs print elapsed seconds and exit 75 until `elapsed >= 172800`.
 
 Run every few hours during the hold:
 
 ```bash
 sudo EXPECTED_NS_FILE=/etc/mlp/cloudflare-nameservers \
-  STATE_FILE=/var/lib/mlp/cloudflare-authority-start \
   scripts/acceptance/dns-authority.sh martin-lindblad.com
 curl -fsS https://martin-lindblad.com >/dev/null
 ```

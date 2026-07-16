@@ -18,6 +18,8 @@ const repositoryRoot = path.resolve(
   '../..',
 );
 const runbookRelativePath = 'runbooks/rehearsal-and-cutover.md';
+const implementationPlanRelativePath =
+  'docs/superpowers/plans/2026-07-14-portfolio-self-hosting-migration.md';
 const smokeRelativePath = 'scripts/acceptance/production-smoke.sh';
 const redactionRelativePath = 'scripts/acceptance/log-redaction.sh';
 const packageRelativePath = 'package.json';
@@ -311,6 +313,17 @@ test('runbook has a timed pre-write rollback branch and a one-way commit point',
       source.includes(evidence),
       `runbook evidence missing: ${evidence}`,
     );
+  }
+});
+
+test('authority commands cannot override the fixed script-owned state path', async () => {
+  const [runbook, implementationPlan] = await Promise.all([
+    readRequired(runbookRelativePath),
+    readRequired(implementationPlanRelativePath),
+  ]);
+
+  for (const source of [runbook, implementationPlan]) {
+    assert.doesNotMatch(source, /\bSTATE_FILE=/u);
   }
 });
 
