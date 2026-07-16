@@ -348,6 +348,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       source: '/mongodump-runtime/',
       destination: '/',
     },
+    {
+      from: 'mongodump-libraries',
+      source: '/etc/ssl/certs/ca-certificates.crt',
+      destination: '/etc/ssl/certs/ca-certificates.crt',
+    },
     { from: 'builder', source: '/app/public', destination: './public' },
     {
       from: 'builder',
@@ -515,6 +520,14 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     'operator must copy only dedicated production-dependencies node_modules',
   );
   assertRequiredOperatorCopy(copies, '/app/public', './public');
+  const caCopy = copies.find(
+    (instruction) =>
+      instruction.includes('--from=mongodump-libraries') &&
+      instruction.includes('/etc/ssl/certs/ca-certificates.crt') &&
+      instruction.endsWith('/etc/ssl/certs/ca-certificates.crt'),
+  );
+  assert.ok(caCopy, 'operator must copy a digest-pinned CA bundle');
+  assert.match(caCopy, /--chmod=0?444(?:\s|$)/u);
   assert.doesNotMatch(
     finalSource,
     /(?:\.next|\/app\/src(?:\/|\s)|\/app\/tests(?:\/|\s)|\/app\/dist(?:\/|\s)|scripts\/db|server\/db\/(?:migrator|migrations))/iu,

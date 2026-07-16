@@ -69,6 +69,7 @@ COPY --from=builder --chown=0:0 --chmod=0555 /app/migration/asset-paths.mjs ./mi
 COPY --from=builder --chown=0:0 --chmod=0555 /app/scripts/migration/export-mongo.sh ./scripts/migration/export-mongo.sh
 COPY --from=production-dependencies --chown=0:0 --chmod=0555 /app/node_modules ./node_modules
 COPY --from=mongodump-libraries --chown=0:0 --chmod=0555 /mongodump-runtime/ /
+COPY --from=mongodump-libraries --chown=0:0 --chmod=0444 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder --chown=0:0 --chmod=0555 /app/public ./public
 COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/mongodump /usr/local/bin/mongodump
 COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
