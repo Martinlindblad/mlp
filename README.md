@@ -1,82 +1,61 @@
-## Example app using MongoDB
+# Martin Lindblad Portfolio
 
-[MongoDB](https://www.mongodb.com/) is a general purpose, document-based, distributed database built for modern application developers and for the cloud era. This example will show you how to connect to and use MongoDB as your backend for your Next.js app.
+Self-hosted Next.js portfolio application for `martin-lindblad.com`.
 
-If you want to learn more about MongoDB, visit the following pages:
+The production target is a Debian 13 VM running Docker Compose, PostgreSQL,
+Caddy, and redundant Cloudflare Tunnel connectors. The application is packaged
+as immutable Docker images and published to GHCR; public ingress goes through
+Cloudflare, not a platform-hosted deployment.
 
-- [MongoDB Atlas](https://mongodb.com/atlas)
-- [MongoDB Documentation](https://docs.mongodb.com/)
+## Runtime architecture
 
-## Deploy your own
+- Frontend and API: one Next.js standalone server container.
+- Database: PostgreSQL 18.4 with least-privilege app, migrator, and backup roles.
+- Ingress: Caddy behind Cloudflare Tunnel, with no published app/database ports.
+- Operations: root-owned VM wrappers in `ops/` for compose, deploy, migration,
+  backup, restore testing, status, and contact maintenance mode.
+- Contact durability: accepted contact messages are projected into PostgreSQL
+  and journaled to the approved encrypted Cloudflare R2 contact journal.
 
-Once you have access to the environment variables you'll need, deploy the example using [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=next-example):
+## Local development
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?project-name=with-mongodb&repository-name=with-mongodb&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-mongodb&integration-ids=oac_jnzmjqM10gllKmSrG0SGrHOH)
-
-## How to use
-
-Execute [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [npm](https://docs.npmjs.com/cli/init), [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/), or [pnpm](https://pnpm.io) to bootstrap the example:
-
-```bash
-npx create-next-app --example with-mongodb with-mongodb-app
-```
-
-```bash
-yarn create next-app --example with-mongodb with-mongodb-app
-```
+Use the pinned toolchain:
 
 ```bash
-pnpm create next-app --example with-mongodb with-mongodb-app
-```
-
-## Configuration
-
-### Set up a MongoDB database
-
-Set up a MongoDB database either locally or with [MongoDB Atlas for free](https://mongodb.com/atlas).
-
-### Set up environment variables
-
-Copy the `env.local.example` file in this directory to `.env.local` (which will be ignored by Git):
-
-```bash
-cp .env.local.example .env.local
-```
-
-Set each variable on `.env.local`:
-
-- `MONGODB_URI` - Your MongoDB connection string. If you are using [MongoDB Atlas](https://mongodb.com/atlas) you can find this by clicking the "Connect" button for your cluster.
-
-### Run Next.js in development mode
-
-```bash
-npm install
-npm run dev
-
-# or
-
-yarn install
+corepack enable
+corepack prepare yarn@1.22.22 --activate
+yarn install --frozen-lockfile --non-interactive
 yarn dev
 ```
 
-Your app should be up and running on [http://localhost:3000](http://localhost:3000)! If it doesn't work, post on [GitHub discussions](https://github.com/vercel/next.js/discussions).
+Useful checks:
 
-You will either see a message stating "You are connected to MongoDB" or "You are NOT connected to MongoDB". Ensure that you have provided the correct `MONGODB_URI` environment variable.
+```bash
+yarn typecheck
+yarn test:unit
+yarn build:production
+yarn build:migration
+```
 
-When you are successfully connected, you can refer to the [MongoDB Node.js Driver docs](https://mongodb.github.io/node-mongodb-native/3.4/tutorials/collections/) for further instructions on how to query your database.
+PostgreSQL integration tests require a real PostgreSQL server and
+`TEST_DATABASE_URL`.
 
-## Deploy on Vercel
+## Production deployment
 
-You can deploy this app to the cloud with [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=next-example) ([Documentation](https://nextjs.org/docs/deployment)).
+Production deployment is VM-based:
 
-#### Deploy Your Local Project
+1. Publish verified linux/amd64 images with `.github/workflows/publish-image.yml`.
+2. Install the exact digest-qualified image references into `/etc/mlp/env/*.env`.
+3. Store secrets as root-owned mode `0600` files below `/etc/mlp/secrets`.
+4. Run the reviewed VM wrappers, primarily `mlp-compose`, `mlp-migration`, and
+   `mlp-deploy`.
+5. Route public traffic through Cloudflare Tunnel after the migration gates pass.
 
-To deploy your local project to Vercel, push it to GitHub/GitLab/Bitbucket and [import to Vercel](https://vercel.com/new?utm_source=github&utm_medium=readme&utm_campaign=next-example).
+Do not put runtime secrets in Git, image layers, command arguments, or logs.
 
-**Important**: When you import your project on Vercel, make sure to click on **Environment Variables** and set them to match your `.env.local` file.
+## Migration status
 
-#### Deploy from Our Template
-
-Alternatively, you can deploy using our template by clicking on the Deploy button below.
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?project-name=with-mongodb&repository-name=with-mongodb&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-mongodb&integration-ids=oac_jnzmjqM10gllKmSrG0SGrHOH)
+This branch is moving the portfolio away from the previous hosted database and
+platform setup. Old providers remain untouched until the VM deployment,
+PostgreSQL migration, backup/restore proof, Cloudflare cutover, and observation
+gates have passed.

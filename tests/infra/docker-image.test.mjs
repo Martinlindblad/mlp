@@ -833,6 +833,7 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
 
 test('application Docker context excludes secrets, ETL, artifacts, and history inputs', async () => {
   const source = await readRequiredText(repositoryRoot, '.dockerignore');
+  const packageJson = await readRequiredJson(repositoryRoot, 'package.json');
   assertDockerignoreContract(source, {
     requiredPatterns: [
       '.git',
@@ -856,6 +857,15 @@ test('application Docker context excludes secrets, ETL, artifacts, and history i
       'tests',
     ],
   });
+  assert.equal(
+    packageJson.dependencies?.['@vercel/speed-insights'],
+    undefined,
+    'self-hosted application runtime must not retain Vercel Speed Insights',
+  );
+  await assert.rejects(
+    lstat(path.join(repositoryRoot, 'public/vercel.svg')),
+    'self-hosted application public assets must not retain Vercel branding',
+  );
 });
 
 test('Next standalone output preserves five-second ISR on a read-only root', async () => {
