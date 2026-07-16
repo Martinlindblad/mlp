@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createContactHandler } from '../../../server/api/contact-handler';
+import {
+  ContactConflictError,
+  ContactUnavailableError,
+} from '../../../server/journal/contact-journal';
 import { createContactRepository } from '../../../server/repositories/contact-repository';
 import { config as contactRouteConfig } from '../../../src/pages/api/contact/route';
 import { createMockRequest, createMockResponse } from '../../helpers/next-api';
@@ -10,14 +14,15 @@ const valid = {
   subject: 'Hello',
   message: 'Test message',
 };
+const generatedKey = '71eb8a54-d43b-45d5-9ea7-77b5834eeed3';
+const validHeader = '81eb8a54-d43b-45d5-9ea7-77b5834eeed3';
 
 describe('contact handler', () => {
   it('preserves method, validation, success, and unavailable responses', async () => {
-    const insertContact = vi.fn().mockResolvedValue(undefined);
+    const acceptContact = vi.fn().mockResolvedValue(undefined);
     const handler = createContactHandler({
-      insertContact,
-      randomUUID: () => '71eb8a54-d43b-45d5-9ea7-77b5834eeed3',
-      now: () => new Date('2026-07-14T12:00:00.000Z'),
+      acceptContact,
+      randomUUID: () => generatedKey,
     });
 
     const method = createMockResponse();
@@ -26,6 +31,7 @@ describe('contact handler', () => {
       405,
       { errorMessage: 'Method Not Allowed' },
     ]);
+    expect(method.getHeader('Idempotency-Key')).toBeUndefined();
 
     const invalid = createMockResponse();
     await handler(
@@ -36,6 +42,8 @@ describe('contact handler', () => {
       400,
       { errorMessage: 'Missing fields', success: false },
     ]);
+    expect(invalid.getHeader('Idempotency-Key')).toBe(generatedKey);
+    expect(acceptContact).not.toHaveBeenCalled();
 
     const success = createMockResponse();
     await handler(createMockRequest({ method: 'POST', body: valid }), success);
@@ -43,13 +51,16 @@ describe('contact handler', () => {
       201,
       { successMessage: 'Message sent successfully', success: true },
     ]);
-    expect(insertContact).toHaveBeenCalledWith({
-      id: '71eb8a54-d43b-45d5-9ea7-77b5834eeed3',
-      ...valid,
-      createdAt: new Date('2026-07-14T12:00:00.000Z'),
-    });
+    expect(success.getHeader('Idempotency-Key')).toBe(generatedKey);
+    expect(acceptContact).toHaveBeenCalledWith(
+      {
+        id: generatedKey,
+        ...valid,
+      },
+      expect.any(AbortSignal),
+    );
 
-    insertContact.mockRejectedValueOnce(new Error('postgres host secret'));
+    acceptContact.mockRejectedValueOnce(new Error('postgres host secret'));
     const unavailable = createMockResponse();
     await handler(
       createMockRequest({ method: 'POST', body: valid }),
@@ -59,17 +70,126 @@ describe('contact handler', () => {
       503,
       { errorMessage: 'Unable to send message.', success: false },
     ]);
+    expect(unavailable.getHeader('Idempotency-Key')).toBe(generatedKey);
     expect(JSON.stringify(unavailable.payload)).not.toContain(
       'postgres host secret',
     );
   });
 
-  it('rejects unexpected or whitespace-only fields without persisting', async () => {
-    const insertContact = vi.fn().mockResolvedValue(undefined);
+  it('preserves one canonical idempotency header and passes normalized body', async () => {
+    const acceptContact = vi.fn().mockResolvedValue(undefined);
+    const randomUUID = vi.fn(() => generatedKey);
     const handler = createContactHandler({
-      insertContact,
-      randomUUID: () => 'unused',
-      now: () => new Date(0),
+      acceptContact,
+      randomUUID,
+    });
+
+    const response = createMockResponse();
+    await handler(
+      createMockRequest({
+        method: 'POST',
+        headers: { 'idempotency-key': validHeader },
+        body: {
+          fullName: ' Martin Lindblad ',
+          email: ' martin@example.com ',
+          subject: ' Hello ',
+          message: ' Test message ',
+        },
+      }),
+      response,
+    );
+
+    expect(response.statusCode).toBe(201);
+    expect(response.getHeader('Idempotency-Key')).toBe(validHeader);
+    expect(randomUUID).not.toHaveBeenCalled();
+    expect(acceptContact).toHaveBeenCalledWith(
+      {
+        id: validHeader,
+        fullName: 'Martin Lindblad',
+        email: 'martin@example.com',
+        subject: 'Hello',
+        message: 'Test message',
+      },
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('rejects malformed idempotency keys without journal access or response echo', async () => {
+    const acceptContact = vi.fn().mockResolvedValue(undefined);
+    const handler = createContactHandler({
+      acceptContact,
+      randomUUID: () => generatedKey,
+    });
+
+    for (const header of [
+      [validHeader],
+      `${validHeader},${validHeader}`,
+      ` ${validHeader} `,
+      validHeader.toUpperCase(),
+      '71eb8a54-d43b-55d5-9ea7-77b5834eeed3',
+      'not-a-uuid',
+    ]) {
+      const response = createMockResponse();
+      await handler(
+        createMockRequest({
+          method: 'POST',
+          headers: { 'idempotency-key': header },
+          body: valid,
+        }),
+        response,
+      );
+      expect([response.statusCode, response.payload]).toEqual([
+        400,
+        { errorMessage: 'Missing fields', success: false },
+      ]);
+      expect(response.getHeader('Idempotency-Key')).toBeUndefined();
+    }
+
+    expect(acceptContact).not.toHaveBeenCalled();
+  });
+
+  it('maps journal conflicts to 409 and unavailable paths to the exact 503 body', async () => {
+    const acceptContact = vi.fn().mockRejectedValueOnce(
+      new ContactConflictError(),
+    );
+    const handler = createContactHandler({
+      acceptContact,
+      randomUUID: () => generatedKey,
+    });
+
+    const conflict = createMockResponse();
+    await handler(createMockRequest({ method: 'POST', body: valid }), conflict);
+    expect([conflict.statusCode, conflict.payload]).toEqual([
+      409,
+      { errorMessage: 'Unable to send message.', success: false },
+    ]);
+    expect(conflict.getHeader('Idempotency-Key')).toBe(generatedKey);
+
+    for (const error of [
+      new ContactUnavailableError('intent_failure'),
+      new ContactUnavailableError('marker_failure'),
+      new Error('sentinel storage secret'),
+    ]) {
+      acceptContact.mockRejectedValueOnce(error);
+      const unavailable = createMockResponse();
+      await handler(
+        createMockRequest({ method: 'POST', body: valid }),
+        unavailable,
+      );
+      expect([unavailable.statusCode, unavailable.payload]).toEqual([
+        503,
+        { errorMessage: 'Unable to send message.', success: false },
+      ]);
+      expect(unavailable.getHeader('Idempotency-Key')).toBe(generatedKey);
+      expect(JSON.stringify(unavailable.payload)).not.toContain('sentinel');
+    }
+  });
+
+  it('rejects unexpected or whitespace-only fields without persisting', async () => {
+    const acceptContact = vi.fn().mockResolvedValue(undefined);
+    const handler = createContactHandler({
+      acceptContact,
+      randomUUID: () => generatedKey,
     });
 
     for (const body of [
@@ -82,9 +202,69 @@ describe('contact handler', () => {
         400,
         { errorMessage: 'Missing fields', success: false },
       ]);
+      expect(response.getHeader('Idempotency-Key')).toBe(generatedKey);
     }
 
-    expect(insertContact).not.toHaveBeenCalled();
+    expect(acceptContact).not.toHaveBeenCalled();
+  });
+
+  it('aborts journal work after 20 seconds and clears the timer', async () => {
+    vi.useFakeTimers();
+    try {
+      const acceptContact = vi.fn(
+        (_input: unknown, signal: AbortSignal) =>
+          new Promise<void>((_resolve, reject) => {
+            signal.addEventListener(
+              'abort',
+              () => reject(new Error('sentinel timeout secret')),
+              { once: true },
+            );
+          }),
+      );
+      const handler = createContactHandler({
+        acceptContact,
+        randomUUID: () => generatedKey,
+      });
+      const response = createMockResponse();
+      const pending = handler(
+        createMockRequest({ method: 'POST', body: valid }),
+        response,
+      );
+
+      const signal = acceptContact.mock.calls[0]?.[1] as AbortSignal;
+      expect(signal.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(20_000);
+      await pending;
+
+      expect(signal.aborted).toBe(true);
+      expect([response.statusCode, response.payload]).toEqual([
+        503,
+        { errorMessage: 'Unable to send message.', success: false },
+      ]);
+      expect(JSON.stringify(response.payload)).not.toContain('sentinel');
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the deadline timer after successful completion', async () => {
+    vi.useFakeTimers();
+    try {
+      const acceptContact = vi.fn().mockResolvedValue(undefined);
+      const handler = createContactHandler({
+        acceptContact,
+        randomUUID: () => generatedKey,
+      });
+      const response = createMockResponse();
+
+      await handler(createMockRequest({ method: 'POST', body: valid }), response);
+
+      expect(response.statusCode).toBe(201);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
