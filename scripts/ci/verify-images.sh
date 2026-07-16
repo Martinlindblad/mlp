@@ -2004,7 +2004,9 @@ grant connect on database :"database_name" to portfolio_migrator, portfolio_app,
 commit;
 ROLE_SQL
   then
-    fail 'PostgreSQL production role bootstrap failed'
+    printf '%s\n' "bootstrap diagnostics for $database_name" >&2
+    sed -n '1,160p' "$WORK_DIRECTORY/bootstrap-$database_name.txt" >&2 || :
+    fail "PostgreSQL production role bootstrap failed: $database_name"
   fi
 }
 

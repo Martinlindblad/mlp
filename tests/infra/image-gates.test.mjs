@@ -2068,6 +2068,16 @@ test('image gate uses the restricted migrator as owner and proves the production
     bootstrap,
     /alter database :"database_name" owner to portfolio_migrator/u,
   );
+  assert.match(
+    bootstrap,
+    /bootstrap-\$database_name\.txt/u,
+    'role bootstrap failures must surface bounded psql diagnostics',
+  );
+  assert.match(
+    bootstrap,
+    /PostgreSQL production role bootstrap failed: \$database_name/u,
+    'role bootstrap failures must identify the database being bootstrapped',
+  );
   assert.doesNotMatch(productionBootstrap, /alter schema public owner/iu);
   assert.doesNotMatch(bootstrap, /alter schema public owner/iu);
   assert.match(migrations, /--env PGUSER=portfolio_migrator/u);
