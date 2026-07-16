@@ -355,8 +355,8 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     },
     {
       from: 'ca-certificates',
-      source: '/etc/ssl/certs/ca-certificates.crt',
-      destination: '/etc/ssl/certs/ca-certificates.crt',
+      source: '/ca-runtime/',
+      destination: '/',
     },
     { from: 'builder', source: '/app/public', destination: './public' },
     {
@@ -437,8 +437,8 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   );
   assert.match(
     caCertificates.instructions.join('\n'),
-    /ca-certificates\.crt/u,
-    'operator CA stage must expose the reviewed CA bundle path',
+    /\/ca-runtime\/etc\/ssl\/certs\/ca-certificates\.crt/u,
+    'operator CA stage must expose the reviewed CA runtime tree',
   );
   assert.equal(
     dockerStages(source)
@@ -534,11 +534,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   const caCopy = copies.find(
     (instruction) =>
       instruction.includes('--from=ca-certificates') &&
-      instruction.includes('/etc/ssl/certs/ca-certificates.crt') &&
-      instruction.endsWith('/etc/ssl/certs/ca-certificates.crt'),
+      instruction.includes('/ca-runtime/') &&
+      instruction.endsWith('/'),
   );
-  assert.ok(caCopy, 'operator must copy a digest-pinned CA bundle');
-  assert.match(caCopy, /--chmod=0?444(?:\s|$)/u);
+  assert.ok(caCopy, 'operator must copy a digest-pinned CA runtime tree');
+  assert.match(caCopy, /--chmod=0?555(?:\s|$)/u);
   assert.doesNotMatch(
     finalSource,
     /(?:\.next|\/app\/src(?:\/|\s)|\/app\/tests(?:\/|\s)|\/app\/dist(?:\/|\s)|scripts\/db|server\/db\/(?:migrator|migrations))/iu,
