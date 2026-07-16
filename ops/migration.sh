@@ -225,6 +225,11 @@ reconcile_migration_secrets() {
     /etc/mlp/compose-secrets/postgres-migrator-password-migration-operator
 }
 
+pull_migration_image() {
+  /usr/bin/timeout --foreground --signal=TERM --kill-after=5s 600s \
+    /usr/bin/docker image pull "$CONFIG_MIGRATION_IMAGE" >/dev/null 2>&1
+}
+
 resolve_expected_migration_image() {
   local image_id
   if ! image_id=$(/usr/bin/timeout --foreground --signal=TERM --kill-after=5s 30s \
@@ -572,6 +577,10 @@ main() {
   }
   validate_migration_environment
   require_operation_database
+  pull_migration_image || {
+    printf '%s\n' 'migration image verification failed' >&2
+    return 70
+  }
   resolve_expected_migration_image || {
     printf '%s\n' 'migration image verification failed' >&2
     return 70

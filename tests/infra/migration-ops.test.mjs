@@ -394,6 +394,10 @@ test('migration wrapper has a fixed root-only allowlisted command surface', asyn
   );
   assert.match(source, /\{\{\.Config\.Image\}\}/u);
   assert.match(source, /\{\{\.Image\}\}/u);
+  assert.match(
+    source,
+    /\/usr\/bin\/timeout --foreground --signal=TERM --kill-after=5s 600s\s+\\\s+\/usr\/bin\/docker image pull "\$CONFIG_MIGRATION_IMAGE" >\/dev\/null 2>&1/u,
+  );
   assert.match(source, /\bimage inspect\b/u);
   assert.match(source, /\bcontainer wait\b/u);
   assert.match(source, /\bcontainer rm --force\b/u);
@@ -474,7 +478,11 @@ async function regularFile(pathname, source) {
   await chmod(pathname, 0o600);
 }
 
-async function makeHarness(database = 'portfolio', mongoDatabase = 'mlp_db') {
+async function makeHarness(
+  database = 'portfolio',
+  mongoDatabase = 'mlp_db',
+  image = migrationImage,
+) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'mlp-migration-ops-'));
   const fake = path.join(root, 'fake');
   const etc = path.join(root, 'etc-mlp');
@@ -585,8 +593,16 @@ async function makeHarness(database = 'portfolio', mongoDatabase = 'mlp_db') {
       '  printf "docker-compose-plugin-invoked\\n" >>"$TEST_TRACE"',
       '  exit 97',
       'fi',
+      'if [[ ${1:-} == image && ${2:-} == pull ]]; then',
+      '  printf "RAW_DOCKER_PULL_SECRET_SENTINEL\\n"',
+      '  printf "RAW_DOCKER_PULL_ERROR_SENTINEL\\n" >&2',
+      '  [[ ${TEST_IMAGE_PULL_FAILURE:-0} == 0 ]] || exit 71',
+      '  : >"$TEST_DOCKER_STATE/image-pulled"',
+      '  exit 0',
+      'fi',
       'if [[ ${1:-} == image && ${2:-} == inspect ]]; then',
       '  [[ ${TEST_IMAGE_INSPECT_FAILURE:-0} == 0 ]] || exit 71',
+      '  [[ ${TEST_IMAGE_COLD_CACHE:-0} == 0 || -f "$TEST_DOCKER_STATE/image-pulled" ]] || exit 71',
       '  printf "%s\\n" "${TEST_IMAGE_INSPECT_ID:-$TEST_EXPECTED_IMAGE_ID}"',
       '  exit 0',
       'fi',
@@ -741,7 +757,7 @@ async function makeHarness(database = 'portfolio', mongoDatabase = 'mlp_db') {
       'while [[ $# -gt 0 ]]; do',
       '  case "$1" in',
       '    --foreground|--signal=*|--kill-after=*) shift ;;',
-      '    30s|5m|2h) shift; break ;;',
+      '    30s|5m|600s|2h) shift; break ;;',
       '    *) exit 70 ;;',
       '  esac',
       'done',
@@ -752,7 +768,7 @@ async function makeHarness(database = 'portfolio', mongoDatabase = 'mlp_db') {
   await regularFile(
     path.join(envDir, 'migration.env'),
     [
-      `MIGRATION_IMAGE=${migrationImage}`,
+      `MIGRATION_IMAGE=${image}`,
       `MIGRATION_MONGO_DATABASE=${mongoDatabase}`,
       'MIGRATION_ARCHIVE_RECIPIENT=age19zc8msml70vjd7xagxgpudukh4w82u0mngguxvfh6s8v96aft4vqpqfy5j',
       'MIGRATION_PGHOST=postgres',
@@ -892,6 +908,95 @@ async function dockerContainerFiles(harness) {
     /^[0-9a-f]{64}$/u.test(entry),
   );
 }
+
+test('migration image verification pulls the exact digest before inspect and fails closed', async (t) => {
+  await t.test('cold cache', async () => {
+    const harness = await makeHarness();
+    try {
+      const result = runHarness(harness, ['export'], {
+        TEST_IMAGE_COLD_CACHE: '1',
+      });
+      const trace = await traceFor(harness);
+      assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+      const dockerLines = trace
+        .split('\n')
+        .filter((line) => line.startsWith('docker:'));
+      const pullLines = dockerLines.filter((line) =>
+        line.includes(`image pull ${migrationImage} `),
+      );
+      assert.equal(pullLines.length, 1, trace);
+      assert.match(
+        pullLines[0],
+        new RegExp(
+          `^docker:home=${harness.etc}:config=${path.join(
+            harness.etc,
+            'docker-client',
+          )}:host=unix:\\/\\/\\/run\\/docker\\.sock:mongo=:pg=:`,
+          'u',
+        ),
+      );
+      const pullIndex = trace.indexOf(`image pull ${migrationImage}`);
+      const inspectIndex = trace.indexOf(
+        `image inspect --format {{.Id}} ${migrationImage}`,
+      );
+      assert.ok(pullIndex >= 0 && pullIndex < inspectIndex, trace);
+      assert.match(
+        trace,
+        new RegExp(
+          `timeout:--foreground --signal=TERM --kill-after=5s 600s [^\\n]+ image pull ${migrationImage}`,
+          'u',
+        ),
+      );
+      assert.doesNotMatch(
+        `${result.stdout}${result.stderr}`,
+        /RAW_DOCKER_PULL_(?:SECRET|ERROR)_SENTINEL/u,
+      );
+    } finally {
+      await rm(harness.root, { force: true, recursive: true });
+    }
+  });
+
+  await t.test('pull failure', async () => {
+    const harness = await makeHarness();
+    try {
+      const result = runHarness(harness, ['preload'], {
+        TEST_IMAGE_PULL_FAILURE: '1',
+      });
+      const trace = await traceFor(harness);
+      assert.equal(result.status, 70, `${result.stdout}${result.stderr}`);
+      assert.equal(result.stdout, '');
+      assert.equal(result.stderr, 'migration image verification failed\n');
+      assert.match(trace, new RegExp(`image pull ${migrationImage}`, 'u'));
+      assert.doesNotMatch(
+        trace,
+        /image inspect|container ls|staged:|backup:|contact:|^compose:/mu,
+      );
+      assert.doesNotMatch(
+        `${result.stdout}${result.stderr}`,
+        /RAW_DOCKER_PULL_(?:SECRET|ERROR)_SENTINEL/u,
+      );
+      assert.deepEqual(await readdir(harness.composeSecrets), []);
+    } finally {
+      await rm(harness.root, { force: true, recursive: true });
+    }
+  });
+
+  await t.test('mutable or malformed reference', async () => {
+    for (const imageReference of [
+      'ghcr.io/martinlindblad/mlp-migration:latest',
+      `ghcr.io/martinlindblad/mlp-migration@sha256:${'g'.repeat(64)}`,
+    ]) {
+      const harness = await makeHarness('portfolio', 'mlp_db', imageReference);
+      try {
+        const result = runHarness(harness, ['export']);
+        assert.equal(result.status, 78, imageReference);
+        assert.doesNotMatch(await traceFor(harness), /image (?:pull|inspect)/u);
+      } finally {
+        await rm(harness.root, { force: true, recursive: true });
+      }
+    }
+  });
+});
 
 test('migration wrapper isolates runtime secrets and orders backup before mutations', async (t) => {
   const cases = [

@@ -527,6 +527,8 @@ install -o root -g root -m 0755 \
   "$repository_root/ops/contact-mode.sh" /usr/local/sbin/mlp-contact-mode
 install -o root -g root -m 0755 \
   "$repository_root/ops/status.sh" /usr/local/sbin/mlp-status
+install -o root -g root -m 0755 \
+  "$repository_root/ops/migration.sh" /usr/local/sbin/mlp-migration
 
 install -d -o root -g root -m 0755 /etc/tmpfiles.d
 install -o root -g root -m 0644 \

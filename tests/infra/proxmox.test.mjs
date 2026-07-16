@@ -1115,6 +1115,7 @@ test('bootstrap installs pinned root-owned runtime and stages a checked firewall
     ['ops/deploy.sh', '/usr/local/sbin/mlp-deploy'],
     ['ops/contact-mode.sh', '/usr/local/sbin/mlp-contact-mode'],
     ['ops/status.sh', '/usr/local/sbin/mlp-status'],
+    ['ops/migration.sh', '/usr/local/sbin/mlp-migration'],
   ]) {
     assert.match(
       trace,

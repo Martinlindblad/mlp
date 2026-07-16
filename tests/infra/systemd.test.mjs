@@ -32,6 +32,7 @@ function words(value) {
 const serviceContracts = {
   'mlp-db-backup.service': {
     command: '/usr/local/sbin/mlp-backup',
+    timeoutStart: '1h',
     requiresDocker: true,
     readOnly: ['/opt/mlp', '/etc/mlp'],
     readWrite: [
@@ -43,6 +44,7 @@ const serviceContracts = {
   },
   'mlp-db-restore-test.service': {
     command: '/usr/local/sbin/mlp-restore-test',
+    timeoutStart: '2h',
     requiresDocker: true,
     readOnly: ['/opt/mlp', '/etc/mlp', '/var/lib/mlp/backup-reports'],
     readWrite: [
@@ -55,6 +57,7 @@ const serviceContracts = {
   },
   'mlp-platform-health.service': {
     command: '/usr/local/sbin/mlp-status',
+    timeoutStart: '90s',
     requiresDocker: false,
     readOnly: [],
     readWrite: [
@@ -87,9 +90,9 @@ test('operations services run fixed root commands inside narrow sandboxes', asyn
     assert.equal(oneDirective(source, 'Group'), 'root', name);
     assert.equal(oneDirective(source, 'UMask'), '0077', name);
     assert.equal(oneDirective(source, 'ExecStart'), contract.command, name);
-    assert.match(
+    assert.equal(
       oneDirective(source, 'TimeoutStartSec'),
-      /^(?:[1-9]\d*)(?:s|m|h)$/u,
+      contract.timeoutStart,
       name,
     );
 
