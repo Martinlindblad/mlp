@@ -278,6 +278,9 @@ describe('canonical public adapters', () => {
           subject: 'Hello',
           message: 'Message',
           created_at: new Date('2024-02-03T04:05:06.789Z'),
+          journal_schema: null,
+          journal_key_id: null,
+          journal_mac: null,
         }),
       ],
     ];

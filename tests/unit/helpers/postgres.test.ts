@@ -5,7 +5,8 @@ const doubles = vi.hoisted(() => ({
   query: vi.fn(),
   end: vi.fn(),
   destroy: vi.fn(),
-  createDatabase: vi.fn(),
+  createDatabasePool: vi.fn(),
+  createDatabaseWithPool: vi.fn(),
 }));
 
 vi.mock('pg', () => ({
@@ -19,7 +20,8 @@ vi.mock('pg', () => ({
 }));
 
 vi.mock('../../../server/db/client', () => ({
-  createDatabase: doubles.createDatabase,
+  createDatabasePool: doubles.createDatabasePool,
+  createDatabaseWithPool: doubles.createDatabaseWithPool,
 }));
 
 import { createIsolatedDatabase } from '../../helpers/postgres';
@@ -34,7 +36,8 @@ describe('isolated PostgreSQL cleanup', () => {
     doubles.query.mockResolvedValue({ rows: [] });
     doubles.end.mockResolvedValue(undefined);
     doubles.destroy.mockResolvedValue(undefined);
-    doubles.createDatabase.mockReturnValue({ destroy: doubles.destroy });
+    doubles.createDatabasePool.mockReturnValue({});
+    doubles.createDatabaseWithPool.mockReturnValue({ destroy: doubles.destroy });
   });
 
   afterAll(() => {
@@ -48,7 +51,7 @@ describe('isolated PostgreSQL cleanup', () => {
   it('preserves a startup error while attempting every cleanup step', async () => {
     const startupError = new Error('startup failed');
     const cleanupError = new Error('database cleanup failed');
-    doubles.createDatabase.mockImplementationOnce(() => {
+    doubles.createDatabasePool.mockImplementationOnce(() => {
       throw startupError;
     });
     doubles.query

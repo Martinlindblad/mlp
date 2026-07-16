@@ -52,7 +52,25 @@ describe('database migrations', () => {
     const migrations = await sql<{ name: string }>`
       select name from kysely_migration order by timestamp desc limit 1
     `.execute(isolated.db);
-    expect(migrations.rows[0]?.name).toBe('002_runtime_grants');
+    expect(migrations.rows[0]?.name).toBe('003_contact_journal');
+
+    const journalColumns = await sql<{
+      column_name: string;
+      data_type: string;
+      is_nullable: 'YES' | 'NO';
+    }>`
+      select column_name, data_type, is_nullable
+      from information_schema.columns
+      where table_schema = 'public'
+      and table_name = 'contact_messages'
+      and column_name in ('journal_schema', 'journal_key_id', 'journal_mac')
+      order by column_name
+    `.execute(isolated.db);
+    expect(journalColumns.rows).toEqual([
+      { column_name: 'journal_key_id', data_type: 'text', is_nullable: 'YES' },
+      { column_name: 'journal_mac', data_type: 'text', is_nullable: 'YES' },
+      { column_name: 'journal_schema', data_type: 'text', is_nullable: 'YES' },
+    ]);
   });
 
   it('enforces complete runtime and backup privilege matrices', async () => {
@@ -152,12 +170,123 @@ describe('database migrations', () => {
           can_select: isApplication
             ? contentTableSet.has(tableName) || tableName === 'kysely_migration'
             : true,
-          can_insert: isApplication && tableName === 'contact_messages',
+          can_insert: false,
           can_update: false,
           can_delete: false,
         });
       }
     }
+  });
+
+  it('hardens the journal contact function and contact table privileges', async () => {
+    await migrateToLatest(isolated.db);
+
+    const constraints = await sql<{ conname: string; definition: string }>`
+      select conname, pg_get_constraintdef(oid) as definition
+      from pg_constraint
+      where conrelid = 'public.contact_messages'::regclass
+      and conname in (
+        'contact_messages_journal_all_or_none_chk',
+        'contact_messages_journal_schema_chk',
+        'contact_messages_journal_key_id_chk',
+        'contact_messages_journal_mac_chk'
+      )
+      order by conname
+    `.execute(isolated.db);
+    expect(constraints.rows.map((row) => row.conname)).toEqual([
+      'contact_messages_journal_all_or_none_chk',
+      'contact_messages_journal_key_id_chk',
+      'contact_messages_journal_mac_chk',
+      'contact_messages_journal_schema_chk',
+    ]);
+    expect(constraints.rows.map((row) => row.definition).join('\n')).toContain(
+      'mlp.contact.v1',
+    );
+    expect(constraints.rows.map((row) => row.definition).join('\n')).toContain(
+      '^[a-z0-9][a-z0-9._-]{0,31}$',
+    );
+    expect(constraints.rows.map((row) => row.definition).join('\n')).toContain(
+      '^[A-Za-z0-9_-]{43}$',
+    );
+
+    const functionAcl = await sql<{
+      security_definer: boolean;
+      owner: string;
+      search_path: string[];
+      public_execute: boolean;
+      app_execute: boolean;
+      owner_execute: boolean;
+    }>`
+      select
+        p.prosecdef as security_definer,
+        r.rolname as owner,
+        p.proconfig as search_path,
+        has_function_privilege('public', p.oid, 'execute') as public_execute,
+        has_function_privilege('portfolio_app', p.oid, 'execute') as app_execute,
+        has_function_privilege('portfolio_migrator', p.oid, 'execute') as owner_execute
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      join pg_roles r on r.oid = p.proowner
+      where n.nspname = 'public'
+      and p.proname = 'ensure_journal_contact'
+    `.execute(isolated.db);
+    expect(functionAcl.rows[0]).toEqual({
+      security_definer: true,
+      owner: 'portfolio_migrator',
+      search_path: ['search_path=pg_catalog'],
+      public_execute: false,
+      app_execute: true,
+      owner_execute: true,
+    });
+
+    await isolated.db.connection().execute(async (connection) => {
+      await sql`set role portfolio_app`.execute(connection);
+      await expect(
+        sql`select * from public.contact_messages`.execute(connection),
+      ).rejects.toThrow();
+      await expect(
+        sql`insert into public.contact_messages (id, full_name, email, subject, message, created_at)
+            values ('71eb8a54-d43b-45d5-9ea7-77b5834eeed3', 'Martin', 'martin@example.com', 'Hello', 'Message', now())`.execute(
+          connection,
+        ),
+      ).rejects.toThrow();
+      await expect(
+        sql`update public.contact_messages set subject = 'Nope'`.execute(
+          connection,
+        ),
+      ).rejects.toThrow();
+      await expect(
+        sql`delete from public.contact_messages`.execute(connection),
+      ).rejects.toThrow();
+      await expect(
+        sql`select public.ensure_journal_contact(
+          '71eb8a54-d43b-45d5-9ea7-77b5834eeed3'::uuid,
+          'Martin', 'martin@example.com', 'Hello', 'Message',
+          '2026-07-16T12:00:00.123Z'::timestamptz,
+          'mlp.contact.v1', 'journal-2026-01',
+          'ERERERERERERERERERERERERERERERERERERERERERE'
+        ) as outcome`.execute(connection),
+      ).resolves.toMatchObject({ rows: [{ outcome: 'inserted' }] });
+      await sql`reset role`.execute(connection);
+    });
+
+    await isolated.db.connection().execute(async (connection) => {
+      await sql`set role portfolio_backup`.execute(connection);
+      await expect(
+        sql`select id, journal_schema, journal_key_id, journal_mac
+            from public.contact_messages`.execute(connection),
+      ).resolves.toMatchObject({
+        rows: [
+          {
+            id: '71eb8a54-d43b-45d5-9ea7-77b5834eeed3',
+            journal_schema: 'mlp.contact.v1',
+            journal_key_id: 'journal-2026-01',
+            journal_mac: 'ERERERERERERERERERERERERERERERERERERERERERE',
+          },
+        ],
+      });
+      await sql`reset role`.execute(connection);
+    });
   });
 
   it('matches nullable legacy read fields and the required occupation title', async () => {

@@ -1,7 +1,5 @@
-import type { Kysely } from 'kysely';
 import { describe, expect, it, vi } from 'vitest';
 import { createContactHandler } from '../../../server/api/contact-handler';
-import type { Database } from '../../../server/db/database.types';
 import { createContactRepository } from '../../../server/repositories/contact-repository';
 import { config as contactRouteConfig } from '../../../src/pages/api/contact/route';
 import { createMockRequest, createMockResponse } from '../../helpers/next-api';
@@ -91,31 +89,46 @@ describe('contact handler', () => {
 });
 
 describe('contact repository', () => {
-  it('maps a contact message to the PostgreSQL columns', async () => {
-    const executeTakeFirstOrThrow = vi.fn().mockResolvedValue(undefined);
-    const values = vi.fn(() => ({ executeTakeFirstOrThrow }));
-    const insertInto = vi.fn(() => ({ values }));
-    const repository = createContactRepository({
-      insertInto,
-    } as unknown as Kysely<Database>);
+  it('calls the journal function with parameterized SQL', async () => {
+    const release = vi.fn();
+    const query = vi.fn().mockResolvedValue({ rows: [{ outcome: 'inserted' }] });
+    const connect = vi.fn(
+      (
+        callback: (
+          error: Error | undefined,
+          client: { query: typeof query; release: typeof release },
+        ) => void,
+      ) => callback(undefined, { query, release }),
+    );
+    const repository = createContactRepository({ connect } as never);
     const message = {
       id: '71eb8a54-d43b-45d5-9ea7-77b5834eeed3',
       ...valid,
       createdAt: new Date('2026-07-14T12:00:00.000Z'),
+      journalSchema: 'mlp.contact.v1' as const,
+      journalKeyId: 'journal-2026-01',
+      journalMac: 'ERERERERERERERERERERERERERERERERERERERERERE',
     };
 
-    await repository.insertContact(message);
+    await expect(
+      repository.ensureJournalContact(message, new AbortController().signal),
+    ).resolves.toBe('inserted');
 
-    expect(insertInto).toHaveBeenCalledWith('contact_messages');
-    expect(values).toHaveBeenCalledWith({
-      id: message.id,
-      full_name: message.fullName,
-      email: message.email,
-      subject: message.subject,
-      message: message.message,
-      created_at: message.createdAt,
+    expect(query).toHaveBeenCalledWith({
+      text: expect.stringContaining('ensure_journal_contact'),
+      values: [
+        message.id,
+        message.fullName,
+        message.email,
+        message.subject,
+        message.message,
+        message.createdAt,
+        message.journalSchema,
+        message.journalKeyId,
+        message.journalMac,
+      ],
     });
-    expect(executeTakeFirstOrThrow).toHaveBeenCalledOnce();
+    expect(release).toHaveBeenCalledOnce();
   });
 });
 

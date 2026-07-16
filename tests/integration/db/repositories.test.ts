@@ -1,6 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { sql } from 'kysely';
 import { READ_LIMITS } from '../../../server/api/contracts';
 import { migrateToLatest } from '../../../server/db/migrator';
+import { createContactRepository } from '../../../server/repositories/contact-repository';
 import {
   createContentRepository,
   type ContentRepository,
@@ -10,6 +12,20 @@ import {
   type ProjectRepository,
 } from '../../../server/repositories/project-repository';
 import { createIsolatedDatabase } from '../../helpers/postgres';
+
+const journalInput = {
+  id: '71eb8a54-d43b-45d5-9ea7-77b5834eeed3',
+  fullName: 'Martin Lindblad',
+  email: 'martin@example.com',
+  subject: 'Hello',
+  message: 'Message',
+  createdAt: new Date('2026-07-16T12:00:00.123Z'),
+  journalSchema: 'mlp.contact.v1' as const,
+  journalKeyId: 'journal-2026-01',
+  journalMac: 'ERERERERERERERERERERERERERERERERERERERERERE',
+};
+
+const repositoryErrorMessage = 'contact persistence unavailable';
 
 function legacyId(value: number): string {
   return value.toString(16).padStart(24, '0');
@@ -252,4 +268,177 @@ describe('PostgreSQL content repositories', () => {
     expect(outsideListId).toHaveLength(24);
     expect((await projects.findById(outsideListId))?.id).toBe(outsideListId);
   });
+});
+
+describe('PostgreSQL contact journal repository', () => {
+  const isolated = createIsolatedDatabase();
+
+  beforeAll(async () => {
+    await isolated.start();
+    await migrateToLatest(isolated.db);
+  });
+
+  afterAll(async () => isolated.stop(), 20_000);
+
+  it('returns inserted for first write and matched for exact retry', async () => {
+    const repository = createContactRepository(isolated.pool);
+
+    await expect(
+      repository.ensureJournalContact(
+        journalInput,
+        new AbortController().signal,
+      ),
+    ).resolves.toBe('inserted');
+    await expect(
+      repository.ensureJournalContact(
+        journalInput,
+        new AbortController().signal,
+      ),
+    ).resolves.toBe('matched');
+  });
+
+  it('uses parameterized SQL and maps unknown outcomes without leaking values', async () => {
+    const release = vi.fn();
+    const query = vi.fn().mockResolvedValue({
+      rows: [{ outcome: 'secret unexpected outcome' }],
+    });
+    const connect = vi.fn(
+      (
+        callback: (
+          error: Error | undefined,
+          client: { query: typeof query; release: typeof release },
+        ) => void,
+      ) => callback(undefined, { query, release }),
+    );
+    const repository = createContactRepository({ connect } as never);
+
+    await expect(
+      repository.ensureJournalContact(
+        {
+          ...journalInput,
+          id: '72eb8a54-d43b-45d5-9ea7-77b5834eeed3',
+          message: 'sentinel-message-secret',
+        },
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow(repositoryErrorMessage);
+
+    expect(query).toHaveBeenCalledWith({
+      text: expect.stringContaining('$1'),
+      values: [
+        '72eb8a54-d43b-45d5-9ea7-77b5834eeed3',
+        journalInput.fullName,
+        journalInput.email,
+        journalInput.subject,
+        'sentinel-message-secret',
+        journalInput.createdAt,
+        journalInput.journalSchema,
+        journalInput.journalKeyId,
+        journalInput.journalMac,
+      ],
+    });
+    expect(query.mock.calls[0]?.[0].text).not.toContain(
+      'sentinel-message-secret',
+    );
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('rejects already-aborted requests without acquiring a client', async () => {
+    const connect = vi.fn();
+    const repository = createContactRepository({ connect } as never);
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      repository.ensureJournalContact(journalInput, controller.signal),
+    ).rejects.toThrow(repositoryErrorMessage);
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it('destroys a queued client when abort wins acquisition', async () => {
+    const release = vi.fn();
+    let deliver:
+      | ((error: Error | undefined, client: { release: typeof release }) => void)
+      | undefined;
+    const connect = vi.fn(
+      (
+        callback: (
+          error: Error | undefined,
+          client: { release: typeof release },
+        ) => void,
+      ) => {
+        deliver = callback;
+      },
+    );
+    const repository = createContactRepository({ connect } as never);
+    const controller = new AbortController();
+
+    const promise = repository.ensureJournalContact(
+      {
+        ...journalInput,
+        id: '73eb8a54-d43b-45d5-9ea7-77b5834eeed3',
+      },
+      controller.signal,
+    );
+    controller.abort();
+    await expect(promise).rejects.toThrow(repositoryErrorMessage);
+
+    deliver?.(undefined, { release });
+    expect(release).toHaveBeenCalledWith(true);
+  });
+
+  it('destroys the dedicated client when an in-flight query is aborted', async () => {
+    const locked = {
+      ...journalInput,
+      id: '74eb8a54-d43b-45d5-9ea7-77b5834eeed3',
+    };
+    const repository = createContactRepository(isolated.pool);
+    await repository.ensureJournalContact(locked, new AbortController().signal);
+
+    const lockClient = await isolated.pool.connect();
+    try {
+      await lockClient.query('begin');
+      await lockClient.query(
+        'select * from public.contact_messages where id = $1 for update',
+        [locked.id],
+      );
+
+      const controller = new AbortController();
+      const promise = repository.ensureJournalContact(locked, controller.signal);
+      setTimeout(() => controller.abort(), 100);
+
+      await expect(promise).rejects.toThrow(repositoryErrorMessage);
+      await expectNoActiveEnsureJournalContactQuery();
+    } finally {
+      await lockClient.query('rollback').catch(() => undefined);
+      lockClient.release();
+    }
+
+    const count = await isolated.db
+      .selectFrom('contact_messages')
+      .select((eb) => eb.fn.countAll<string>().as('count'))
+      .where('id', '=', locked.id)
+      .executeTakeFirstOrThrow();
+    expect(count.count).toBe('1');
+  }, 10_000);
+
+  async function expectNoActiveEnsureJournalContactQuery(): Promise<void> {
+    const deadline = Date.now() + 2_000;
+    for (;;) {
+      const result = await sql<{ count: number }>`
+        select count(*)::int as count
+        from pg_stat_activity
+        where datname = current_database()
+        and pid <> pg_backend_pid()
+        and state = 'active'
+        and query like '%ensure_journal_contact%'
+      `.execute(isolated.db);
+      if (result.rows[0]?.count === 0) return;
+      if (Date.now() >= deadline) {
+        expect(result.rows[0]?.count).toBe(0);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
 });

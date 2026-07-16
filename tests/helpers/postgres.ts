@@ -1,13 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { Kysely } from 'kysely';
-import { Client } from 'pg';
-import { createDatabase } from '../../server/db/client';
+import { Client, type Pool } from 'pg';
+import {
+  createDatabasePool,
+  createDatabaseWithPool,
+} from '../../server/db/client';
 import type { Database } from '../../server/db/database.types';
 
 const localHosts = new Set(['127.0.0.1', 'localhost', 'postgres']);
 
 interface IsolatedDatabase {
   readonly db: Kysely<Database>;
+  readonly pool: Pool;
   start(): Promise<void>;
   stop(): Promise<void>;
 }
@@ -44,6 +48,7 @@ export function createIsolatedDatabase(): IsolatedDatabase {
     '',
   )}`;
   const quotedDatabaseName = `"${databaseName}"`;
+  const migratorPassword = 'portfolio_migrator_test_password';
   const maintenance = new Client({
     host: url.hostname,
     port,
@@ -53,6 +58,7 @@ export function createIsolatedDatabase(): IsolatedDatabase {
   });
 
   let db: Kysely<Database> | undefined;
+  let pool: Pool | undefined;
   let maintenanceConnected = false;
   let databaseCreated = false;
 
@@ -93,6 +99,7 @@ export function createIsolatedDatabase(): IsolatedDatabase {
     if (db) {
       const activeDatabase = db;
       db = undefined;
+      pool = undefined;
       try {
         await activeDatabase.destroy();
       } catch (error) {
@@ -125,6 +132,11 @@ export function createIsolatedDatabase(): IsolatedDatabase {
       return db;
     },
 
+    get pool(): Pool {
+      if (!pool) throw new Error('Isolated PostgreSQL database has not started');
+      return pool;
+    },
+
     async start(): Promise<void> {
       await maintenance.connect();
       maintenanceConnected = true;
@@ -132,26 +144,37 @@ export function createIsolatedDatabase(): IsolatedDatabase {
         await maintenance.query(`
           do $$
           begin
+            if not exists (select 1 from pg_roles where rolname = 'portfolio_migrator') then
+              create role portfolio_migrator login password '${migratorPassword}';
+            else
+              alter role portfolio_migrator with login password '${migratorPassword}';
+            end if;
             if not exists (select 1 from pg_roles where rolname = 'portfolio_app') then
               create role portfolio_app;
             end if;
             if not exists (select 1 from pg_roles where rolname = 'portfolio_backup') then
               create role portfolio_backup;
             end if;
+            grant portfolio_app to portfolio_migrator;
+            grant portfolio_backup to portfolio_migrator;
           end
           $$;
         `);
-        await maintenance.query(`create database ${quotedDatabaseName}`);
+        await maintenance.query(
+          `create database ${quotedDatabaseName} owner portfolio_migrator`,
+        );
         databaseCreated = true;
-        db = createDatabase({
+        pool = createDatabasePool({
           host: url.hostname,
           port,
           database: databaseName,
-          user,
-          password,
-          maxConnections: 2,
+          user: 'portfolio_migrator',
+          password: migratorPassword,
+          maxConnections: 5,
           connectionTimeoutMillis: 5_000,
+          statementTimeoutMillis: 60_000,
         });
+        db = createDatabaseWithPool(pool);
       } catch (error) {
         await cleanup(error, true);
         throw error;

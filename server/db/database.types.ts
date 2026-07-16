@@ -86,6 +86,9 @@ export interface ContactMessagesTable {
   subject: string;
   message: string;
   created_at: ColumnType<Date, Date | string, never>;
+  journal_schema: ColumnType<string | null, string | null | undefined, never>;
+  journal_key_id: ColumnType<string | null, string | null | undefined, never>;
+  journal_mac: ColumnType<string | null, string | null | undefined, never>;
 }
 
 export interface Database {

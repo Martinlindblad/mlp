@@ -8,6 +8,7 @@ export interface DatabaseConfig {
   password: string;
   maxConnections: number;
   connectionTimeoutMillis: number;
+  statementTimeoutMillis: number;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -48,6 +49,12 @@ export function loadDatabaseConfig(env: NodeJS.ProcessEnv): DatabaseConfig {
       env,
       'PGCONNECT_TIMEOUT_MS',
       '5000',
+    ),
+    statementTimeoutMillis: positiveInteger(
+      env,
+      'PGSTATEMENT_TIMEOUT_MS',
+      '5000',
+      60_000,
     ),
   };
 }

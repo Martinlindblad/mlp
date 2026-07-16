@@ -38,6 +38,7 @@ describe('database configuration', () => {
       password: 'file-secret',
       maxConnections: 5,
       connectionTimeoutMillis: 5000,
+      statementTimeoutMillis: 5000,
     });
 
     expect(
@@ -46,12 +47,14 @@ describe('database configuration', () => {
           PGPORT: ' 65535 ',
           PGPOOL_MAX: ' 12 ',
           PGCONNECT_TIMEOUT_MS: ' 7500 ',
+          PGSTATEMENT_TIMEOUT_MS: ' 60000 ',
         }),
       ),
     ).toMatchObject({
       port: 65535,
       maxConnections: 12,
       connectionTimeoutMillis: 7500,
+      statementTimeoutMillis: 60000,
     });
   });
 
@@ -66,6 +69,10 @@ describe('database configuration', () => {
     ['PGCONNECT_TIMEOUT_MS', '0'],
     ['PGCONNECT_TIMEOUT_MS', 'Infinity'],
     ['PGCONNECT_TIMEOUT_MS', '1.5'],
+    ['PGSTATEMENT_TIMEOUT_MS', '0'],
+    ['PGSTATEMENT_TIMEOUT_MS', 'Infinity'],
+    ['PGSTATEMENT_TIMEOUT_MS', '1.5'],
+    ['PGSTATEMENT_TIMEOUT_MS', '60001'],
   ])('rejects invalid %s without exposing its value', (setting, value) => {
     expect(() => loadDatabaseConfig(validEnv({ [setting]: value }))).toThrow(
       new Error(`Invalid database setting: ${setting}`),
