@@ -1,10 +1,4 @@
-import type {
-  CompiledQuery,
-  DatabaseConnection,
-  Driver,
-  Kysely,
-  QueryResult,
-} from 'kysely';
+import type { CompiledQuery, DatabaseConnection, Driver, Kysely } from 'kysely';
 import {
   PostgresAdapter,
   PostgresIntrospector,
@@ -23,13 +17,29 @@ vi.mock('../../../server/db/client', () => ({ getDatabase: vi.fn() }));
 
 const REQUIRED_MIGRATION = '002_runtime_grants';
 
-type QueryHandler = (
-  query: CompiledQuery,
-) => Promise<QueryResult<Record<string, unknown>>>;
-
-function createTestDatabase(handler: QueryHandler): Kysely<Database> {
+function createReadinessDatabase(options?: {
+  ping?: () => Promise<void>;
+  migration?: () => Promise<string | undefined>;
+  cancel?: () => Promise<void>;
+}) {
+  const ping = options?.ping ?? (() => Promise.resolve());
+  const migration =
+    options?.migration ?? (() => Promise.resolve(REQUIRED_MIGRATION));
+  const statements: string[] = [];
   const connection = {
-    executeQuery: handler,
+    executeQuery: async (query: CompiledQuery) => {
+      statements.push(query.sql);
+      if (query.sql === 'select 1') {
+        await ping();
+        return { rows: [] };
+      }
+      if (query.sql.includes('from "kysely_migration"')) {
+        const name = await migration();
+        return { rows: name === undefined ? [] : [{ name }] };
+      }
+      throw new Error(`Unexpected SQL: ${query.sql}`);
+    },
+    cancelQuery: options?.cancel ?? (() => Promise.resolve()),
     async *streamQuery() {
       // Readiness never streams queries.
     },
@@ -57,36 +67,13 @@ function createTestDatabase(handler: QueryHandler): Kysely<Database> {
       return undefined;
     },
   } as Driver;
-
-  return new KyselyDatabase<Database>({
+  const database = new KyselyDatabase<Database>({
     dialect: {
       createAdapter: () => new PostgresAdapter(),
       createDriver: () => driver,
       createIntrospector: (db) => new PostgresIntrospector(db),
       createQueryCompiler: () => new PostgresQueryCompiler(),
     },
-  });
-}
-
-function createReadinessDatabase(options?: {
-  ping?: () => Promise<void>;
-  migration?: () => Promise<string | undefined>;
-}) {
-  const ping = options?.ping ?? (() => Promise.resolve());
-  const migration =
-    options?.migration ?? (() => Promise.resolve(REQUIRED_MIGRATION));
-  const statements: string[] = [];
-  const database = createTestDatabase(async (query) => {
-    statements.push(query.sql);
-    if (query.sql === 'select 1') {
-      await ping();
-      return { rows: [] };
-    }
-    if (query.sql.includes('from "kysely_migration"')) {
-      const name = await migration();
-      return { rows: name === undefined ? [] : [{ name }] };
-    }
-    throw new Error(`Unexpected SQL: ${query.sql}`);
   });
 
   return { database, statements };
@@ -165,6 +152,49 @@ describe('readiness check', () => {
     await vi.advanceTimersByTimeAsync(1);
 
     await expect(readiness).resolves.toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('cancels an in-flight database query when the deadline expires', async () => {
+    vi.useFakeTimers();
+    let releasePing: (() => void) | undefined;
+    const cancel = vi.fn(async () => releasePing?.());
+    const { database } = createReadinessDatabase({
+      ping: () =>
+        new Promise<void>((resolve) => {
+          releasePing = resolve;
+        }),
+      cancel,
+    });
+
+    const readiness = checkReadiness(database, REQUIRED_MIGRATION);
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    await expect(readiness).resolves.toBe(false);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('coalesces concurrent checks for the same database and contract', async () => {
+    vi.useFakeTimers();
+    const releasePings: Array<() => void> = [];
+    const { database, statements } = createReadinessDatabase({
+      ping: () =>
+        new Promise<void>((resolve) => {
+          releasePings.push(resolve);
+        }),
+    });
+
+    const first = checkReadiness(database, REQUIRED_MIGRATION);
+    const second = checkReadiness(database, REQUIRED_MIGRATION);
+    await vi.advanceTimersByTimeAsync(0);
+    for (const releasePing of releasePings) releasePing();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
+    expect(statements).toEqual([
+      'select 1',
+      'select "name" from "kysely_migration" where "name" = $1',
+    ]);
     expect(vi.getTimerCount()).toBe(0);
   });
 });
