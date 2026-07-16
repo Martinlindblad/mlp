@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-16
 
-**Status:** Architecture approved; written specification pending user review
+**Status:** Approved for implementation on 2026-07-16
 
 **Project:** `mlp` / `martin-lindblad.com`
 
