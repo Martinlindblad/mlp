@@ -1,5 +1,9 @@
 import { motion } from 'framer-motion';
 import React from 'react';
+import {
+  selectAttempt,
+  type PendingContactAttempt,
+} from '../contact/idempotency';
 
 const ContactFormMessage = ({
   message,
@@ -36,25 +40,41 @@ const Form = () => {
   const [message, setMessage] = React.useState('');
   const [fullName, setFullName] = React.useState('');
   const [successful, setSuccessful] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [pendingAttempt, setPendingAttempt] =
+    React.useState<PendingContactAttempt | null>(null);
+  const submittingRef = React.useRef(false);
 
   const [responeMessage, setResponseMessage] = React.useState('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submittingRef.current) {
+      return;
+    }
+
+    submittingRef.current = true;
+    setSubmitting(true);
     let wasSuccessful = false;
+    const values = {
+      fullName,
+      email,
+      subject,
+      message,
+    };
 
     try {
+      const attempt = selectAttempt(pendingAttempt, values, () =>
+        crypto.randomUUID(),
+      );
+      setPendingAttempt(attempt);
       const res = await fetch('/api/contact/route', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Idempotency-Key': attempt.key,
         },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim(),
-          subject: subject.trim(),
-          message: message.trim(),
-        }),
+        body: attempt.canonicalPayload,
       });
 
       const data = await res.json();
@@ -76,18 +96,20 @@ const Form = () => {
           setEmail('');
           setSubject('');
           setMessage('');
+          setPendingAttempt(null);
         } else {
           setResponseMessage(data.errorMessage || 'An unknown error occurred.');
           setSuccessful(false);
         }
       }
-    } catch (error: unknown) {
-      console.error('Network or other error', error);
+    } catch {
       setResponseMessage(
         "A network error occurred, or the server's response could not be processed.",
       );
       setSuccessful(false);
     } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
       if (wasSuccessful) {
         setTimeout(() => {
           setResponseMessage('');
@@ -174,9 +196,11 @@ const Form = () => {
         </div>
         <button
           type="submit"
-          className="py-3 px-5 text-sm font-medium text-center text-white rounded-lg bg-[#6AB04C] hover:opacity-90 focus:ring-4 focus:outline-none focus:ring-primary-300"
+          disabled={submitting}
+          aria-disabled={submitting}
+          className="py-3 px-5 text-sm font-medium text-center text-white rounded-lg bg-[#6AB04C] hover:opacity-90 focus:ring-4 focus:outline-none focus:ring-primary-300 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Send Message
+          {submitting ? 'Sending...' : 'Send Message'}
         </button>
       </form>
 

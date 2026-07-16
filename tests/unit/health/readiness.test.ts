@@ -15,7 +15,7 @@ import { createMockRequest, createMockResponse } from '../../helpers/next-api';
 
 vi.mock('../../../server/db/client', () => ({ getDatabase: vi.fn() }));
 
-const REQUIRED_MIGRATION = '002_runtime_grants';
+const REQUIRED_MIGRATION = '003_contact_journal';
 
 function createReadinessDatabase(options?: {
   ping?: () => Promise<void>;

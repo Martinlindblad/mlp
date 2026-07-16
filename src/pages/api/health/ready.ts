@@ -5,7 +5,7 @@ import { checkReadiness } from '../../../../server/health/readiness';
 const handler: NextApiHandler = async (_request, response) => {
   let ready = false;
   try {
-    ready = await checkReadiness(getDatabase(), '002_runtime_grants');
+    ready = await checkReadiness(getDatabase(), '003_contact_journal');
   } catch {
     ready = false;
   }
