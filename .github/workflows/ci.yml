@@ -71,6 +71,7 @@ jobs:
           yarn test:assets
           yarn test:images
           yarn test:ops
+          yarn test:cutover
           yarn test:image-gates
       - name: Build production and migration outputs
         run: |

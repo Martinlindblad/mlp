@@ -59,9 +59,19 @@ files are regular, non-symlink files mode `0600`.
   and performs all count/ID/timestamp/hash validation inside one serializable,
   rollback-capable transaction and is covered by the PostgreSQL 18.4 integration
   test. If final contact import and all verification are not inside the same
-  rollback-capable transaction, cutover completion must not be declared. Any
-  mismatch throws before commit and rolls back inserted rows; if the test or its
-  evidence is absent, do not proceed to Gate 14.
+  rollback-capable transaction, cutover completion must not be declared. A
+  verified in-transaction mismatch throws before commit and is a known rollback
+  of inserted rows. If the test or its evidence is absent, do not proceed to
+  Gate 14.
+- A nonzero CLI exit alone does not prove rollback. A report-write failure or
+  cleanup failure after finalization is a known post-commit failure: contacts
+  remain committed even when complete reports are absent. A COMMIT transport
+  failure is commit-unknown and therefore ambiguous. Partial success reports are
+  not success evidence.
+- For a known post-commit failure or ambiguous Gate 13 outcome, keep contact
+  maintenance enabled and never delete contacts. Re-run the complete finalizer;
+  only its idempotent full-destination verification and both newly completed
+  reports establish state.
 
 ## Runtime command boundary
 
@@ -99,12 +109,19 @@ without changing production DNS:
    record documents to their verified Vercel values.
 4. From an independent client, verify that Vercel again serves pages and that
    Vercel contact writes succeed. Do not infer recovery from DNS alone.
-5. If Gate 13 fails, require its atomic transaction to have rolled back all
-   inserted rows and require that no success report was written.
-6. If a later pre-write gate fails after Gate 13 succeeded, leave the verified
+5. Treat only an independently verified in-transaction mismatch as a known
+   rollback. Retain its redacted validation failure evidence.
+6. If finalization returned and a report write or target cleanup then failed,
+   treat contacts as committed. Keep contact maintenance enabled, never delete
+   contacts, and re-run the complete finalizer to produce both complete reports.
+7. Treat a COMMIT transport failure or any other commit-unknown result as
+   ambiguous. Use the same no-delete recovery and require the rerun's idempotent
+   full-destination verification to establish state. Partial success reports are
+   not success evidence.
+8. If a later pre-write gate fails after Gate 13 succeeded, leave the verified
    PostgreSQL rows intact; restore Vercel routing and let the next attempt
    re-verify those rows idempotently. Never perform a partial compensating delete.
-7. End the window without modifying or deleting Atlas. Retain redacted failure
+9. End the window without modifying or deleting Atlas. Retain redacted failure
    evidence and open a new cutover record only after the defect is fixed.
 
 The saved Cloudflare documents are rollback inputs, not repository artifacts.
@@ -321,10 +338,15 @@ sudo /usr/local/sbin/mlp-migration contacts
 
 The approved build must import only missing contacts and compare the complete
 source/destination contact set inside one rollback-capable transaction. Require
-exact count, sorted IDs, ISO timestamps, and canonical hash match. Save the
-redacted final migration and validation report paths. A mismatch leaves
-maintenance enabled and invokes the pre-write rollback branch; it never permits
-a partially committed finalization.
+exact count, sorted IDs, ISO timestamps, and canonical hash match. Proceed only
+after a zero exit and both complete redacted final migration and validation
+reports. A verified in-transaction mismatch is a known rollback and leaves
+maintenance enabled. A report-write or cleanup failure after finalization is a
+known post-commit failure, so the contacts remain committed. A COMMIT transport
+failure is commit-unknown and ambiguous. In either case, keep maintenance enabled,
+never delete contacts, and re-run the complete finalizer. Its idempotent
+full-destination verification and two new complete reports must establish state;
+partial success reports are not success evidence.
 
 ### Gate 14: Internal synthetic insert and delete
 

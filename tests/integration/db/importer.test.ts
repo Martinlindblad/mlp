@@ -1,13 +1,18 @@
 import { ObjectId } from 'mongodb';
 import { sql } from 'kysely';
+import { mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  canonicalDestinationRow,
   canonicalHash,
   canonicalSourceRow,
 } from '../../../migration/canonical';
 import { importSnapshot } from '../../../migration/importer';
 import type { SourceSnapshot } from '../../../migration/inventory';
 import { mapSourceDocument } from '../../../migration/mappers';
+import { reportPath, writeReport } from '../../../migration/report';
 import { parseSourceDocument } from '../../../migration/source-schemas';
 import {
   finalizeContactSnapshot,
@@ -269,6 +274,12 @@ describe('transactional snapshot importer and verification', () => {
       isolated.db,
     );
     await sql`drop function if exists fail_late_insert()`.execute(isolated.db);
+    await sql`drop trigger if exists alter_final_contact_timestamp on contact_messages`.execute(
+      isolated.db,
+    );
+    await sql`drop function if exists alter_final_contact_timestamp()`.execute(
+      isolated.db,
+    );
     for (const table of tables) {
       await sql.raw(`truncate table ${table}`).execute(isolated.db);
     }
@@ -630,6 +641,77 @@ describe('transactional snapshot importer and verification', () => {
     expect(rows).toEqual([{ id: objectId(20).toHexString() }]);
   });
 
+  it('fails closed when PostgreSQL does not apply serializable isolation', async () => {
+    const transaction = isolated.db.transaction();
+    const readCommittedDatabase = {
+      transaction: () => ({
+        setIsolationLevel: () => transaction,
+      }),
+    } as unknown as typeof isolated.db;
+
+    await expect(
+      finalizeContactSnapshot(readCommittedDatabase, {
+        contact: [fullSnapshot().contact[0]],
+      }),
+    ).rejects.toMatchObject({
+      name: 'MigrationValidationError',
+      issues: [
+        expect.objectContaining({
+          collection: 'contact',
+          path: 'transaction_isolation',
+        }),
+      ],
+    });
+    expect(
+      await isolated.db.selectFrom('contact_messages').select('id').execute(),
+    ).toEqual([]);
+  });
+
+  it('rolls back a newly inserted contact after an in-transaction timestamp mismatch', async () => {
+    await sql`
+      create function alter_final_contact_timestamp() returns trigger
+      language plpgsql
+      as $function$
+      begin
+        if current_setting('transaction_isolation') <> 'serializable' then
+          raise exception 'contact finalization is not serializable';
+        end if;
+        new.created_at := new.created_at + interval '1 millisecond';
+        return new;
+      end
+      $function$
+    `.execute(isolated.db);
+    await sql`
+      create trigger alter_final_contact_timestamp
+      before insert on contact_messages
+      for each row execute function alter_final_contact_timestamp()
+    `.execute(isolated.db);
+
+    let failure: unknown;
+    try {
+      await finalizeContactSnapshot(isolated.db, {
+        contact: [fullSnapshot().contact[0]],
+      });
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toMatchObject({
+      name: 'MigrationValidationError',
+      issues: [
+        expect.objectContaining({
+          collection: 'contact',
+          code: 'hash_mismatch',
+          path: 'destination',
+        }),
+      ],
+    });
+    expectRedacted(failure);
+    expect(
+      await isolated.db.selectFrom('contact_messages').select('id').execute(),
+    ).toEqual([]);
+  });
+
   it('commits final contacts only after their complete verification succeeds', async () => {
     const snapshot = { contact: fullSnapshot().contact };
     const result = await finalizeContactSnapshot(isolated.db, snapshot);
@@ -657,5 +739,125 @@ describe('transactional snapshot importer and verification', () => {
       { id: objectId(19).toHexString() },
       { id: objectId(20).toHexString() },
     ]);
+  });
+
+  it('keeps committed contacts and reruns idempotently after a report write failure', async () => {
+    const snapshot = { contact: fullSnapshot().contact };
+    const root = await realpath(
+      await mkdtemp(path.join(os.tmpdir(), 'mlp-finalizer-report-failure-')),
+    );
+    const previousReportRoot = process.env.MIGRATION_REPORT_ROOT;
+    process.env.MIGRATION_REPORT_ROOT = root;
+
+    try {
+      const first = await finalizeContactSnapshot(isolated.db, snapshot);
+      await writeReport(
+        reportPath('first-contacts-migration.json'),
+        first.migrated,
+      );
+      await expect(
+        writeReport(
+          reportPath('first-contacts-validation.json'),
+          first.validated,
+          {
+            async open() {
+              throw new Error('injected report failure');
+            },
+            async unlink() {},
+          },
+        ),
+      ).rejects.toThrow('report write failed');
+
+      const committedAfterFailure = await isolated.db
+        .selectFrom('contact_messages')
+        .select('id')
+        .orderBy('id')
+        .execute();
+      expect(committedAfterFailure).toEqual([
+        { id: objectId(19).toHexString() },
+        { id: objectId(20).toHexString() },
+      ]);
+
+      const second = await finalizeContactSnapshot(isolated.db, snapshot);
+      const committedAfterRerun = await isolated.db
+        .selectFrom('contact_messages')
+        .select('id')
+        .orderBy('id')
+        .execute();
+      expect(committedAfterRerun).toEqual(committedAfterFailure);
+      expect(second.validated.collections.contact).toEqual({
+        sourceCount: 2,
+        destinationCount: 2,
+        idsMatch: true,
+        timestampsMatch: true,
+        hashMatch: true,
+      });
+      expect(await readdir(root)).toEqual(['first-contacts-migration.json']);
+      expectRedacted(first);
+      expectRedacted(second);
+      expectRedacted(
+        await readFile(reportPath('first-contacts-migration.json'), 'utf8'),
+      );
+    } finally {
+      if (previousReportRoot === undefined) {
+        delete process.env.MIGRATION_REPORT_ROOT;
+      } else {
+        process.env.MIGRATION_REPORT_ROOT = previousReportRoot;
+      }
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('finalizes one immutable contact snapshot while caller data mutates in flight', async () => {
+    const contact = fullSnapshot().contact[0];
+    const date = (contact.value as { date: Date }).date;
+    const originalDate = new Date(date.getTime());
+    const snapshot = { contact: [contact] };
+    let releaseLock = (): void => undefined;
+    let signalLockAcquired = (): void => undefined;
+    const lockAcquired = new Promise<void>((resolve) => {
+      signalLockAcquired = resolve;
+    });
+    const lockReleased = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    const blocker = isolated.db.transaction().execute(async (trx) => {
+      await sql`lock table contact_messages in access exclusive mode`.execute(
+        trx,
+      );
+      signalLockAcquired();
+      await lockReleased;
+    });
+
+    await lockAcquired;
+    const finalizing = finalizeContactSnapshot(isolated.db, snapshot);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    date.setTime(new Date('2031-12-13T14:15:16.789Z').getTime());
+    releaseLock();
+    await blocker;
+    const result = await finalizing;
+    const rows = await isolated.db
+      .selectFrom('contact_messages')
+      .selectAll()
+      .execute();
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.created_at).toEqual(originalDate);
+    expect(result.migrated.collections.contact?.canonicalHash).toBe(
+      canonicalHash([
+        canonicalDestinationRow(
+          'contact',
+          rows[0] as NonNullable<(typeof rows)[0]>,
+        ),
+      ]),
+    );
+    expect(result.validated.collections.contact).toEqual({
+      sourceCount: 1,
+      destinationCount: 1,
+      idsMatch: true,
+      timestampsMatch: true,
+      hashMatch: true,
+    });
+    expectRedacted(result);
   });
 });

@@ -20,6 +20,8 @@ const repositoryRoot = path.resolve(
 const runbookRelativePath = 'runbooks/rehearsal-and-cutover.md';
 const smokeRelativePath = 'scripts/acceptance/production-smoke.sh';
 const redactionRelativePath = 'scripts/acceptance/log-redaction.sh';
+const packageRelativePath = 'package.json';
+const ciRelativePath = '.github/workflows/ci.yml';
 
 async function readRequired(relativePath) {
   try {
@@ -95,6 +97,21 @@ test('runbook makes every rehearsal and cutover gate ordered and explicit', asyn
   ]);
 });
 
+test('package and ordinary CI quality commands run the cutover contract', async () => {
+  const packageJson = JSON.parse(await readRequired(packageRelativePath));
+  const ci = await readRequired(ciRelativePath);
+  const qualityJob =
+    /\n  quality:\n(?<body>[\s\S]*?)(?=\n  [a-z][a-z0-9_-]*:\n)/u.exec(ci)
+      ?.groups?.body;
+
+  assert.equal(
+    packageJson.scripts?.['test:cutover'],
+    'node --test tests/infra/cutover-gates.test.mjs',
+  );
+  assert.ok(qualityJob, 'CI must define an ordinary quality job');
+  assert.match(qualityJob, /^\s+yarn test:cutover$/mu);
+});
+
 test('runbook binds rehearsal to strict migration and redacted evidence contracts', async () => {
   const source = await readRequired(runbookRelativePath);
 
@@ -162,7 +179,7 @@ test('runbook requires the reviewed atomic contact finalizer before Gate 14', as
   );
   assert.match(
     source,
-    /reviewed `finalizeContactSnapshot\(\)`[\s\S]*serializable[\s\S]*PostgreSQL 18\.4 integration\s+test[\s\S]*mismatch[\s\S]*rolls back inserted rows[\s\S]*do not proceed to Gate 14/iu,
+    /reviewed `finalizeContactSnapshot\(\)`[\s\S]*serializable[\s\S]*PostgreSQL 18\.4 integration\s+test[\s\S]*verified in-transaction mismatch[\s\S]*known rollback[\s\S]*inserted rows[\s\S]*do not proceed to\s+Gate 14/iu,
   );
   assert.doesNotMatch(
     source,
@@ -170,11 +187,37 @@ test('runbook requires the reviewed atomic contact finalizer before Gate 14', as
   );
   assert.match(
     source,
-    /If Gate 13 fails[\s\S]*atomic transaction[\s\S]*rolled back[\s\S]*If a later pre-write gate fails after Gate 13 succeeded[\s\S]*leave the verified\s+PostgreSQL rows intact[\s\S]*idempotently/iu,
+    /verified in-transaction mismatch[\s\S]*known rollback[\s\S]*If a later pre-write gate fails after Gate 13 succeeded[\s\S]*leave the verified\s+PostgreSQL rows intact[\s\S]*idempotently/iu,
   );
   assert.doesNotMatch(
     source,
     /Roll back the uncommitted PostgreSQL contact import transaction/iu,
+  );
+});
+
+test('runbook distinguishes known rollback, known commit, and commit-unknown outcomes', async () => {
+  const source = await readRequired(runbookRelativePath);
+
+  assert.match(
+    source,
+    /verified in-transaction mismatch[\s\S]*known rollback/iu,
+  );
+  assert.match(
+    source,
+    /nonzero CLI exit[\s\S]*does not prove rollback[\s\S]*report-write failure[\s\S]*cleanup failure after finalization[\s\S]*known post-commit[\s\S]*contacts remain committed/iu,
+  );
+  assert.match(
+    source,
+    /COMMIT transport failure[\s\S]*commit-unknown[\s\S]*ambiguous/iu,
+  );
+  assert.match(
+    source,
+    /known post-commit failure or ambiguous[\s\S]*keep contact\s+maintenance enabled[\s\S]*never delete contacts[\s\S]*re-run the complete finalizer[\s\S]*idempotent\s+full-destination verification/iu,
+  );
+  assert.match(source, /partial success reports[\s\S]*not success evidence/iu);
+  assert.doesNotMatch(
+    source,
+    /If Gate 13 fails, require its atomic transaction to have rolled back all\s+inserted rows/iu,
   );
 });
 
@@ -218,7 +261,7 @@ test('runbook has a timed pre-write rollback branch and a one-way commit point',
   assert.match(source, /restore[\s\S]*Vercel[\s\S]*contact writes/iu);
   assert.match(
     source,
-    /Gate 13 fails[\s\S]*atomic transaction[\s\S]*rolled back/iu,
+    /verified in-transaction mismatch[\s\S]*known rollback/iu,
   );
   assert.match(
     source,

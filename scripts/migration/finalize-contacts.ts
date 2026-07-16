@@ -14,25 +14,22 @@ async function main(): Promise<void> {
     throw new Error('contact traffic drain confirmation missing');
   }
   const id = runId();
-  await withMigrationTarget(async (target) =>
-    withSourceDatabase(async (source) => {
-      const snapshot = await captureSnapshot(source, ['contact']);
-      // Import and complete-destination verification share one serializable
-      // transaction. A mismatch throws before commit and rolls back inserts.
-      const { migrated, validated } = await finalizeContactSnapshot(
-        target,
-        snapshot,
-        {
-          publicRoot: migrationPublicRoot(),
-        },
-      );
-      await writeReport(reportPath(`${id}-contacts-migration.json`), migrated);
-      await writeReport(
-        reportPath(`${id}-contacts-validation.json`),
-        validated,
-      );
-    }),
+  const snapshot = await withSourceDatabase((source) =>
+    captureSnapshot(source, ['contact']),
   );
+  await withMigrationTarget(async (target) => {
+    // Import and complete-destination verification share one serializable
+    // transaction. A mismatch throws before commit and rolls back inserts.
+    const { migrated, validated } = await finalizeContactSnapshot(
+      target,
+      snapshot,
+      {
+        publicRoot: migrationPublicRoot(),
+      },
+    );
+    await writeReport(reportPath(`${id}-contacts-migration.json`), migrated);
+    await writeReport(reportPath(`${id}-contacts-validation.json`), validated);
+  });
 }
 
 runOperator(main, 'contact finalization failed');

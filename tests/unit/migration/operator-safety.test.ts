@@ -349,6 +349,14 @@ printf NEW_CIPHERTEXT >"$output"
     expect(preload).toContain('CONTENT_COLLECTIONS');
     expect(finalize).toContain("captureSnapshot(source, ['contact'])");
     expect(finalize).toContain("CONTACT_TRAFFIC_DRAINED !== 'yes'");
+    const sourceCaptureIndex = finalize.indexOf(
+      'const snapshot = await withSourceDatabase',
+    );
+    const targetFinalizationIndex = finalize.indexOf(
+      'await withMigrationTarget',
+    );
+    expect(sourceCaptureIndex).toBeGreaterThanOrEqual(0);
+    expect(targetFinalizationIndex).toBeGreaterThan(sourceCaptureIndex);
     expect(cleanup).not.toContain('withSourceDatabase');
     expect(cleanup).not.toContain('MONGO_');
     expect(cleanup).toContain('process.argv.slice(2)');
@@ -362,8 +370,9 @@ printf NEW_CIPHERTEXT >"$output"
     expect(rehearsal.indexOf('verifySnapshot')).toBeLessThan(
       rehearsal.indexOf('writeReport('),
     );
-    expect(finalize.indexOf('verifySnapshot')).toBeLessThan(
-      finalize.indexOf('writeReport('),
-    );
+    const finalizerIndex = finalize.indexOf('finalizeContactSnapshot(');
+    const reportIndex = finalize.indexOf('writeReport(');
+    expect(finalizerIndex).toBeGreaterThanOrEqual(0);
+    expect(reportIndex).toBeGreaterThan(finalizerIndex);
   });
 });

@@ -1,4 +1,4 @@
-import type { Kysely } from 'kysely';
+import { sql, type Kysely, type Transaction } from 'kysely';
 import path from 'node:path';
 import type { Database } from '../server/db/database.types';
 import {
@@ -17,6 +17,7 @@ import {
   prepareSnapshot,
   type MigrationReport,
   type PreparedDocument,
+  type PreparedSnapshot,
 } from './importer';
 import type { SourceSnapshot } from './inventory';
 import {
@@ -48,6 +49,24 @@ export interface ContactFinalizationResult {
 }
 
 const sourceCollections = Object.keys(SOURCE_COLLECTIONS) as SourceCollection[];
+
+async function assertSerializableTransaction(
+  trx: Transaction<Database>,
+): Promise<void> {
+  const result = await sql<{ isolation: string }>`
+    select current_setting('transaction_isolation') as isolation
+  `.execute(trx);
+  if (result.rows[0]?.isolation !== 'serializable') {
+    throw new MigrationValidationError([
+      {
+        collection: 'contact',
+        id: 'unknown',
+        code: 'invalid_value',
+        path: 'transaction_isolation',
+      },
+    ]);
+  }
+}
 
 function compareCodePoints(left: string, right: string): number {
   const leftPoints = Array.from(left, (value) => value.codePointAt(0) ?? 0);
@@ -156,7 +175,16 @@ export async function verifySnapshot(
     publicRoot: path.resolve(process.cwd(), 'public'),
   },
 ): Promise<ValidationReport> {
-  const prepared = prepareSnapshot(snapshot);
+  return verifyPreparedSnapshot(db, prepareSnapshot(snapshot), options);
+}
+
+export async function verifyPreparedSnapshot(
+  db: Kysely<Database>,
+  prepared: PreparedSnapshot,
+  options: VerificationOptions = {
+    publicRoot: path.resolve(process.cwd(), 'public'),
+  },
+): Promise<ValidationReport> {
   const collections: ValidationReport['collections'] = {};
   const issues: MigrationIssue[] = [];
 
@@ -260,8 +288,9 @@ export async function finalizeContactSnapshot(
       .transaction()
       .setIsolationLevel('serializable')
       .execute(async (trx) => {
+        await assertSerializableTransaction(trx);
         const migrated = await importPreparedSnapshot(trx, prepared);
-        const validated = await verifySnapshot(trx, snapshot, options);
+        const validated = await verifyPreparedSnapshot(trx, prepared, options);
         return { migrated, validated };
       });
   } catch (error) {

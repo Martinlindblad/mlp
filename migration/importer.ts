@@ -61,6 +61,18 @@ function invalidIssue(
   return { collection, id, code: 'invalid_value', path };
 }
 
+function detachMutableSourceValues<K extends SourceCollection>(
+  collection: K,
+  source: SourceDocument<K>,
+): SourceDocument<K> {
+  if (collection !== 'contact') return source;
+  const contact = source as SourceDocument<'contact'>;
+  return {
+    ...contact,
+    date: new Date(contact.date.getTime()),
+  } as SourceDocument<K>;
+}
+
 function prepareDocument<K extends SourceCollection>(
   collection: K,
   snapshot: SnapshotDocument,
@@ -70,7 +82,10 @@ function prepareDocument<K extends SourceCollection>(
       invalidIssue(collection, 'sourceOrder'),
     ]);
   }
-  const source = parseSourceDocument(collection, snapshot.value);
+  const source = detachMutableSourceValues(
+    collection,
+    parseSourceDocument(collection, snapshot.value),
+  );
   const canonical = canonicalSourceRow(collection, source);
   return {
     collection,
