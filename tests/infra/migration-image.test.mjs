@@ -43,16 +43,14 @@ const postgresBookwormReference =
 const resticReference =
   'restic/restic:0.18.1@sha256:' +
   '39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76';
+const golangReference =
+  'golang:1.26.5-alpine@sha256:' +
+  '0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2';
 const mongoToolsUrl =
   'https://fastdl.mongodb.org/tools/db/' +
   'mongodb-database-tools-debian12-x86_64-100.17.0.tgz';
 const mongoToolsSha256 =
   '15b3562b13ff9aac3baa2594c705ea0ac3597f4b85c7653f17efcd36e8588678';
-const ageUrl =
-  'https://github.com/FiloSottile/age/releases/download/v1.3.1/' +
-  'age-v1.3.1-linux-amd64.tar.gz';
-const ageSha256 =
-  'bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377';
 
 async function assertPosixSyntax(relativePath) {
   await execFile('/bin/sh', ['-n', path.join(repositoryRoot, relativePath)], {
@@ -282,6 +280,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   assertLiteralDigestBases(source, [
     nodeReference,
     nodeReference,
+    golangReference,
     postgresBookwormReference,
     resticReference,
     nodeReference,
@@ -291,6 +290,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     [
       'production-dependencies',
       'builder',
+      'age-builder',
       'mongodump-libraries',
       'ca-certificates',
       'runner',
@@ -365,7 +365,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       destination: '/usr/local/bin/mongodump',
     },
     {
-      from: 'builder',
+      from: 'age-builder',
       source: '/usr/local/bin/age',
       destination: '/usr/local/bin/age',
     },
@@ -375,7 +375,13 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     },
   ]);
 
-  const [dependencies, builder, mongodumpLibraries, caCertificates] =
+  const [
+    dependencies,
+    builder,
+    ageBuilder,
+    mongodumpLibraries,
+    caCertificates,
+  ] =
     dockerStages(source);
   assert.match(
     dependencies.instructions.join('\n'),
@@ -428,6 +434,21 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     'operator builder dependencies must be deterministic and script-free',
   );
   assertNarrowOperatorBuilder(builder);
+  assert.match(
+    ageBuilder.instructions.join('\n'),
+    /go get filippo\.io\/age@v1\.3\.1 golang\.org\/x\/crypto@v0\.52\.0/u,
+    'operator age must be rebuilt with scanner-fixed Go module dependencies',
+  );
+  assert.match(
+    ageBuilder.instructions.join('\n'),
+    /go install filippo\.io\/age\/cmd\/age/u,
+    'operator age stage must build the reviewed age command from source',
+  );
+  assert.match(
+    ageBuilder.instructions.join('\n'),
+    /install[^\n]*-o root -g root -m 0555[^\n]*\/usr\/local\/bin\/age/u,
+    'operator age executable must be installed as root-owned 0555',
+  );
   const mongodumpLibrarySource = mongodumpLibraries.instructions.join('\n');
   assert.match(
     mongodumpLibrarySource,
@@ -487,18 +508,16 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     architectureIndex >= 0 && extractionIndex > architectureIndex,
     'operator builder must reject non-x86_64 before extracting amd64 tools',
   );
-  for (const sha256 of [mongoToolsSha256, ageSha256]) {
-    const verificationIndex = builder.instructions.findIndex(
-      (line) =>
-        /^RUN\s/iu.test(line) &&
-        line.includes(sha256) &&
-        /sha256sum\s+-c/u.test(line),
-    );
-    assert.ok(
-      verificationIndex >= 0 && verificationIndex < extractionIndex,
-      'each archive checksum must be verified before the first extraction',
-    );
-  }
+  const verificationIndex = builder.instructions.findIndex(
+    (line) =>
+      /^RUN\s/iu.test(line) &&
+      line.includes(mongoToolsSha256) &&
+      /sha256sum\s+-c/u.test(line),
+  );
+  assert.ok(
+    verificationIndex >= 0 && verificationIndex < extractionIndex,
+    'the mongodump archive checksum must be verified before extraction',
+  );
 
   const final = finalDockerStage(source);
   const finalSource = final.instructions.join('\n');
@@ -671,10 +690,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     sha256: mongoToolsSha256,
     url: mongoToolsUrl,
   });
-  assertPinnedArchiveTool(source, {
-    sha256: ageSha256,
-    url: ageUrl,
-  });
+  assert.doesNotMatch(source, /age-v1\.3\.1-linux-amd64\.tar\.gz/u);
 });
 
 test('POSIX migration entrypoint dispatches only six reviewed commands', async () => {

@@ -25,17 +25,27 @@ COPY types/DBTypes.ts ./types/DBTypes.ts
 COPY public ./public
 RUN yarn install --frozen-lockfile --ignore-scripts --non-interactive
 ADD --checksum=sha256:15b3562b13ff9aac3baa2594c705ea0ac3597f4b85c7653f17efcd36e8588678 https://fastdl.mongodb.org/tools/db/mongodb-database-tools-debian12-x86_64-100.17.0.tgz /tmp/mongodb-tools.tgz
-ADD --checksum=sha256:bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377 https://github.com/FiloSottile/age/releases/download/v1.3.1/age-v1.3.1-linux-amd64.tar.gz /tmp/age.tgz
 RUN test "$(uname -m)" = x86_64
 RUN printf '%s  %s\n' '15b3562b13ff9aac3baa2594c705ea0ac3597f4b85c7653f17efcd36e8588678' /tmp/mongodb-tools.tgz | sha256sum -c -
-RUN printf '%s  %s\n' 'bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377' /tmp/age.tgz | sha256sum -c -
-RUN mkdir -p /tmp/mongodb-tools /tmp/age-tools \
+RUN mkdir -p /tmp/mongodb-tools \
   && tar -xzf /tmp/mongodb-tools.tgz -C /tmp/mongodb-tools mongodb-database-tools-debian12-x86_64-100.17.0/bin/mongodump \
-  && tar -xzf /tmp/age.tgz -C /tmp/age-tools age/age \
   && install -o 0 -g 0 -m 0555 /tmp/mongodb-tools/mongodb-database-tools-debian12-x86_64-100.17.0/bin/mongodump /usr/local/bin/mongodump \
-  && install -o 0 -g 0 -m 0555 /tmp/age-tools/age/age /usr/local/bin/age \
-  && rm -rf /tmp/mongodb-tools /tmp/age-tools /tmp/mongodb-tools.tgz /tmp/age.tgz
+  && rm -rf /tmp/mongodb-tools /tmp/mongodb-tools.tgz
 RUN yarn build:migration
+
+FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS age-builder
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local
+RUN test "$(uname -m)" = x86_64 \
+  && go version | grep -Fx 'go version go1.26.5 linux/amd64' \
+  && mkdir /tmp/age-build \
+  && cd /tmp/age-build \
+  && go mod init mlp-age-build \
+  && go get filippo.io/age@v1.3.1 golang.org/x/crypto@v0.52.0 \
+  && go install filippo.io/age/cmd/age \
+  && install -o root -g root -m 0555 /go/bin/age /usr/local/bin/age \
+  && rm -rf /tmp/age-build /go/pkg/mod /root/.cache/go-build \
+  && test "$(/usr/local/bin/age --version)" = v1.3.1 \
+  && test "$(stat -c '%U:%G %a' /usr/local/bin/age)" = 'root:root 555'
 
 FROM postgres:18.4-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296 AS mongodump-libraries
 RUN set -eu; \
@@ -107,7 +117,7 @@ COPY --from=mongodump-libraries --chown=0:0 --chmod=0555 /mongodump-runtime/ /
 COPY --from=ca-certificates --chown=0:0 --chmod=0555 /ca-runtime/ /
 COPY --from=builder --chown=0:0 --chmod=0555 /app/public ./public
 COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/mongodump /usr/local/bin/mongodump
-COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
+COPY --from=age-builder --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
 COPY --chown=0:0 --chmod=0555 infra/migration/entrypoint.sh /usr/local/bin/mlp-migration
 USER 1000:1000
 RUN test "$(uname -m)" = x86_64 \

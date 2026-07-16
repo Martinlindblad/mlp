@@ -55,6 +55,9 @@ const distrolessNodeTag = 'gcr.io/distroless/nodejs22-debian13:nonroot';
 const distrolessNodeReference =
   `${distrolessNodeTag}@sha256:` +
   'a2723a2817c5b01b8e7b98d567bc8b5a6b0e713e25bfb0a82b6ade4b9db06f50';
+const golangReference =
+  'golang:1.26.5-alpine@sha256:' +
+  '0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2';
 const postgresReference =
   'postgres:18.4-alpine@sha256:' +
   '9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15';
@@ -690,17 +693,25 @@ test('Docker contract rejects overridable bases, broad copies, writable ownershi
   );
 });
 
+test('runtime JavaScript dependencies stay on scanner-fixed releases', async () => {
+  const manifest = await readRequiredJson(repositoryRoot, 'package.json');
+  assert.equal(manifest.dependencies.next, '15.5.16');
+  assert.equal(manifest.dependencies.sharp, '0.34.5');
+  assert.equal(manifest.dependencies.swiper, '12.1.2');
+  assert.equal(manifest.devDependencies['eslint-config-next'], '15.5.16');
+});
+
 test('application image is immutable, non-root, read-only, and narrowly packaged', async () => {
   const source = await readRequiredText(repositoryRoot, 'Dockerfile');
   assertLiteralDigestBases(source, [
     nodeReference,
     nodeReference,
-    nodeReference,
+    golangReference,
     distrolessNodeReference,
   ]);
   assert.deepEqual(
     dockerStages(source).map(({ name }) => name),
-    ['deps', 'builder', 'age', 'runner'],
+    ['deps', 'builder', 'age-builder', 'runner'],
   );
   assertNoSecretDockerMetadata(source);
   assert.doesNotMatch(
@@ -739,7 +750,7 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
       destination: './node_modules/kysely/dist/migration',
     },
     {
-      from: 'age',
+      from: 'age-builder',
       source: '/usr/local/bin/age',
       destination: '/usr/local/bin/age',
     },
@@ -760,23 +771,13 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
   );
   assert.match(
     stages[2].instructions.join('\n'),
-    /ADD --checksum=sha256:bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377 https:\/\/github\.com\/FiloSottile\/age\/releases\/download\/v1\.3\.1\/age-v1\.3\.1-linux-amd64\.tar\.gz \/tmp\/age\.tgz/u,
-    'age stage must download the exact reviewed release archive',
+    /go get filippo\.io\/age@v1\.3\.1 golang\.org\/x\/crypto@v0\.52\.0/u,
+    'age must be rebuilt with scanner-fixed Go module dependencies',
   );
   assert.match(
     stages[2].instructions.join('\n'),
-    /uname -m[^\n]*x86_64/u,
-    'age stage must fail closed on unexpected architecture',
-  );
-  assert.match(
-    stages[2].instructions.join('\n'),
-    /sha256sum -c/u,
-    'age stage must verify the release archive inside the image build',
-  );
-  assert.match(
-    stages[2].instructions.join('\n'),
-    /tar[^\n]*age\/age/u,
-    'age stage must extract only the age executable',
+    /go install filippo\.io\/age\/cmd\/age/u,
+    'age stage must build the reviewed age command from source',
   );
   assert.match(
     stages[2].instructions.join('\n'),
