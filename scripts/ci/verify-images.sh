@@ -514,6 +514,7 @@ import sys
 
 image_name = sys.argv[1]
 build_log = sys.argv[2]
+MAX_LINE_CHARS = 4096
 categories = (
     ('build-error', re.compile(r'\b(?:error|failed to solve)\b', re.IGNORECASE)),
     ('command-exit', re.compile(r'\b(?:exit code|did not complete successfully)\b', re.IGNORECASE)),
@@ -526,11 +527,26 @@ categories = (
     ('invalid-option', re.compile(r'\b(?:unknown|invalid|unrecognized) (?:flag|option|argument)\b', re.IGNORECASE)),
 )
 detected_categories = []
+
+
+def bounded_logical_line_prefixes(log_file):
+    while True:
+        chunk = log_file.readline(MAX_LINE_CHARS + 1)
+        if not chunk:
+            return
+        yield chunk[:MAX_LINE_CHARS]
+        while len(chunk) > MAX_LINE_CHARS and not chunk.endswith('\n'):
+            chunk = log_file.readline(MAX_LINE_CHARS + 1)
+            if not chunk:
+                return
+
+
 try:
     with open(build_log, encoding='utf-8', errors='replace') as log_file:
-        bounded_lines = deque(log_file, maxlen=5000)
-    for raw_line in bounded_lines:
-        line = raw_line[:4096]
+        bounded_lines = deque(
+            bounded_logical_line_prefixes(log_file), maxlen=5000
+        )
+    for line in bounded_lines:
         for name, pattern in categories:
             if pattern.search(line) and name not in detected_categories:
                 detected_categories.append(name)
@@ -1779,7 +1795,7 @@ assert_no_image_secrets() {
   rootfs_listing="$WORK_DIRECTORY/rootfs-$image_name.txt"
   rootfs_directory="$WORK_DIRECTORY/rootfs-$image_name"
   container_name="mlp-image-gate-audit-$image_name-$$"
-  credential_uri_pattern='postgresql://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb\+srv://[[:alnum:]_.~-]+:[^@[:space:]/]+@'
+  credential_uri_pattern='postgres(ql)?://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb://[[:alnum:]_.~-]+:[^@[:space:]/]+@|mongodb\+srv://[[:alnum:]_.~-]+:[^@[:space:]/]+@'
   private_key_hits="$WORK_DIRECTORY/private-key-hits-$image_name.txt"
   secret_hits="$WORK_DIRECTORY/secret-hits-$image_name.txt"
 

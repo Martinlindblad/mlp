@@ -83,6 +83,25 @@ function shellQuote(value) {
   return `'${String(value).replaceAll("'", `'"'"'`)}'`;
 }
 
+function sharedCredentialUriPattern(source) {
+  const imageSecretAudit = shellFunctionBody(source, 'assert_no_image_secrets');
+  const assignment = /^\s*credential_uri_pattern='(?<pattern>[^']+)'$/mu.exec(
+    imageSecretAudit,
+  );
+  assert.ok(
+    assignment?.groups?.pattern,
+    'missing shared credential URI pattern',
+  );
+  assert.match(imageSecretAudit, /assert_no_secret_metadata/u);
+  assert.match(imageSecretAudit, /find_secret_like_files/u);
+  assert.equal(
+    imageSecretAudit.match(/"\$credential_uri_pattern"/gu)?.length,
+    2,
+    'metadata and filesystem scans must receive the same credential pattern',
+  );
+  return assignment.groups.pattern;
+}
+
 function withoutDockerEndpointOverrides(extra = {}) {
   const environment = { ...process.env };
   for (const variableName of [
@@ -469,7 +488,7 @@ test('image gate audits image history, configuration, and exported filesystem fo
     'run/secrets',
     'migration-artifacts',
     'PRIVATE KEY',
-    'postgresql://',
+    'postgres\\(ql\\)\\?://',
     'mongodb://',
   ]) {
     assert.match(source, new RegExp(forbidden, 'u'));
@@ -1550,6 +1569,7 @@ test('private-key audit fails closed and silently on read and traversal errors',
 
 test('metadata audit distinguishes grep no-match from scanner failure', async (context) => {
   const source = await readHarness();
+  const credentialUriPattern = sharedCredentialUriPattern(source);
   const fixtureRoot = await mkdtemp(
     path.join(os.tmpdir(), 'mlp-image-metadata-scan-test-'),
   );
@@ -1563,7 +1583,10 @@ test('metadata audit distinguishes grep no-match from scanner failure', async (c
   await Promise.all([mkdir(fixedFailureBin), mkdir(regexFailureBin)]);
   await Promise.all([
     writeFile(cleanPath, 'ordinary image metadata\n'),
-    writeFile(secretPath, 'fixture-sentinel\n'),
+    writeFile(
+      secretPath,
+      'postgres://fixture-user:test-only@database.invalid/fixture\n',
+    ),
     writeFile(
       path.join(fixedFailureBin, 'grep'),
       `#!/bin/sh\nprintf '%s\\n' "${failureCanary}" >&2\nexit 23\n`,
@@ -1587,7 +1610,9 @@ exec /usr/bin/grep "$@"
 set -eu
 ${shellFunction(source, 'fail')}
 ${shellFunction(source, 'assert_no_secret_metadata')}
-assert_no_secret_metadata app fixture-sentinel 'postgresql://[^[:space:]]+' "$@"
+assert_no_secret_metadata app fixture-sentinel ${shellQuote(
+      credentialUriPattern,
+    )} "$@"
 `,
   );
   await chmod(wrapperPath, 0o755);
@@ -1684,6 +1709,7 @@ assert_no_forbidden_secret_paths app '(^|/)\\.env($|[./])' "$1"
 
 test('filesystem audit fails closed on injected find and grep errors', async (context) => {
   const source = await readHarness();
+  const credentialUriPattern = sharedCredentialUriPattern(source);
   const fixtureRoot = await mkdtemp(
     path.join(os.tmpdir(), 'mlp-image-filesystem-scan-test-'),
   );
@@ -1730,7 +1756,9 @@ exec /usr/bin/grep "$@"
     `#!/bin/sh
 set -eu
 ${shellFunction(source, 'find_secret_like_files')}
-if ! find_secret_like_files "$1" "$2" fixture-sentinel 'postgresql://[^[:space:]]+'; then
+if ! find_secret_like_files "$1" "$2" fixture-sentinel ${shellQuote(
+      credentialUriPattern,
+    )}; then
   printf '%s\n' 'secret filesystem scan failed' >&2
   exit 1
 fi
@@ -1757,6 +1785,20 @@ fi
   assert.equal(await readFile(hitsPath, 'utf8'), `${secretPath}\n`);
   await rm(secretPath);
 
+  const credentialUriPath = path.join(scanRoot, 'credentialed-postgres-uri');
+  await writeFile(
+    credentialUriPath,
+    'postgres://fixture-user:test-only@database.invalid/fixture\n',
+  );
+  const credentialResult = await execFile(
+    '/bin/sh',
+    [wrapperPath, scanRoot, hitsPath],
+    { encoding: 'utf8' },
+  );
+  assert.equal(`${credentialResult.stdout}${credentialResult.stderr}`, '');
+  assert.equal(await readFile(hitsPath, 'utf8'), `${credentialUriPath}\n`);
+  await rm(credentialUriPath);
+
   for (const failingBin of [
     findFailureBin,
     grepFailureBin,
@@ -1780,11 +1822,40 @@ fi
 test('failed image builds emit only bounded categorized diagnostics', async (context) => {
   const source = await readHarness();
   const buildImage = shellFunctionBody(source, 'build_image');
+  const diagnosticScanner = shellHereDocument(
+    shellFunction(source, 'report_build_failure'),
+    'PY',
+  );
   assert.ok(
     buildImage.indexOf('report_build_failure') >= 0 &&
       buildImage.indexOf('report_build_failure') <
         buildImage.indexOf('fail "image build failed'),
     'categorized diagnostics must be emitted before the build log is cleaned',
+  );
+  assert.doesNotMatch(
+    diagnosticScanner,
+    /deque\(\s*log_file\s*,/u,
+    'a physical log line must be bounded before deque retention',
+  );
+  assert.match(diagnosticScanner, /^MAX_LINE_CHARS = 4096$/mu);
+  const physicalReads = [
+    ...diagnosticScanner.matchAll(/log_file\.readline\((?<size>[^)]*)\)/gu),
+  ];
+  assert.ok(
+    physicalReads.length > 0,
+    'diagnostic scanner must use sized reads',
+  );
+  for (const read of physicalReads) {
+    assert.equal(read.groups?.size?.trim(), 'MAX_LINE_CHARS + 1');
+  }
+  assert.ok(
+    diagnosticScanner.indexOf('log_file.readline(MAX_LINE_CHARS + 1)') <
+      diagnosticScanner.indexOf('bounded_lines = deque('),
+    'sized reads must occur before a prefix enters the deque',
+  );
+  assert.match(
+    diagnosticScanner,
+    /bounded_lines = deque\([\s\S]*maxlen=5000\s*\)/u,
   );
   const fixtureRoot = await mkdtemp(
     path.join(os.tmpdir(), 'mlp-image-build-diagnostic-test-'),
@@ -1792,6 +1863,7 @@ test('failed image builds emit only bounded categorized diagnostics', async (con
   context.after(() => rm(fixtureRoot, { force: true, recursive: true }));
   const wrapperPath = path.join(fixtureRoot, 'report-build-failure.sh');
   const logPath = path.join(fixtureRoot, 'build.log');
+  const hostileLogPath = path.join(fixtureRoot, 'hostile-no-newline.log');
   const secret = 'BUILD_DIAGNOSTIC_SECRET_MUST_NOT_LEAK';
   const numericCanaries = ['8675309', '314159265', '424242'];
   await writeFile(
@@ -1833,6 +1905,20 @@ test('failed image builds emit only bounded categorized diagnostics', async (con
   assert.doesNotMatch(output, new RegExp(secret, 'u'));
   assert.doesNotMatch(output, /postgresql:\/\//u);
   assert.doesNotMatch(output, /BEGIN PRIVATE KEY/u);
+
+  await writeFile(
+    hostileLogPath,
+    `${'x'.repeat(4091)} error${'y'.repeat(256 * 1024)}`,
+  );
+  const hostileResult = await execFile(
+    '/bin/sh',
+    [wrapperPath, hostileLogPath],
+    { encoding: 'utf8' },
+  );
+  assert.equal(
+    `${hostileResult.stdout}${hostileResult.stderr}`,
+    'build diagnostics: app\nbuild diagnostic categories: unclassified\n',
+  );
 
   const readFailureCanary = '9081726354';
   const missingLogPath = path.join(

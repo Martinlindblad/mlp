@@ -317,7 +317,7 @@ case "$name" in
         printf '200'
       fi
     elif [[ "$url" == */manifest.json ]]; then
-      printf '%s\n' '{"icons":[{"src":"/favicon.ico"}]}'
+      /bin/cat "$HARNESS_MANIFEST_PATH"
     elif [[ "$url" == */api/* ]]; then
       if [[ -n "$HARNESS_NON_ARRAY_PATH" && "$url" == *"$HARNESS_NON_ARRAY_PATH" ]]; then
         printf '%s\n' '{}'
@@ -328,9 +328,19 @@ case "$name" in
     ;;
   jq)
     input=$(/bin/cat)
-    case "$*" in
-      *'type == "array"'*) [[ "$input" == '[]' ]] ;;
-      *'.icons | length > 0'*) [[ "$input" == *'"icons":['* ]] ;;
+    case "$2" in
+      'type == "array"') [[ "$input" == '[]' ]] ;;
+      '. == {
+  "short_name": "MLindblad",
+  "name": "Martin Lindblad Portfolio",
+  "start_url": "/",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone"
+}')
+        expected=$(/bin/cat "$HARNESS_MANIFEST_PATH")
+        [[ "$input" == "$expected" ]]
+        ;;
       *) exit 64 ;;
     esac
     ;;
@@ -358,6 +368,10 @@ async function runProductionSmoke(args = [], extraEnvironment = {}) {
           ...process.env,
           HARNESS_FAIL_PATH: '',
           HARNESS_NON_ARRAY_PATH: '',
+          HARNESS_MANIFEST_PATH: path.join(
+            repositoryRoot,
+            'public/manifest.json',
+          ),
           HARNESS_TRACE: trace,
           PATH: `${bin}:/usr/bin:/bin`,
           ...extraEnvironment,

@@ -6,6 +6,7 @@ import { parse } from 'yaml';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const workflowDirectory = path.join(root, '.github', 'workflows');
+const packagePath = path.join(root, 'package.json');
 const workflowPaths = {
   ci: path.join(workflowDirectory, 'ci.yml'),
   publish: path.join(workflowDirectory, 'publish-image.yml'),
@@ -169,6 +170,38 @@ test('CI is pinned, read-only, and proves quality, PostgreSQL, browser, and Linu
   assert.match(
     source,
     /747df7ee74de188485157a383633a1a963fd9233b71fbb4a69ddcbcc589ce4e2cc82dacf5dbbe136cb51d17e14c59daeb5d9bc92487610b0f3b93680b2646546/u,
+  );
+});
+
+test('ordinary CI explicitly runs the Proxmox and Cloudflare suites', () => {
+  const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+  const workflow = readYaml(workflowPaths.ci);
+  const qualityCommands = (workflow.jobs?.quality?.steps ?? []).flatMap(
+    (step) =>
+      typeof step.run === 'string'
+        ? step.run
+            .split(/\r?\n/u)
+            .map((line) => line.trim())
+            .filter(Boolean)
+        : [],
+  );
+
+  assert.equal(
+    packageJson.scripts?.['test:proxmox'],
+    'node --test tests/infra/proxmox.test.mjs',
+  );
+  assert.equal(
+    packageJson.scripts?.['test:cloudflare'],
+    'node --test tests/infra/cloudflare-gates.test.mjs',
+  );
+  assert.equal(
+    qualityCommands.filter((command) => command === 'yarn test:proxmox').length,
+    1,
+  );
+  assert.equal(
+    qualityCommands.filter((command) => command === 'yarn test:cloudflare')
+      .length,
+    1,
   );
 });
 

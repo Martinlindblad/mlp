@@ -73,6 +73,10 @@ jobs:
           yarn test:ops
           yarn test:cutover
           yarn test:image-gates
+      - name: Run deterministic Proxmox tests
+        run: yarn test:proxmox
+      - name: Run deterministic Cloudflare tests
+        run: yarn test:cloudflare
       - name: Build production and migration outputs
         run: |
           yarn build:production

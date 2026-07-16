@@ -70,6 +70,13 @@ range_code="$(
 }
 
 curl -fsS --connect-timeout 10 --max-time 30 "$origin/manifest.json" |
-  jq -e '.icons | length > 0' >/dev/null
+  jq -e '. == {
+  "short_name": "MLindblad",
+  "name": "Martin Lindblad Portfolio",
+  "start_url": "/",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone"
+}' >/dev/null
 
 printf 'production smoke passed\n'
