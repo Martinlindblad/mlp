@@ -408,6 +408,16 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     'operator dependencies must prune zod source tests with URI fixtures',
   );
   assert.match(
+    dependencies.instructions.join('\n'),
+    /mongodb\/lib\/client-side-encryption\/crypto_callbacks\.js/u,
+    'operator dependencies must prune MongoDB private-key callback fixtures',
+  );
+  assert.match(
+    dependencies.instructions.join('\n'),
+    /mongodb\/src\/client-side-encryption\/crypto_callbacks\.ts/u,
+    'operator dependencies must prune MongoDB TypeScript private-key fixtures',
+  );
+  assert.match(
     builder.instructions.join('\n'),
     /^RUN yarn build:migration$/mu,
     'operator builder must use the deterministic compiled build',
@@ -492,6 +502,21 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
 
   const final = finalDockerStage(source);
   const finalSource = final.instructions.join('\n');
+  assert.match(
+    finalSource,
+    /\/usr\/local\/lib\/node_modules\/npm\/docs/u,
+    'operator runner must prune npm docs that embed private-key config examples',
+  );
+  assert.match(
+    finalSource,
+    /\/usr\/local\/lib\/node_modules\/npm\/man/u,
+    'operator runner must prune npm manpages that embed private-key config examples',
+  );
+  assert.match(
+    finalSource,
+    /@npmcli\/config\/lib\/definitions\/definitions\.js/u,
+    'operator runner must prune npm config definitions with private-key examples',
+  );
   const copies = final.instructions.filter((line) => /^COPY\s/iu.test(line));
   assertRequiredOperatorCopy(
     copies,

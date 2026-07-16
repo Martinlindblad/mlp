@@ -4,6 +4,8 @@ WORKDIR /app
 COPY infra/migration/package.json infra/migration/yarn.lock ./
 RUN yarn install --frozen-lockfile --production=true --ignore-scripts --non-interactive
 RUN rm -f \
+    node_modules/mongodb/lib/client-side-encryption/crypto_callbacks.js \
+    node_modules/mongodb/src/client-side-encryption/crypto_callbacks.ts \
     node_modules/pg-connection-string/README.md \
     node_modules/pg-pool/README.md \
   && rm -rf node_modules/zod/src/v4/classic/tests
@@ -61,6 +63,11 @@ RUN test -r /etc/ssl/certs/ca-certificates.crt \
   && cp -a /etc/ssl/certs/ca-certificates.crt /ca-runtime/etc/ssl/certs/ca-certificates.crt
 
 FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS runner
+RUN rm -f \
+    /usr/local/lib/node_modules/npm/node_modules/@npmcli/config/lib/definitions/definitions.js \
+  && rm -rf \
+    /usr/local/lib/node_modules/npm/docs \
+    /usr/local/lib/node_modules/npm/man
 ARG COMMIT_SHA
 RUN printf '%s\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'
 LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" org.opencontainers.image.revision="$COMMIT_SHA"
