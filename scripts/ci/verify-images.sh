@@ -2290,6 +2290,50 @@ MARKER_SQL
   verify_database_security_contract "$SOURCE_DATABASE_CONTAINER" imagegate_source
 }
 
+app_curl() {
+  docker run --rm \
+    --label "mlp.image-gate.run=$RUN_ID" \
+    --platform linux/amd64 \
+    --network "$NETWORK_NAME" \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --user 65532:65532 \
+    --tmpfs /tmp:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=1770 \
+    --entrypoint curl \
+    "$CADDY_IMAGE" \
+    --silent --show-error --fail --max-time 10 \
+    "$@"
+}
+
+verify_app_video_range() {
+  docker run --rm \
+    --label "mlp.image-gate.run=$RUN_ID" \
+    --platform linux/amd64 \
+    --network "$NETWORK_NAME" \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --user 65532:65532 \
+    --tmpfs /tmp:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=1770 \
+    --entrypoint /bin/sh \
+    "$CADDY_IMAGE" -eu -c '
+      range_status=$(curl --silent --show-error --fail --max-time 10 \
+        --header "Range: bytes=0-31" \
+        --dump-header /tmp/video-range-headers.txt \
+        --output /tmp/video-range-body.bin \
+        --write-out "%{http_code}" \
+        http://app:3000/assets/man.mp4)
+      [ "$range_status" -eq 206 ]
+      tr -d "\r" </tmp/video-range-headers.txt \
+        >/tmp/video-range-headers-normalized.txt
+      grep -Eiq "^Content-Range:[[:space:]]*bytes 0-31/[1-9][0-9]*$" \
+        /tmp/video-range-headers-normalized.txt
+      range_bytes=$(wc -c </tmp/video-range-body.bin | awk "{ print \$1 }")
+      [ "$range_bytes" -eq 32 ]
+    '
+}
+
 start_and_verify_app() {
   track_container "$APP_CONTAINER"
   docker run --detach \
@@ -2297,6 +2341,7 @@ start_and_verify_app() {
     --label "mlp.image-gate.run=$RUN_ID" \
     --platform linux/amd64 \
     --network "$NETWORK_NAME" \
+    --network-alias app \
     --read-only \
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
@@ -2310,25 +2355,15 @@ start_and_verify_app() {
     --env PGPOOL_MAX=5 \
     --env PGPORT=5432 \
     --env PGUSER=portfolio_app \
-    --publish 127.0.0.1::3000 \
     "$APP_IMAGE" >"$WORK_DIRECTORY/app-run.txt" 2>&1 ||
     fail 'application start failed'
 
   assert_container_hardening app 1000:1000 "$APP_CONTAINER"
 
-  app_port=$(docker port "$APP_CONTAINER" 3000/tcp 2>/dev/null | awk -F: 'NR == 1 { print $NF }') ||
-    fail 'application port inspection failed'
-  case $app_port in
-    '' | *[!0-9]*) fail 'application port inspection failed' ;;
-  esac
-  APP_BASE_URL="http://127.0.0.1:$app_port"
-
   attempt=0
   while [ "$attempt" -lt 60 ]; do
-    if curl --silent --show-error --fail --max-time 2 \
-      "$APP_BASE_URL/api/health/live" >/dev/null 2>&1 &&
-      curl --silent --show-error --fail --max-time 2 \
-        "$APP_BASE_URL/api/health/ready" >/dev/null 2>&1; then
+    if app_curl http://app:3000/api/health/live >/dev/null 2>&1 &&
+      app_curl http://app:3000/api/health/ready >/dev/null 2>&1; then
       break
     fi
     container_running=$(docker container inspect --format='{{.State.Running}}' "$APP_CONTAINER" 2>/dev/null) ||
@@ -2340,15 +2375,13 @@ start_and_verify_app() {
   [ "$attempt" -lt 60 ] || fail 'application readiness timed out'
 
   for required_path in /api/health/live /api/health/ready /sw.js /sw-manifest.json; do
-    curl --silent --show-error --fail --max-time 10 \
-      "$APP_BASE_URL$required_path" --output /dev/null ||
+    app_curl "http://app:3000$required_path" --output /dev/null ||
       fail 'required application route failed'
   done
 
   manifest_file="$WORK_DIRECTORY/sw-manifest.json"
   manifest_paths="$WORK_DIRECTORY/sw-manifest-paths.txt"
-  curl --silent --show-error --fail --max-time 10 \
-    "$APP_BASE_URL/sw-manifest.json" --output "$manifest_file" ||
+  app_curl http://app:3000/sw-manifest.json --output "$manifest_file" ||
     fail 'service worker manifest request failed'
   jq --exit-status \
     'type == "array" and length > 0 and all(.[]; type == "string" and startswith("/"))' \
@@ -2356,27 +2389,12 @@ start_and_verify_app() {
     fail 'service worker manifest validation failed'
   jq --raw-output '.[]' "$manifest_file" >"$manifest_paths"
   while IFS= read -r asset_path; do
-    curl --silent --show-error --fail --max-time 10 \
-      "$APP_BASE_URL$asset_path" --output /dev/null ||
+    app_curl "http://app:3000$asset_path" --output /dev/null ||
       fail 'precache asset request failed'
   done <"$manifest_paths"
 
-  range_headers="$WORK_DIRECTORY/video-range-headers.txt"
-  normalized_range_headers="$WORK_DIRECTORY/video-range-headers-normalized.txt"
-  range_body="$WORK_DIRECTORY/video-range-body.bin"
-  range_status=$(curl --silent --show-error --fail --max-time 10 \
-    --header 'Range: bytes=0-31' \
-    --dump-header "$range_headers" \
-    --output "$range_body" \
-    --write-out '%{http_code}' \
-    "$APP_BASE_URL/assets/man.mp4") ||
+  verify_app_video_range >"$WORK_DIRECTORY/video-range.txt" 2>&1 ||
     fail 'video byte-range request failed'
-  [ "$range_status" -eq 206 ] || fail 'video byte-range status mismatch'
-  tr -d '\r' <"$range_headers" >"$normalized_range_headers"
-  grep -Eiq '^content-range:[[:space:]]*bytes 0-31/[1-9][0-9]*$' \
-    "$normalized_range_headers" || fail 'Content-Range verification failed'
-  range_bytes=$(wc -c <"$range_body" | awk '{ print $1 }')
-  [ "$range_bytes" -eq 32 ] || fail 'video byte-range length mismatch'
 }
 
 run_backup_restore_cycle() {

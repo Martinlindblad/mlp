@@ -2005,6 +2005,7 @@ test('image gate enforces hardened runtime settings and retains only verified su
 
 test('image gate migrates a source database and exercises app health, precache, and byte ranges', async () => {
   const source = await readHarness();
+  const appVerification = shellFunctionBody(source, 'start_and_verify_app');
 
   assert.match(
     source,
@@ -2028,6 +2029,26 @@ test('image gate migrates a source database and exercises app health, precache, 
   assert.match(source, /create role portfolio_app login/u);
   assert.match(source, /create role portfolio_backup login/u);
   assert.match(source, /node \/app\/dist\/scripts\/db\/migrate\.js/u);
+  assert.match(
+    appVerification,
+    /--network-alias app/u,
+    'application verification must use the same short Docker DNS name as Caddy',
+  );
+  assert.doesNotMatch(
+    appVerification,
+    /--publish 127\.0\.0\.1::3000/u,
+    'application verification must not depend on host port publishing',
+  );
+  assert.doesNotMatch(
+    appVerification,
+    /docker port "\$APP_CONTAINER"/u,
+    'application verification must not depend on Docker host port inspection',
+  );
+  assert.match(
+    appVerification,
+    /http:\/\/app:3000/u,
+    'application verification must exercise the Docker network route',
+  );
   for (const pathName of [
     '/api/health/live',
     '/api/health/ready',
