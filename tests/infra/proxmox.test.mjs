@@ -1033,6 +1033,7 @@ test('bootstrap installs pinned root-owned runtime and stages a checked firewall
   const result = run(harness.script, { env: harness.env });
 
   assert.equal(result.status, 0, result.stderr);
+  const bootstrapSource = await readFile(bootstrapScript, 'utf8');
   const trace = await harness.readTrace();
   const lines = traceLines(trace);
   assert.match(
@@ -1108,6 +1109,28 @@ test('bootstrap installs pinned root-owned runtime and stages a checked firewall
     lines,
     'install\t-d\t-o\troot\t-g\troot\t-m\t0700\t/etc/mlp\t/etc/mlp/env\t/etc/mlp/secrets\t/var/lib/mlp\t/var/lib/mlp/restore-reports',
   );
+  for (const secretName of [
+    'journal-r2-access-key-id',
+    'journal-r2-secret-access-key',
+    'journal-mac-keyring',
+  ]) {
+    assert.match(
+      bootstrapSource,
+      new RegExp(
+        `\\[\\[ ! -e "/etc/mlp/secrets/\\$\\{secret_name\\}" \\]\\]`,
+        'u',
+      ),
+      'bootstrap must never overwrite existing canonical secret files',
+    );
+    assert.match(
+      trace,
+      new RegExp(
+        `install\\t-o\\troot\\t-g\\troot\\t-m\\t0600\\t/dev/null\\t/etc/mlp/secrets/${secretName}`,
+        'u',
+      ),
+      `${secretName} placeholder must be root-only mode 0600`,
+    );
+  }
   for (const [source, destination] of [
     ['ops/compose.sh', '/usr/local/sbin/mlp-compose'],
     ['ops/backup.sh', '/usr/local/sbin/mlp-backup'],

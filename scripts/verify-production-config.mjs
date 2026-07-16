@@ -191,6 +191,9 @@ const expectedTmpfs = {
 const secretFiles = [
   'cloudflare-tunnel-token-cloudflared-a',
   'cloudflare-tunnel-token-cloudflared-b',
+  'journal-mac-keyring-app',
+  'journal-r2-access-key-id-app',
+  'journal-r2-secret-access-key-app',
   'postgres-app-password-app',
   'postgres-app-password-postgres',
   'postgres-backup-password-db-backup',
@@ -203,7 +206,12 @@ const secretFiles = [
   'restic-s3-secret-access-key-db-backup',
 ];
 const expectedSecretMounts = {
-  app: [['postgres-app-password-app', 'postgres-app-password']],
+  app: [
+    ['journal-mac-keyring-app', 'journal-mac-keyring'],
+    ['journal-r2-access-key-id-app', 'journal-r2-access-key-id'],
+    ['journal-r2-secret-access-key-app', 'journal-r2-secret-access-key'],
+    ['postgres-app-password-app', 'postgres-app-password'],
+  ],
   caddy: [],
   'cloudflared-a': [
     ['cloudflare-tunnel-token-cloudflared-a', 'cloudflare-tunnel-token'],
@@ -435,15 +443,71 @@ function validateEnvironment(services) {
     POSTGRES_PASSWORD_FILE: '/run/secrets/postgres-bootstrap-password',
     POSTGRES_USER: 'postgres',
   });
-  exactValue(services.app.environment, {
-    PGCONNECT_TIMEOUT_MS: '5000',
-    PGDATABASE: 'portfolio',
-    PGHOST: 'postgres',
-    PGPASSWORD_FILE: '/run/secrets/postgres-app-password',
-    PGPOOL_MAX: '5',
-    PGPORT: '5432',
-    PGUSER: 'portfolio_app',
-  });
+  const appEnvironment = mapping(services.app.environment);
+  exactKeys(appEnvironment, [
+    'JOURNAL_ACTIVE_KEY_ID',
+    'JOURNAL_AGE_RECIPIENT',
+    'JOURNAL_MAC_KEYRING_FILE',
+    'JOURNAL_R2_ACCESS_KEY_ID_FILE',
+    'JOURNAL_R2_BUCKET',
+    'JOURNAL_R2_ENDPOINT',
+    'JOURNAL_R2_SECRET_ACCESS_KEY_FILE',
+    'PGCONNECT_TIMEOUT_MS',
+    'PGDATABASE',
+    'PGHOST',
+    'PGPASSWORD_FILE',
+    'PGPOOL_MAX',
+    'PGPORT',
+    'PGSTATEMENT_TIMEOUT_MS',
+    'PGUSER',
+  ]);
+  exactValue(
+    Object.fromEntries(
+      Object.entries(appEnvironment).filter(
+        ([name]) =>
+          ![
+            'JOURNAL_ACTIVE_KEY_ID',
+            'JOURNAL_AGE_RECIPIENT',
+            'JOURNAL_R2_ENDPOINT',
+          ].includes(name),
+      ),
+    ),
+    {
+      JOURNAL_MAC_KEYRING_FILE: '/run/secrets/journal-mac-keyring',
+      JOURNAL_R2_ACCESS_KEY_ID_FILE:
+        '/run/secrets/journal-r2-access-key-id',
+      JOURNAL_R2_BUCKET: 'mlp-contact-journal',
+      JOURNAL_R2_SECRET_ACCESS_KEY_FILE:
+        '/run/secrets/journal-r2-secret-access-key',
+      PGCONNECT_TIMEOUT_MS: '5000',
+      PGDATABASE: 'portfolio',
+      PGHOST: 'postgres',
+      PGPASSWORD_FILE: '/run/secrets/postgres-app-password',
+      PGPOOL_MAX: '5',
+      PGPORT: '5432',
+      PGSTATEMENT_TIMEOUT_MS: '5000',
+      PGUSER: 'portfolio_app',
+    },
+  );
+  invariant(
+    /^https:\/\/[a-z0-9][a-z0-9-]*\.eu\.r2\.cloudflarestorage\.com$/u.test(
+      appEnvironment.JOURNAL_R2_ENDPOINT,
+    ),
+  );
+  invariant(!/unconfigured|placeholder|example/iu.test(appEnvironment.JOURNAL_R2_ENDPOINT));
+  invariant(
+    /^[a-z0-9][a-z0-9._-]{0,31}$/u.test(
+      appEnvironment.JOURNAL_ACTIVE_KEY_ID,
+    ),
+  );
+  invariant(!/^unconfigured\b/u.test(appEnvironment.JOURNAL_ACTIVE_KEY_ID));
+  invariant(
+    /^age1[023456789acdefghjklmnpqrstuvwxyz]{58}$/u.test(
+      appEnvironment.JOURNAL_AGE_RECIPIENT,
+    ),
+  );
+  invariant(appEnvironment.JOURNAL_AGE_RECIPIENT !== `age1${'q'.repeat(58)}`);
+
   exactValue(services.migrator.environment, {
     PGCONNECT_TIMEOUT_MS: '5000',
     PGDATABASE: 'portfolio',
@@ -451,6 +515,7 @@ function validateEnvironment(services) {
     PGPASSWORD_FILE: '/run/secrets/postgres-migrator-password',
     PGPOOL_MAX: '2',
     PGPORT: '5432',
+    PGSTATEMENT_TIMEOUT_MS: '60000',
     PGUSER: 'portfolio_migrator',
   });
   const caddyEnvironment = mapping(services.caddy.environment);
@@ -501,6 +566,12 @@ function validateEnvironment(services) {
       services[name].environment === undefined ||
         keys(services[name].environment).length === 0,
     );
+  }
+  for (const [serviceName, service] of Object.entries(services)) {
+    for (const environmentName of keys(service.environment ?? {})) {
+      invariant(!environmentName.startsWith('AWS_'));
+      if (serviceName !== 'app') invariant(!environmentName.startsWith('JOURNAL_'));
+    }
   }
 }
 

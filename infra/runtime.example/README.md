@@ -17,7 +17,8 @@ canonical secret contains exactly one non-empty line ending in a newline. Each
 environment record is one non-empty `KEY=value` line.
 
 Keep interpolation namespaces separate: `APP_*`, `MIGRATOR_*`, and
-`BACKUP_*`. Generate all eight secrets independently. The root-only wrapper
+`BACKUP_*`. Generate all eleven secrets independently, including the three
+contact-journal writer files for R2 access and MAC keyring material. The root-only wrapper
 normalizes them into persistent, per-consumer bind sources. Those staged files
 are owned by the exact container UID/GID with mode `0400`; containers receive
 only their explicitly granted files under `/run/secrets`, never raw secret
@@ -26,6 +27,11 @@ refuses any later byte, owner, or mode mismatch before Compose runs. Secret
 rotation therefore requires the reviewed maintenance procedure to replace the
 complete affected set and recreate every consumer; never edit a staged bind
 source in place.
+
+The tracked journal endpoint, key ID, and age recipient are placeholders. Keep
+`APP_JOURNAL_R2_BUCKET=mlp-contact-journal`, use an HTTPS
+`*.eu.r2.cloudflarestorage.com` endpoint for the approved account, and replace
+the public key ID and recipient only during the reviewed Cloudflare R2 setup.
 
 Install the reviewed standalone Docker Compose release at
 `/usr/local/libexec/mlp/docker-compose` as `root:root` mode `0755`. Store the

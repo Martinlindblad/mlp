@@ -33,7 +33,7 @@ validate_arguments() {
 }
 
 clear_caller_environment() {
-  unset "${!APP_@}" "${!BACKUP_@}" "${!COMPOSE_@}" "${!DOCKER_@}" "${!MIGRATOR_@}" "${!MLP_@}"
+  unset "${!APP_@}" "${!AWS_@}" "${!BACKUP_@}" "${!COMPOSE_@}" "${!DOCKER_@}" "${!JOURNAL_@}" "${!MIGRATOR_@}" "${!MLP_@}"
 }
 
 validate_directory() {
@@ -50,6 +50,38 @@ validate_file() {
   [[ -f "$path" && ! -L "$path" && -s "$path" ]] || fail 'invalid runtime file'
   metadata=$(/usr/bin/stat -c '%u:%g:%a' -- "$path")
   [[ "$metadata" == 0:0:600 ]] || fail 'unsafe runtime file ownership or mode'
+  /usr/bin/python3 - "$path" <<'PY' || fail 'unsafe runtime file ownership or mode'
+import os
+import stat
+import sys
+
+path = sys.argv[1]
+try:
+    before = os.lstat(path)
+    fd = os.open(
+        path,
+        os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+    )
+    try:
+        after = os.fstat(fd)
+        if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+            raise SystemExit(1)
+        for entry in (before, after):
+            if not stat.S_ISREG(entry.st_mode):
+                raise SystemExit(1)
+            if entry.st_uid != 0 or entry.st_gid != 0:
+                raise SystemExit(1)
+            if stat.S_IMODE(entry.st_mode) != 0o600:
+                raise SystemExit(1)
+            if entry.st_nlink != 1:
+                raise SystemExit(1)
+        if after.st_size <= 0:
+            raise SystemExit(1)
+    finally:
+        os.close(fd)
+except OSError:
+    raise SystemExit(1)
+PY
 }
 
 validate_compose_binary() {
@@ -79,10 +111,10 @@ validate_environment_file() {
   validate_file "$path"
   case "$path" in
     /etc/mlp/env/app.env)
-      expected='APP_CADDY_IMAGE APP_CONTACT_MODE APP_IMAGE APP_PGCONNECT_TIMEOUT_MS APP_PGDATABASE APP_PGHOST APP_PGPOOL_MAX APP_PGPORT APP_PGUSER'
+      expected='APP_CADDY_IMAGE APP_CONTACT_MODE APP_IMAGE APP_JOURNAL_ACTIVE_KEY_ID APP_JOURNAL_AGE_RECIPIENT APP_JOURNAL_R2_BUCKET APP_JOURNAL_R2_ENDPOINT APP_PGCONNECT_TIMEOUT_MS APP_PGDATABASE APP_PGHOST APP_PGPOOL_MAX APP_PGPORT APP_PGSTATEMENT_TIMEOUT_MS APP_PGUSER'
       ;;
     /etc/mlp/env/migrator.env)
-      expected='MIGRATOR_PGCONNECT_TIMEOUT_MS MIGRATOR_PGDATABASE MIGRATOR_PGHOST MIGRATOR_PGPOOL_MAX MIGRATOR_PGPORT MIGRATOR_PGUSER'
+      expected='MIGRATOR_PGCONNECT_TIMEOUT_MS MIGRATOR_PGDATABASE MIGRATOR_PGHOST MIGRATOR_PGPOOL_MAX MIGRATOR_PGPORT MIGRATOR_PGSTATEMENT_TIMEOUT_MS MIGRATOR_PGUSER'
       ;;
     /etc/mlp/env/backup.env)
       expected='BACKUP_IMAGE BACKUP_PGDATABASE BACKUP_PGHOST BACKUP_PGPORT BACKUP_PGUSER BACKUP_RESTIC_REPOSITORY'
@@ -120,12 +152,60 @@ validate_secret_file() {
 
   validate_file "$path"
   size=$(/usr/bin/stat -c '%s' -- "$path")
-  IFS= read -r value < "$path" || [[ -n "$value" ]]
+  value=$(read_validated_secret_payload "$path") || fail 'invalid runtime secret'
   [[ -n "$value" ]] || fail 'empty runtime secret'
   [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || \
     fail 'multiline runtime secret'
   [[ ${#value} -eq $((size - 1)) ]] || fail 'runtime secret must end in one newline'
   unset value
+}
+
+read_validated_secret_payload() {
+  local path=$1
+  /usr/bin/python3 - "$path" <<'PY'
+import os
+import stat
+import sys
+
+path = sys.argv[1]
+try:
+    before = os.lstat(path)
+    fd = os.open(
+        path,
+        os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+    )
+    try:
+        after = os.fstat(fd)
+        if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+            raise SystemExit(1)
+        for entry in (before, after):
+            if not stat.S_ISREG(entry.st_mode):
+                raise SystemExit(1)
+            if entry.st_uid != 0 or entry.st_gid != 0:
+                raise SystemExit(1)
+            if stat.S_IMODE(entry.st_mode) != 0o600:
+                raise SystemExit(1)
+            if entry.st_nlink != 1:
+                raise SystemExit(1)
+        data = b""
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            data += chunk
+            if len(data) > 65536:
+                raise SystemExit(1)
+        if len(data) <= 1 or not data.endswith(b"\n"):
+            raise SystemExit(1)
+        payload = data[:-1]
+        if b"\n" in payload or b"\r" in payload:
+            raise SystemExit(1)
+        sys.stdout.buffer.write(payload)
+    finally:
+        os.close(fd)
+except OSError:
+    raise SystemExit(1)
+PY
 }
 
 validate_staged_secret() {
@@ -144,23 +224,28 @@ stage_secret() {
   local uid=$3
   local gid=$4
   local destination=/etc/mlp/compose-secrets/$name
-  local payload_size
+  local destination_inode=
+  local prior_inode=
+  local source_inode
 
-  payload_size=$(( $(/usr/bin/stat -c '%s' -- "$source") - 1 ))
-  [[ $payload_size -gt 0 ]] || return 78
+  source_inode=$(/usr/bin/stat -c '%d:%i' -- "$source") || return 78
   STAGING_TEMP=$(/usr/bin/mktemp /etc/mlp/compose-secrets/.stage.XXXXXXXXXX) || return 70
-  /usr/bin/head -c "$payload_size" -- "$source" > "$STAGING_TEMP" || return 70
+  read_validated_secret_payload "$source" > "$STAGING_TEMP" || return 70
   /bin/chown "$uid:$gid" -- "$STAGING_TEMP" || return 70
   /bin/chmod 0400 -- "$STAGING_TEMP" || return 70
   validate_staged_secret "$STAGING_TEMP" "$uid" "$gid" || return 78
 
   if [[ -e "$destination" || -L "$destination" ]]; then
     validate_staged_secret "$destination" "$uid" "$gid" || return 78
+    prior_inode=$(/usr/bin/stat -c '%d:%i' -- "$destination") || return 78
+    [[ "$prior_inode" != "$source_inode" ]] || return 78
     /usr/bin/cmp --silent -- "$STAGING_TEMP" "$destination" || return 78
   elif ! /bin/ln -- "$STAGING_TEMP" "$destination"; then
     validate_staged_secret "$destination" "$uid" "$gid" || return 78
     /usr/bin/cmp --silent -- "$STAGING_TEMP" "$destination" || return 78
   fi
+  destination_inode=$(/usr/bin/stat -c '%d:%i' -- "$destination") || return 78
+  [[ "$destination_inode" != "$source_inode" ]] || return 78
 
   /bin/rm -f -- "$STAGING_TEMP" || return 70
   STAGING_TEMP=
@@ -216,6 +301,9 @@ validate_file /etc/mlp/secrets/postgres-migrator-password
 validate_file /etc/mlp/secrets/postgres-app-password
 validate_file /etc/mlp/secrets/postgres-backup-password
 validate_file /etc/mlp/secrets/cloudflare-tunnel-token
+validate_file /etc/mlp/secrets/journal-r2-access-key-id
+validate_file /etc/mlp/secrets/journal-r2-secret-access-key
+validate_file /etc/mlp/secrets/journal-mac-keyring
 validate_file /etc/mlp/secrets/restic-password
 validate_file /etc/mlp/secrets/restic-s3-access-key-id
 validate_file /etc/mlp/secrets/restic-s3-secret-access-key
@@ -225,6 +313,9 @@ validate_secret_file /etc/mlp/secrets/postgres-migrator-password
 validate_secret_file /etc/mlp/secrets/postgres-app-password
 validate_secret_file /etc/mlp/secrets/postgres-backup-password
 validate_secret_file /etc/mlp/secrets/cloudflare-tunnel-token
+validate_secret_file /etc/mlp/secrets/journal-r2-access-key-id
+validate_secret_file /etc/mlp/secrets/journal-r2-secret-access-key
+validate_secret_file /etc/mlp/secrets/journal-mac-keyring
 validate_secret_file /etc/mlp/secrets/restic-password
 validate_secret_file /etc/mlp/secrets/restic-s3-access-key-id
 validate_secret_file /etc/mlp/secrets/restic-s3-secret-access-key
@@ -236,6 +327,9 @@ trap 'exit 143' TERM
 
 stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-a 65532 65532 || fail 'runtime secret staging requires reviewed rotation: cloudflare-tunnel-token-cloudflared-a'
 stage_secret /etc/mlp/secrets/cloudflare-tunnel-token cloudflare-tunnel-token-cloudflared-b 65532 65532 || fail 'runtime secret staging requires reviewed rotation: cloudflare-tunnel-token-cloudflared-b'
+stage_secret /etc/mlp/secrets/journal-r2-access-key-id journal-r2-access-key-id-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-r2-access-key-id-app'
+stage_secret /etc/mlp/secrets/journal-r2-secret-access-key journal-r2-secret-access-key-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-r2-secret-access-key-app'
+stage_secret /etc/mlp/secrets/journal-mac-keyring journal-mac-keyring-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: journal-mac-keyring-app'
 stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-app 1000 1000 || fail 'runtime secret staging requires reviewed rotation: postgres-app-password-app'
 stage_secret /etc/mlp/secrets/postgres-app-password postgres-app-password-postgres 70 70 || fail 'runtime secret staging requires reviewed rotation: postgres-app-password-postgres'
 stage_secret /etc/mlp/secrets/postgres-backup-password postgres-backup-password-db-backup 10001 10001 || fail 'runtime secret staging requires reviewed rotation: postgres-backup-password-db-backup'

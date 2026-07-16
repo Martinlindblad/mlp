@@ -514,6 +514,15 @@ install -d -o root -g root -m 0700 \
   /etc/mlp/compose-secrets /etc/mlp/docker-client \
   /var/lib/mlp/backup-reports /var/lib/mlp/restore-work \
   /var/lib/mlp/deployment-reports /var/lib/mlp/status
+for secret_name in \
+  journal-r2-access-key-id \
+  journal-r2-secret-access-key \
+  journal-mac-keyring; do
+  if [[ ! -e "/etc/mlp/secrets/${secret_name}" ]]; then
+    install -o root -g root -m 0600 /dev/null "/etc/mlp/secrets/${secret_name}"
+  fi
+done
+unset secret_name
 
 install -o root -g root -m 0755 \
   "$repository_root/ops/compose.sh" /usr/local/sbin/mlp-compose

@@ -11,6 +11,19 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN yarn build:production
 
+FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS age
+ADD --checksum=sha256:bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377 \
+  https://github.com/FiloSottile/age/releases/download/v1.3.1/age-v1.3.1-linux-amd64.tar.gz \
+  /tmp/age.tgz
+RUN test "$(uname -m)" = "x86_64" && \
+  printf '%s  %s\n' 'bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377' '/tmp/age.tgz' | sha256sum -c - && \
+  mkdir /tmp/age-extract && \
+  tar -xzf /tmp/age.tgz -C /tmp/age-extract age/age && \
+  install -o root -g root -m 0555 /tmp/age-extract/age/age /usr/local/bin/age && \
+  rm -rf /tmp/age.tgz /tmp/age-extract && \
+  test "$(/usr/local/bin/age --version)" = "v1.3.1" && \
+  test ! -w /usr/local/bin/age
+
 FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS runner
 ARG COMMIT_SHA
 RUN printf '%s\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'
@@ -22,7 +35,9 @@ COPY --from=builder --chown=0:0 --chmod=0555 /app/.next/static ./.next/static
 COPY --from=builder --chown=0:0 --chmod=0555 /app/public ./public
 COPY --from=builder --chown=0:0 --chmod=0555 /app/dist/scripts/db ./dist/scripts/db
 COPY --from=builder --chown=0:0 --chmod=0555 /app/dist/server/db ./dist/server/db
+COPY --from=age --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
 USER 1000:1000
+RUN test "$(age --version)" = "v1.3.1" && test ! -w /usr/local/bin/age
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=4 CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready',{signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 CMD ["node", "server.js"]

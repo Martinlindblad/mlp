@@ -684,12 +684,18 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     nodeReference,
     nodeReference,
     nodeReference,
+    nodeReference,
   ]);
   assert.deepEqual(
     dockerStages(source).map(({ name }) => name),
-    ['deps', 'builder', 'runner'],
+    ['deps', 'builder', 'age', 'runner'],
   );
   assertNoSecretDockerMetadata(source);
+  assert.doesNotMatch(
+    source,
+    /(?:age-keygen|AGE-SECRET-KEY|identity)/u,
+    'application image must not contain recovery identities or age-keygen',
+  );
   assertOciRevisionMetadata(source);
   assertFixedRuntimeUserAndRootCopies(source, '1000:1000');
   assertNoFinalCopyAll(source);
@@ -715,6 +721,11 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
       source: '/app/dist/server/db',
       destination: './dist/server/db',
     },
+    {
+      from: 'age',
+      source: '/usr/local/bin/age',
+      destination: '/usr/local/bin/age',
+    },
   ]);
   assertNoBroadDistCopy(source);
   assertWholePublicTreeCopy(source);
@@ -729,6 +740,31 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     stages[1].instructions.join('\n'),
     /^RUN yarn build:production$/mu,
     'builder must use the deterministic production build',
+  );
+  assert.match(
+    stages[2].instructions.join('\n'),
+    /ADD --checksum=sha256:bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377 https:\/\/github\.com\/FiloSottile\/age\/releases\/download\/v1\.3\.1\/age-v1\.3\.1-linux-amd64\.tar\.gz \/tmp\/age\.tgz/u,
+    'age stage must download the exact reviewed release archive',
+  );
+  assert.match(
+    stages[2].instructions.join('\n'),
+    /uname -m[^\n]*x86_64/u,
+    'age stage must fail closed on unexpected architecture',
+  );
+  assert.match(
+    stages[2].instructions.join('\n'),
+    /sha256sum -c/u,
+    'age stage must verify the release archive inside the image build',
+  );
+  assert.match(
+    stages[2].instructions.join('\n'),
+    /tar[^\n]*age\/age/u,
+    'age stage must extract only the age executable',
+  );
+  assert.match(
+    stages[2].instructions.join('\n'),
+    /install[^\n]*-o root -g root -m 0555[^\n]*\/usr\/local\/bin\/age/u,
+    'age executable must be installed as root-owned 0555',
   );
 
   const final = finalDockerStage(source);
@@ -747,6 +783,7 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     '/app/dist/server/db',
     './dist/server/db',
   );
+  assertRequiredRuntimeCopy(copyLines, '/usr/local/bin/age', '/usr/local/bin/age');
   assert.doesNotMatch(
     finalSource,
     /(?:scripts\/migration|mongo-client|export-mongo|dist-migration|\/app\/migration(?:\/|\s)|\/app\/dist(?:\s|$))/iu,
@@ -756,6 +793,11 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
   assert.match(finalSource, /ENV\s[^\n]*HOSTNAME=0\.0\.0\.0/u);
   assert.match(finalSource, /ENV\s[^\n]*PORT=3000/u);
   assert.match(finalSource, /^WORKDIR \/app$/mu);
+  assert.match(
+    finalSource,
+    /^RUN test "\$\(age --version\)" = "v1\.3\.1" && test ! -w \/usr\/local\/bin\/age$/mu,
+    'final app image must prove the exact age version and non-writability as the runtime user',
+  );
   assert.match(finalSource, /^EXPOSE 3000$/mu);
   assert.match(finalSource, /^CMD \["node",\s*"server\.js"\]$/mu);
 

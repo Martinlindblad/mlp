@@ -32,15 +32,20 @@ const dockerHarnessImage =
 const commandTimeoutMs = 15_000;
 const callerEnvironmentPrefixes = [
   'APP_',
+  'AWS_',
   'BACKUP_',
   'COMPOSE_',
   'DOCKER_',
+  'JOURNAL_',
   'MIGRATOR_',
   'MLP_',
 ];
 
 const secretSources = {
   MLP_CLOUDFLARE_TUNNEL_TOKEN: 'cloudflare-tunnel-token',
+  MLP_JOURNAL_MAC_KEYRING: 'journal-mac-keyring',
+  MLP_JOURNAL_R2_ACCESS_KEY_ID: 'journal-r2-access-key-id',
+  MLP_JOURNAL_R2_SECRET_ACCESS_KEY: 'journal-r2-secret-access-key',
   MLP_POSTGRES_APP_PASSWORD: 'postgres-app-password',
   MLP_POSTGRES_BACKUP_PASSWORD: 'postgres-backup-password',
   MLP_POSTGRES_BOOTSTRAP_PASSWORD: 'postgres-bootstrap-password',
@@ -53,6 +58,9 @@ const secretSources = {
 const stagedSecrets = [
   ['cloudflare-tunnel-token', 'cloudflare-tunnel-token-cloudflared-a', 65532],
   ['cloudflare-tunnel-token', 'cloudflare-tunnel-token-cloudflared-b', 65532],
+  ['journal-r2-access-key-id', 'journal-r2-access-key-id-app', 1000],
+  ['journal-r2-secret-access-key', 'journal-r2-secret-access-key-app', 1000],
+  ['journal-mac-keyring', 'journal-mac-keyring-app', 1000],
   ['postgres-app-password', 'postgres-app-password-app', 1000],
   ['postgres-app-password', 'postgres-app-password-postgres', 70],
   ['postgres-backup-password', 'postgres-backup-password-db-backup', 10001],
@@ -83,11 +91,16 @@ const environmentFiles = {
       'APP_CADDY_IMAGE',
       'APP_CONTACT_MODE',
       'APP_IMAGE',
+      'APP_JOURNAL_ACTIVE_KEY_ID',
+      'APP_JOURNAL_AGE_RECIPIENT',
+      'APP_JOURNAL_R2_BUCKET',
+      'APP_JOURNAL_R2_ENDPOINT',
       'APP_PGCONNECT_TIMEOUT_MS',
       'APP_PGDATABASE',
       'APP_PGHOST',
       'APP_PGPOOL_MAX',
       'APP_PGPORT',
+      'APP_PGSTATEMENT_TIMEOUT_MS',
       'APP_PGUSER',
     ],
   },
@@ -110,6 +123,7 @@ const environmentFiles = {
       'MIGRATOR_PGHOST',
       'MIGRATOR_PGPOOL_MAX',
       'MIGRATOR_PGPORT',
+      'MIGRATOR_PGSTATEMENT_TIMEOUT_MS',
       'MIGRATOR_PGUSER',
     ],
   },
@@ -253,6 +267,12 @@ function assertFixedWrapperContract(source) {
   assert.match(validateFile, /\[\[?[^\n]*-s/u);
   assert.match(validateFile, /\/usr\/bin\/stat/u);
   assert.match(validateFile, /0:0:600/u);
+  assert.match(source, /os\.O_NOFOLLOW/u);
+  assert.match(source, /os\.fstat/u);
+  assert.match(source, /os\.lstat/u);
+  assert.match(source, /st_dev/u);
+  assert.match(source, /st_ino/u);
+  assert.match(source, /st_nlink/u);
 
   const validateEnvironment = shellFunctionBody(
     source,
@@ -274,11 +294,14 @@ function assertFixedWrapperContract(source) {
 
   const stageSecret = shellFunctionBody(source, 'stage_secret');
   assert.match(stageSecret, /\/usr\/bin\/mktemp/u);
-  assert.match(stageSecret, /\/usr\/bin\/head[^\n]*-c/u);
+  assert.match(stageSecret, /read_validated_secret_payload/u);
   assert.match(stageSecret, /\/bin\/chown/u);
   assert.match(stageSecret, /\/bin\/chmod[^\n]*0400/u);
   assert.match(stageSecret, /\/usr\/bin\/cmp[^\n]*--silent/u);
   assert.match(stageSecret, /\/bin\/ln/u);
+  assert.match(stageSecret, /source_inode/u);
+  assert.match(stageSecret, /prior_inode/u);
+  assert.match(stageSecret, /destination_inode/u);
   assert.doesNotMatch(
     stageSecret,
     /\bmv\b/u,
@@ -614,7 +637,7 @@ async function captureExists(directory, filename) {
   }
 }
 
-test('root Compose wrapper stages twelve UID-safe files and execs pinned Compose directly', async () => {
+test('root Compose wrapper stages fifteen UID-safe files and execs pinned Compose directly', async () => {
   const source = await readRequiredText(wrapperRelativePath);
   assertFixedWrapperContract(source);
 
@@ -748,7 +771,25 @@ test('runtime examples use collision-free prefixes and keep the Restic provider 
     /^ghcr\.io\/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$/u,
   );
   assert.equal(parsed['app.env'].APP_PGUSER, 'portfolio_app');
+  assert.equal(parsed['app.env'].APP_JOURNAL_R2_BUCKET, 'mlp-contact-journal');
+  assert.match(
+    parsed['app.env'].APP_JOURNAL_R2_ENDPOINT,
+    /^https:\/\/[a-z0-9-]+\.eu\.r2\.cloudflarestorage\.com$/u,
+  );
+  assert.match(
+    parsed['app.env'].APP_JOURNAL_ACTIVE_KEY_ID,
+    /^unconfigured-[a-z0-9._-]+$/u,
+  );
+  assert.match(
+    parsed['app.env'].APP_JOURNAL_AGE_RECIPIENT,
+    /^age1[023456789acdefghjklmnpqrstuvwxyz]+$/u,
+  );
+  assert.equal(parsed['app.env'].APP_PGSTATEMENT_TIMEOUT_MS, '5000');
   assert.equal(parsed['migrator.env'].MIGRATOR_PGUSER, 'portfolio_migrator');
+  assert.equal(
+    parsed['migrator.env'].MIGRATOR_PGSTATEMENT_TIMEOUT_MS,
+    '60000',
+  );
   assert.equal(parsed['backup.env'].BACKUP_PGUSER, 'portfolio_backup');
   assert.match(
     parsed['backup.env'].BACKUP_RESTIC_REPOSITORY,
@@ -765,7 +806,7 @@ test('runtime examples use collision-free prefixes and keep the Restic provider 
   assert.match(readme, /(?:provider|bucket|prefix|region)[^\n]*not approved/iu);
 });
 
-test('runtime examples contain exactly eight harmless single-line secret placeholders', async () => {
+test('runtime examples contain exactly eleven harmless single-line secret placeholders', async () => {
   const secretDirectory = path.join(
     repositoryRoot,
     'infra/runtime.example/secrets',
@@ -818,6 +859,8 @@ test(
       [
         'APP_IMAGE',
         'APP_UNREVIEWED_OVERRIDE',
+        'AWS_ACCESS_KEY_ID',
+        'AWS_SECRET_ACCESS_KEY',
         'BACKUP_IMAGE',
         'BACKUP_UNREVIEWED_OVERRIDE',
         'COMPOSE_EXPERIMENTAL',
@@ -827,6 +870,8 @@ test(
         'DOCKER_CONTEXT',
         'DOCKER_HOST',
         'HOME',
+        'JOURNAL_R2_ACCESS_KEY_ID',
+        'JOURNAL_R2_SECRET_ACCESS_KEY',
         'MIGRATOR_PGHOST',
         'MIGRATOR_UNREVIEWED_OVERRIDE',
         'MLP_POSTGRES_APP_PASSWORD',

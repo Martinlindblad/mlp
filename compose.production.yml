@@ -69,6 +69,7 @@ services:
       PGPASSWORD_FILE: /run/secrets/postgres-migrator-password
       PGPOOL_MAX: ${MIGRATOR_PGPOOL_MAX:?MIGRATOR_PGPOOL_MAX is required}
       PGCONNECT_TIMEOUT_MS: ${MIGRATOR_PGCONNECT_TIMEOUT_MS:?MIGRATOR_PGCONNECT_TIMEOUT_MS is required}
+      PGSTATEMENT_TIMEOUT_MS: ${MIGRATOR_PGSTATEMENT_TIMEOUT_MS:?MIGRATOR_PGSTATEMENT_TIMEOUT_MS is required}
     secrets:
       - source: postgres-migrator-password-migrator
         target: postgres-migrator-password
@@ -96,9 +97,23 @@ services:
       PGPASSWORD_FILE: /run/secrets/postgres-app-password
       PGPOOL_MAX: ${APP_PGPOOL_MAX:?APP_PGPOOL_MAX is required}
       PGCONNECT_TIMEOUT_MS: ${APP_PGCONNECT_TIMEOUT_MS:?APP_PGCONNECT_TIMEOUT_MS is required}
+      PGSTATEMENT_TIMEOUT_MS: ${APP_PGSTATEMENT_TIMEOUT_MS:?APP_PGSTATEMENT_TIMEOUT_MS is required}
+      JOURNAL_R2_ENDPOINT: ${APP_JOURNAL_R2_ENDPOINT:?APP_JOURNAL_R2_ENDPOINT is required}
+      JOURNAL_R2_BUCKET: ${APP_JOURNAL_R2_BUCKET:?APP_JOURNAL_R2_BUCKET is required}
+      JOURNAL_ACTIVE_KEY_ID: ${APP_JOURNAL_ACTIVE_KEY_ID:?APP_JOURNAL_ACTIVE_KEY_ID is required}
+      JOURNAL_AGE_RECIPIENT: ${APP_JOURNAL_AGE_RECIPIENT:?APP_JOURNAL_AGE_RECIPIENT is required}
+      JOURNAL_R2_ACCESS_KEY_ID_FILE: /run/secrets/journal-r2-access-key-id
+      JOURNAL_R2_SECRET_ACCESS_KEY_FILE: /run/secrets/journal-r2-secret-access-key
+      JOURNAL_MAC_KEYRING_FILE: /run/secrets/journal-mac-keyring
     secrets:
       - source: postgres-app-password-app
         target: postgres-app-password
+      - source: journal-r2-access-key-id-app
+        target: journal-r2-access-key-id
+      - source: journal-r2-secret-access-key-app
+        target: journal-r2-secret-access-key
+      - source: journal-mac-keyring-app
+        target: journal-mac-keyring
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=1770
       - /app/.next/cache:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700
@@ -259,6 +274,12 @@ secrets:
     file: /etc/mlp/compose-secrets/cloudflare-tunnel-token-cloudflared-a
   cloudflare-tunnel-token-cloudflared-b:
     file: /etc/mlp/compose-secrets/cloudflare-tunnel-token-cloudflared-b
+  journal-mac-keyring-app:
+    file: /etc/mlp/compose-secrets/journal-mac-keyring-app
+  journal-r2-access-key-id-app:
+    file: /etc/mlp/compose-secrets/journal-r2-access-key-id-app
+  journal-r2-secret-access-key-app:
+    file: /etc/mlp/compose-secrets/journal-r2-secret-access-key-app
   postgres-app-password-app:
     file: /etc/mlp/compose-secrets/postgres-app-password-app
   postgres-app-password-postgres:

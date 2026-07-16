@@ -81,6 +81,24 @@ const secretFiles = {
     target: 'postgres-app-password',
     uid: '1000',
   },
+  'journal-mac-keyring-app': {
+    canonical: 'journal-mac-keyring',
+    gid: '1000',
+    target: 'journal-mac-keyring',
+    uid: '1000',
+  },
+  'journal-r2-access-key-id-app': {
+    canonical: 'journal-r2-access-key-id',
+    gid: '1000',
+    target: 'journal-r2-access-key-id',
+    uid: '1000',
+  },
+  'journal-r2-secret-access-key-app': {
+    canonical: 'journal-r2-secret-access-key',
+    gid: '1000',
+    target: 'journal-r2-secret-access-key',
+    uid: '1000',
+  },
   'postgres-app-password-postgres': {
     canonical: 'postgres-app-password',
     gid: '70',
@@ -139,6 +157,9 @@ const secretFiles = {
 
 const canonicalSecretEnvironmentVariables = {
   'cloudflare-tunnel-token': 'MLP_CLOUDFLARE_TUNNEL_TOKEN',
+  'journal-mac-keyring': 'MLP_JOURNAL_MAC_KEYRING',
+  'journal-r2-access-key-id': 'MLP_JOURNAL_R2_ACCESS_KEY_ID',
+  'journal-r2-secret-access-key': 'MLP_JOURNAL_R2_SECRET_ACCESS_KEY',
   'postgres-app-password': 'MLP_POSTGRES_APP_PASSWORD',
   'postgres-backup-password': 'MLP_POSTGRES_BACKUP_PASSWORD',
   'postgres-bootstrap-password': 'MLP_POSTGRES_BOOTSTRAP_PASSWORD',
@@ -179,7 +200,12 @@ const expectedTmpfs = {
 };
 
 const expectedSecretMounts = {
-  app: [['postgres-app-password-app', 'postgres-app-password']],
+  app: [
+    ['journal-mac-keyring-app', 'journal-mac-keyring'],
+    ['journal-r2-access-key-id-app', 'journal-r2-access-key-id'],
+    ['journal-r2-secret-access-key-app', 'journal-r2-secret-access-key'],
+    ['postgres-app-password-app', 'postgres-app-password'],
+  ],
   caddy: [],
   'cloudflared-a': [
     ['cloudflare-tunnel-token-cloudflared-a', 'cloudflare-tunnel-token'],
@@ -609,8 +635,8 @@ function assertSecretMatrixAndBootstrap(
   assert.equal(
     source.match(/^\s*file:\s*\/etc\/mlp\/compose-secrets\/[a-z0-9-]+\s*$/gmu)
       ?.length ?? 0,
-    12,
-    'all twelve per-consumer secret files must use the persistent reviewed root',
+    Object.keys(secretFiles).length,
+    'all per-consumer secret files must use the persistent reviewed root',
   );
 
   const postgres = config.services.postgres;
@@ -673,6 +699,7 @@ function assertSecretMatrixAndBootstrap(
         'PGUSER',
         'PGPOOL_MAX',
         'PGCONNECT_TIMEOUT_MS',
+        'PGSTATEMENT_TIMEOUT_MS',
       ],
     ],
     [
@@ -685,6 +712,7 @@ function assertSecretMatrixAndBootstrap(
         'PGUSER',
         'PGPOOL_MAX',
         'PGCONNECT_TIMEOUT_MS',
+        'PGSTATEMENT_TIMEOUT_MS',
       ],
     ],
     ['db-backup', 'BACKUP_', ['PGHOST', 'PGPORT', 'PGDATABASE', 'PGUSER']],
@@ -718,6 +746,68 @@ function assertSecretMatrixAndBootstrap(
     );
   }
 
+  const expectedJournalEnvironment = {
+    JOURNAL_ACTIVE_KEY_ID: {
+      interpolation: 'APP_JOURNAL_ACTIVE_KEY_ID',
+      value: interpolationValues.APP_JOURNAL_ACTIVE_KEY_ID,
+    },
+    JOURNAL_AGE_RECIPIENT: {
+      interpolation: 'APP_JOURNAL_AGE_RECIPIENT',
+      value: interpolationValues.APP_JOURNAL_AGE_RECIPIENT,
+    },
+    JOURNAL_MAC_KEYRING_FILE: {
+      value: '/run/secrets/journal-mac-keyring',
+    },
+    JOURNAL_R2_ACCESS_KEY_ID_FILE: {
+      value: '/run/secrets/journal-r2-access-key-id',
+    },
+    JOURNAL_R2_BUCKET: {
+      interpolation: 'APP_JOURNAL_R2_BUCKET',
+      value: interpolationValues.APP_JOURNAL_R2_BUCKET,
+    },
+    JOURNAL_R2_ENDPOINT: {
+      interpolation: 'APP_JOURNAL_R2_ENDPOINT',
+      value: interpolationValues.APP_JOURNAL_R2_ENDPOINT,
+    },
+    JOURNAL_R2_SECRET_ACCESS_KEY_FILE: {
+      value: '/run/secrets/journal-r2-secret-access-key',
+    },
+  };
+  for (const serviceName of serviceNames) {
+    const journalKeys = Object.keys(
+      config.services[serviceName].environment ?? {},
+    )
+      .filter((name) => name.startsWith('JOURNAL_'))
+      .sort();
+    assert.deepEqual(
+      journalKeys,
+      serviceName === 'app'
+        ? Object.keys(expectedJournalEnvironment).sort()
+        : [],
+      `${serviceName} must not receive unapproved journal runtime settings`,
+    );
+  }
+  for (const [name, contract] of Object.entries(expectedJournalEnvironment)) {
+    if (contract.interpolation && !rendered) {
+      assert.equal(
+        config.services.app.environment[name],
+        `\${${contract.interpolation}:?${contract.interpolation} is required}`,
+        `app/${name} must use the reviewed required interpolation`,
+      );
+    } else {
+      assert.equal(
+        config.services.app.environment[name],
+        contract.value,
+        `app/${name} must retain the reviewed runtime value`,
+      );
+    }
+  }
+  assert.doesNotMatch(
+    JSON.stringify(config),
+    /(?:recovery-secrets|age-identity|age-identities|age-keygen)/u,
+    'Compose must not expose recovery/admin/age identity material',
+  );
+
   const backupEnvironment = config.services['db-backup'].environment;
   assert.equal(
     backupEnvironment.RESTIC_PASSWORD_FILE,
@@ -747,6 +837,11 @@ function assertSecretMatrixAndBootstrap(
 
   for (const [serviceName, service] of Object.entries(config.services)) {
     for (const [name, value] of Object.entries(service.environment ?? {})) {
+      assert.doesNotMatch(
+        name,
+        /^AWS_/u,
+        `${serviceName} must not receive inherited AWS credential names`,
+      );
       if (/(?:PASSWORD|ACCESS_KEY|TOKEN)/u.test(name)) {
         assert.match(
           name,
@@ -987,6 +1082,10 @@ function interpolationEnvironment() {
   return {
     ...process.env,
     MLP_CLOUDFLARE_TUNNEL_TOKEN: 'task9-cloudflare-token',
+    MLP_JOURNAL_MAC_KEYRING:
+      '{"current":{"secret":"bW9jay1qb3VybmFsLW1hYy1rZXktMzJiISESEhISEhISEhISEhI"}}',
+    MLP_JOURNAL_R2_ACCESS_KEY_ID: 'task9-journal-access-key',
+    MLP_JOURNAL_R2_SECRET_ACCESS_KEY: 'task9-journal-secret-key',
     MLP_POSTGRES_APP_PASSWORD: 'task9-app-password',
     MLP_POSTGRES_BACKUP_PASSWORD: 'task9-backup-password',
     MLP_POSTGRES_BOOTSTRAP_PASSWORD: 'task9-bootstrap-password',
@@ -1021,6 +1120,16 @@ async function readExampleInterpolationValues() {
     }
   }
   return values;
+}
+
+function productionInterpolationValues(values) {
+  return {
+    ...values,
+    APP_JOURNAL_ACTIVE_KEY_ID: 'task7-prod.v1',
+    APP_JOURNAL_AGE_RECIPIENT: `age1${'p'.repeat(58)}`,
+    APP_JOURNAL_R2_ENDPOINT:
+      'https://task7production.eu.r2.cloudflarestorage.com',
+  };
 }
 
 function canonicalVerifierConfig(source, values) {
@@ -1282,7 +1391,7 @@ test('production Compose isolates network gateways and forbids host-control surf
   assertNetworksAndHardening(parseCompose(source));
 });
 
-test('production Compose enforces twelve UID-safe file sources and twelve intended mounts', async () => {
+test('production Compose enforces fifteen UID-safe file sources and app-only journal mounts', async () => {
   const source = await readRequiredText('compose.production.yml');
   assertSecretMatrixAndBootstrap(parseCompose(source), source);
 });
@@ -1318,7 +1427,33 @@ cat ${shellQuote(configPath)}
     let layout;
     try {
       layout = await createVerifierLayout(wrapperSource);
-      const interpolationValues = await readExampleInterpolationValues();
+      const exampleInterpolationValues = await readExampleInterpolationValues();
+      const placeholderCanonical = canonicalVerifierConfig(
+        source,
+        exampleInterpolationValues,
+      );
+      await writeFile(
+        configPath,
+        `${JSON.stringify(placeholderCanonical)}\n`,
+        'utf8',
+      );
+      const placeholder = runVerifier(layout.verifierPath, {
+        MLP_POSTGRES_APP_PASSWORD: sentinel,
+      });
+      assertNoSentinelLeak(
+        placeholder,
+        [sentinel],
+        'placeholder production verifier rejection',
+      );
+      assert.notEqual(
+        placeholder.status,
+        0,
+        'the verifier must reject tracked unconfigured journal placeholders',
+      );
+
+      const interpolationValues = productionInterpolationValues(
+        exampleInterpolationValues,
+      );
       const canonical = canonicalVerifierConfig(source, interpolationValues);
       await writeFile(configPath, `${JSON.stringify(canonical)}\n`, 'utf8');
 
@@ -1644,24 +1779,66 @@ test('production verifier renders the complete reviewed schema through its sibli
   );
   const argumentsPath = path.join(fixtureRoot, 'arguments');
   const renderedPath = path.join(fixtureRoot, 'rendered.json');
+  const appEnvPath = path.join(fixtureRoot, 'app.env');
+  const migratorEnvPath = path.join(fixtureRoot, 'migrator.env');
+  const backupEnvPath = path.join(fixtureRoot, 'backup.env');
+  const interpolationValues = productionInterpolationValues(
+    await readExampleInterpolationValues(),
+  );
+  const writeEnvFile = (filePath, keys) =>
+    writeFile(
+      filePath,
+      `${keys.map((key) => `${key}=${interpolationValues[key]}`).join('\n')}\n`,
+      { encoding: 'utf8', mode: 0o600 },
+    );
+  await writeEnvFile(appEnvPath, [
+    'APP_IMAGE',
+    'APP_CADDY_IMAGE',
+    'APP_PGHOST',
+    'APP_PGPORT',
+    'APP_PGDATABASE',
+    'APP_PGUSER',
+    'APP_PGPOOL_MAX',
+    'APP_PGCONNECT_TIMEOUT_MS',
+    'APP_PGSTATEMENT_TIMEOUT_MS',
+    'APP_JOURNAL_R2_ENDPOINT',
+    'APP_JOURNAL_R2_BUCKET',
+    'APP_JOURNAL_ACTIVE_KEY_ID',
+    'APP_JOURNAL_AGE_RECIPIENT',
+    'APP_CONTACT_MODE',
+  ]);
+  await writeEnvFile(migratorEnvPath, [
+    'MIGRATOR_PGHOST',
+    'MIGRATOR_PGPORT',
+    'MIGRATOR_PGDATABASE',
+    'MIGRATOR_PGUSER',
+    'MIGRATOR_PGPOOL_MAX',
+    'MIGRATOR_PGCONNECT_TIMEOUT_MS',
+    'MIGRATOR_PGSTATEMENT_TIMEOUT_MS',
+  ]);
+  await writeEnvFile(backupEnvPath, [
+    'BACKUP_IMAGE',
+    'BACKUP_PGHOST',
+    'BACKUP_PGPORT',
+    'BACKUP_PGDATABASE',
+    'BACKUP_PGUSER',
+    'BACKUP_RESTIC_REPOSITORY',
+  ]);
   const wrapperSource = `#!/bin/bash
 set -Eeuo pipefail
 umask 077
 printf '%s\\n' "$@" > ${shellQuote(argumentsPath)}
 docker compose --project-name mlp-prod --project-directory ${shellQuote(
     repositoryRoot,
-  )} --env-file ${shellQuote(
-    path.join(repositoryRoot, 'infra/runtime.example/env/app.env'),
-  )} --env-file ${shellQuote(
-    path.join(repositoryRoot, 'infra/runtime.example/env/migrator.env'),
-  )} --env-file ${shellQuote(
-    path.join(repositoryRoot, 'infra/runtime.example/env/backup.env'),
-  )} --file ${shellQuote(composePath)} "$@" | tee ${shellQuote(renderedPath)}
+  )} --env-file ${shellQuote(appEnvPath)} --env-file ${shellQuote(
+    migratorEnvPath,
+  )} --env-file ${shellQuote(backupEnvPath)} --file ${shellQuote(
+    composePath,
+  )} "$@" | tee ${shellQuote(renderedPath)}
 `;
   let layout;
   try {
     layout = await createVerifierLayout(wrapperSource);
-    const interpolationValues = await readExampleInterpolationValues();
     const environment = interpolationEnvironment();
     const sentinels = Object.entries(environment)
       .filter(([name]) => name.startsWith('MLP_'))
