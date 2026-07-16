@@ -889,7 +889,6 @@ function assertLifecycleAndHealth(config, { rendered = false } = {}) {
     );
   }
   assert.deepEqual(config.services.migrator.command, [
-    'node',
     '/app/dist/scripts/db/migrate.js',
   ]);
   for (const serviceName of ['app', 'caddy', 'db-backup', 'postgres']) {
@@ -963,6 +962,7 @@ function assertLifecycleAndHealth(config, { rendered = false } = {}) {
   }
 
   const appHealth = commandText(config.services.app.healthcheck.test);
+  assert.match(appHealth, /\/nodejs\/bin\/node/u);
   assert.match(appHealth, /http:\/\/127\.0\.0\.1:3000\/api\/health\/ready/u);
   const caddyHealth = commandText(config.services.caddy.healthcheck.test);
   assert.match(caddyHealth, /http:\/\/127\.0\.0\.1:8080\/api\/health\/live/u);

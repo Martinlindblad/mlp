@@ -59,7 +59,6 @@ services:
     user: '1000:1000'
     restart: 'no'
     command:
-      - node
       - /app/dist/scripts/db/migrate.js
     environment:
       PGHOST: ${MIGRATOR_PGHOST:?MIGRATOR_PGHOST is required}
@@ -130,7 +129,7 @@ services:
     healthcheck:
       test:
         - CMD
-        - node
+        - /nodejs/bin/node
         - -e
         - >-
           fetch('http://127.0.0.1:3000/api/health/ready',{signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))

@@ -51,6 +51,10 @@ const nodeTag = 'node:22.23.1-bookworm-slim';
 const nodeReference =
   `${nodeTag}@sha256:` +
   '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
+const distrolessNodeTag = 'gcr.io/distroless/nodejs22-debian13:nonroot';
+const distrolessNodeReference =
+  `${distrolessNodeTag}@sha256:` +
+  'a2723a2817c5b01b8e7b98d567bc8b5a6b0e713e25bfb0a82b6ade4b9db06f50';
 const postgresReference =
   'postgres:18.4-alpine@sha256:' +
   '9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15';
@@ -598,6 +602,14 @@ test('Docker contract rejects overridable bases, broad copies, writable ownershi
     `RUN printf '%s\\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'\n` +
     'LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" org.opencontainers.image.revision="$COMMIT_SHA"\n';
   assert.doesNotThrow(() => assertOciRevisionMetadata(canonicalOci));
+  const distrolessCanonicalOci =
+    `FROM ${distrolessNodeTag}@sha256:${literalFixtureDigest} AS runner\n` +
+    'ARG COMMIT_SHA\n' +
+    'RUN ["/nodejs/bin/node", "-e", "const sha = process.env.COMMIT_SHA || \\"\\"; if (!/^[0-9a-f]{40}$/.test(sha)) process.exit(1);"]\n' +
+    'LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" org.opencontainers.image.revision="$COMMIT_SHA"\n';
+  assert.doesNotThrow(() =>
+    assertOciRevisionMetadata(distrolessCanonicalOci),
+  );
   assert.throws(
     () =>
       assertOciRevisionMetadata(
@@ -684,7 +696,7 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     nodeReference,
     nodeReference,
     nodeReference,
-    nodeReference,
+    distrolessNodeReference,
   ]);
   assert.deepEqual(
     dockerStages(source).map(({ name }) => name),
@@ -809,88 +821,31 @@ test('application image is immutable, non-root, read-only, and narrowly packaged
     /(?:scripts\/migration|mongo-client|export-mongo|dist-migration|\/app\/migration(?:\/|\s)|\/app\/dist(?:\s|$))/iu,
     'application image must exclude Task 6 ETL/Mongo/operator code',
   );
-  assert.match(
-    finalSource,
-    /apt-get purge -y --allow-remove-essential[\s\S]*\bapt\b[\s\S]*\blibgnutls30\b/u,
-    'runtime image must remove apt and libgnutls so base-image private-key fixtures are not shipped',
-  );
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/lib\/x86_64-linux-gnu\/libgnutls\.so\.30\.34\.3/u,
-    'runtime image must prove the known libgnutls private-key fixture is absent',
-  );
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/bin\/apt-get/u,
-    'runtime image must prove apt-get is absent after the package-manager purge',
-  );
-  for (const packageName of [
-    'bsdutils',
-    'gzip',
-    'libacl1',
-    'libblkid1',
-    'libtinfo6',
-    'libuuid1',
-    'ncurses-base',
-    'perl-base',
-    'util-linux',
-  ]) {
-    assert.match(
-      finalSource,
-      new RegExp(`\\b${packageName}\\b`, 'u'),
-      `${packageName} must be removed from the app runtime image`,
-    );
-  }
   assert.doesNotMatch(
     finalSource,
-    /\bzlib1g\b/u,
-    'runtime image must not purge zlib1g because dpkg pre-depends on it',
-  );
-  assert.match(
-    finalSource,
-    /rm -rf[\s\S]*\/usr\/local\/lib\/node_modules\/npm[\s\S]*\/usr\/local\/bin\/npm[\s\S]*\/usr\/local\/bin\/npx/u,
-    'runtime image must remove npm and npx from the final Node image',
-  );
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/local\/lib\/node_modules\/npm/u,
-    'runtime image must prove npm global modules are absent',
-  );
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/local\/bin\/npm/u,
-    'runtime image must prove npm is absent',
-  );
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/local\/bin\/npx/u,
-    'runtime image must prove npx is absent',
+    /apt-get|\/usr\/local\/lib\/node_modules\/npm|\/usr\/local\/bin\/npm|\/usr\/local\/bin\/npx/u,
+    'app runtime must use the npm-free distroless runtime instead of fragile package-manager purges',
   );
   assertOrdered(
     finalSource,
     [
-      'apt-get purge -y --allow-remove-essential',
-      'test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30.34.3',
+      'RUN ["/nodejs/bin/node", "-e", "const sha = process.env.COMMIT_SHA',
       'USER 1000:1000',
     ],
-    'package-manager/private-key-fixture purge must run as root before dropping to the runtime user',
+    'COMMIT_SHA validation must run before dropping to the runtime user',
   );
   assert.match(finalSource, /ENV\s[^\n]*NODE_ENV=production/u);
   assert.match(finalSource, /ENV\s[^\n]*HOSTNAME=0\.0\.0\.0/u);
   assert.match(finalSource, /ENV\s[^\n]*PORT=3000/u);
   assert.match(finalSource, /^WORKDIR \/app$/mu);
-  assert.match(
-    finalSource,
-    /^RUN test "\$\(age --version\)" = "v1\.3\.1" && test ! -w \/usr\/local\/bin\/age$/mu,
-    'final app image must prove the exact age version and non-writability as the runtime user',
-  );
   assert.match(finalSource, /^EXPOSE 3000$/mu);
-  assert.match(finalSource, /^CMD \["node",\s*"server\.js"\]$/mu);
+  assert.match(finalSource, /^CMD \["server\.js"\]$/mu);
 
   const healthcheck = final.instructions.find((line) =>
     /^HEALTHCHECK\s/iu.test(line),
   );
   assert.ok(healthcheck, 'application image requires a readiness healthcheck');
+  assert.match(healthcheck, /\["\/nodejs\/bin\/node",\s*"-e"/u);
   assert.match(healthcheck, /http:\/\/127\.0\.0\.1:3000\/api\/health\/ready/u);
   const healthTimeout = Number(healthcheck.match(/--timeout=([0-9]+)s/u)?.[1]);
   const abortTimeout = Number(

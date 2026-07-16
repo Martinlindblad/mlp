@@ -2273,7 +2273,7 @@ run_database_migrations() {
     --env PGPOOL_MAX=2 \
     --env PGPORT=5432 \
     --env PGUSER=portfolio_migrator \
-    "$APP_IMAGE" node /app/dist/scripts/db/migrate.js \
+    "$APP_IMAGE" /app/dist/scripts/db/migrate.js \
     >"$WORK_DIRECTORY/database-migrations.txt" 2>&1 ||
     fail 'source database migration failed'
 

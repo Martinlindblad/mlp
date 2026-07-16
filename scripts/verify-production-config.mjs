@@ -604,10 +604,7 @@ function validateLifecycle(services) {
     invariant(services[name].profiles === undefined);
   }
 
-  exactValue(services.migrator.command, [
-    'node',
-    '/app/dist/scripts/db/migrate.js',
-  ]);
+  exactValue(services.migrator.command, ['/app/dist/scripts/db/migrate.js']);
   for (const name of ['app', 'caddy', 'db-backup', 'postgres']) {
     invariant(nullish(services[name].command));
   }
@@ -638,7 +635,7 @@ function validateHealth(services) {
     start_period: '20s',
     test: [
       'CMD',
-      'node',
+      '/nodejs/bin/node',
       '-e',
       "fetch('http://127.0.0.1:3000/api/health/ready',{signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
     ],

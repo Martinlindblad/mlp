@@ -24,46 +24,9 @@ RUN test "$(uname -m)" = "x86_64" && \
   test "$(/usr/local/bin/age --version)" = "v1.3.1" && \
   test "$(stat -c '%U:%G %a' /usr/local/bin/age)" = "root:root 555"
 
-FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS runner
-RUN apt-get purge -y --allow-remove-essential \
-    apt \
-    libgnutls30 \
-    adduser \
-    bsdutils \
-    debian-archive-keyring \
-    gzip \
-    gpgv \
-    libapt-pkg6.0 \
-    libacl1 \
-    libblkid1 \
-    libffi8 \
-    libhogweed6 \
-    libnettle8 \
-    libp11-kit0 \
-    libseccomp2 \
-    libtasn1-6 \
-    libtinfo6 \
-    libuuid1 \
-    libxxhash0 \
-    ncurses-base \
-    perl-base \
-    util-linux && \
-  rm -rf \
-    /usr/local/lib/node_modules/npm \
-    /usr/local/bin/npm \
-    /usr/local/bin/npx \
-    /var/lib/apt/lists/* \
-    /var/cache/apt/* \
-    /var/log/apt/* && \
-  node --version >/dev/null && \
-  ! ldd /usr/local/bin/node | grep -q 'not found' && \
-  test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30.34.3 && \
-  test ! -e /usr/bin/apt-get && \
-  test ! -e /usr/local/lib/node_modules/npm && \
-  test ! -e /usr/local/bin/npm && \
-  test ! -e /usr/local/bin/npx
+FROM gcr.io/distroless/nodejs22-debian13:nonroot@sha256:a2723a2817c5b01b8e7b98d567bc8b5a6b0e713e25bfb0a82b6ade4b9db06f50 AS runner
 ARG COMMIT_SHA
-RUN printf '%s\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'
+RUN ["/nodejs/bin/node", "-e", "const sha = process.env.COMMIT_SHA || \"\"; if (!/^[0-9a-f]{40}$/.test(sha)) process.exit(1);"]
 LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" org.opencontainers.image.revision="$COMMIT_SHA"
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
@@ -75,7 +38,6 @@ COPY --from=builder --chown=0:0 --chmod=0555 /app/dist/server/db ./dist/server/d
 COPY --from=builder --chown=0:0 --chmod=0555 /app/node_modules/kysely/dist/migration ./node_modules/kysely/dist/migration
 COPY --from=age --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
 USER 1000:1000
-RUN test "$(age --version)" = "v1.3.1" && test ! -w /usr/local/bin/age
 EXPOSE 3000
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=4 CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready',{signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-CMD ["node", "server.js"]
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=4 CMD ["/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready',{signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+CMD ["server.js"]

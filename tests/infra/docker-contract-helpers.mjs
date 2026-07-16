@@ -214,7 +214,11 @@ export function assertOciRevisionMetadata(source) {
 
   const canonicalValidation =
     `RUN printf '%s\\n' "$COMMIT_SHA" | ` + `grep -Eq '^[0-9a-f]{40}$'`;
-  const validationIndex = final.instructions.indexOf(canonicalValidation);
+  const distrolessNodeValidation =
+    'RUN ["/nodejs/bin/node", "-e", "const sha = process.env.COMMIT_SHA || \\"\\"; if (!/^[0-9a-f]{40}$/.test(sha)) process.exit(1);"]';
+  const validationIndex = final.instructions.findIndex((line) =>
+    [canonicalValidation, distrolessNodeValidation].includes(line),
+  );
   assert.ok(
     validationIndex > argIndexes[0].index,
     'final stage must use the canonical fail-closed COMMIT_SHA validation',

@@ -2030,7 +2030,8 @@ test('image gate migrates a source database and exercises app health, precache, 
   );
   assert.match(source, /create role portfolio_app login/u);
   assert.match(source, /create role portfolio_backup login/u);
-  assert.match(source, /node \/app\/dist\/scripts\/db\/migrate\.js/u);
+  assert.match(source, /"\$APP_IMAGE"\s+\/app\/dist\/scripts\/db\/migrate\.js/u);
+  assert.doesNotMatch(source, /node \/app\/dist\/scripts\/db\/migrate\.js/u);
   assert.match(
     appVerification,
     /--network-alias app/u,
@@ -2121,6 +2122,16 @@ test('image gate uses the restricted migrator as owner and proves the production
   assert.doesNotMatch(bootstrap, /alter schema public owner/iu);
   assert.match(migrations, /--env PGUSER=portfolio_migrator/u);
   assert.doesNotMatch(migrations, /--env PGUSER=postgres/u);
+  assert.match(
+    migrations,
+    /"\$APP_IMAGE"\s+\/app\/dist\/scripts\/db\/migrate\.js/u,
+    'app-image migration smoke must pass only the script path to the distroless Node entrypoint',
+  );
+  assert.doesNotMatch(
+    migrations,
+    /"\$APP_IMAGE"\s+node\s+\/app\/dist\/scripts\/db\/migrate\.js/u,
+    'app-image migration smoke must not pass a nested node executable to distroless Node',
+  );
   assert.match(verification, /pg_get_userbyid\(datdba\)/u);
   assert.match(
     verification,
