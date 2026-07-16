@@ -2022,6 +2022,7 @@ declare
   constrained_role_count integer;
   table_matrix_ok boolean;
   database_acl text[];
+  journal_contact_function oid;
 begin
   if (select pg_get_userbyid(datdba) from pg_database
       where datname = current_database()) is distinct from 'portfolio_migrator'
@@ -2055,9 +2056,38 @@ begin
   end if;
 
   if (select name from kysely_migration order by timestamp desc limit 1)
-      is distinct from '002_runtime_grants'
+      is distinct from '003_contact_journal'
     or not exists(
       select 1 from profile_sections where id = 'image-gate-restore-ok'
+    ) then
+    raise exception 'security contract failed';
+  end if;
+
+  select to_regprocedure(
+    'public.ensure_journal_contact(uuid,text,text,text,text,timestamptz,text,text,text)'
+  )::oid into journal_contact_function;
+  if journal_contact_function is null
+    or (select pg_get_userbyid(proowner) from pg_proc
+        where oid = journal_contact_function) is distinct from 'portfolio_migrator'
+    or not has_function_privilege(
+      'portfolio_app', journal_contact_function, 'execute'
+    )
+    or not has_function_privilege(
+      'portfolio_migrator', journal_contact_function, 'execute'
+    )
+    or has_function_privilege(
+      'portfolio_backup', journal_contact_function, 'execute'
+    )
+    or has_function_privilege(
+      'portfolio_app', journal_contact_function, 'execute with grant option'
+    )
+    or exists(
+      select 1
+      from pg_proc function
+      cross join lateral aclexplode(function.proacl) acl
+      where function.oid = journal_contact_function
+        and acl.grantee = 0
+        and acl.privilege_type = 'EXECUTE'
     ) then
     raise exception 'security contract failed';
   end if;
@@ -2144,7 +2174,7 @@ begin
     )
     and has_table_privilege(
       role_name, format('%I.%I', 'public', table_name), 'insert'
-    ) = (role_name = 'portfolio_app' and table_name = 'contact_messages')
+    ) = false
     and not has_table_privilege(role_name, format('%I.%I', 'public', table_name), 'update')
     and not has_table_privilege(role_name, format('%I.%I', 'public', table_name), 'delete')
     and not has_table_privilege(role_name, format('%I.%I', 'public', table_name), 'truncate')

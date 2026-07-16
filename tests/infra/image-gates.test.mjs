@@ -2079,6 +2079,21 @@ test('image gate uses the restricted migrator as owner and proves the production
   );
   assert.match(verification, /pg_get_userbyid\(relowner\)/u);
   assert.match(verification, /has_table_privilege/u);
+  assert.match(
+    verification,
+    /003_contact_journal/u,
+    'security contract must validate the current contact journal migration',
+  );
+  assert.match(
+    verification,
+    /has_function_privilege/u,
+    'security contract must validate journal contact function execution grants',
+  );
+  assert.doesNotMatch(
+    verification,
+    /role_name = 'portfolio_app' and table_name = 'contact_messages'/u,
+    'portfolio_app must no longer have direct contact_messages inserts',
+  );
   assert.match(verification, /portfolio_app/u);
   assert.match(verification, /portfolio_backup/u);
   assert.match(verification, /application_table_count <> 10/u);
