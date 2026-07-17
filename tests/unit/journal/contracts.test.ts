@@ -251,24 +251,32 @@ describe('authenticated protocol document contracts', () => {
   });
 
   it('rejects the first valid outbound intent envelope above the byte cap', () => {
-    let lastUnderCap = intent;
-    let firstOverCap = intent;
+    let lowerBound = 1;
+    let upperBound = INTENT_MAX_BYTES;
 
-    for (let bytes = 1; bytes < INTENT_MAX_BYTES; bytes += 1) {
+    while (lowerBound < upperBound) {
+      const candidateBytes = Math.floor((lowerBound + upperBound) / 2);
       const candidate = {
         ...intent,
-        ciphertext: base64Ciphertext(bytes),
+        ciphertext: base64Ciphertext(candidateBytes),
       };
       const size = Buffer.byteLength(canonicalIntentText(candidate), 'utf8');
 
       if (size <= INTENT_MAX_BYTES) {
-        lastUnderCap = candidate;
-        continue;
+        lowerBound = candidateBytes + 1;
+      } else {
+        upperBound = candidateBytes;
       }
-
-      firstOverCap = candidate;
-      break;
     }
+
+    const firstOverCap = {
+      ...intent,
+      ciphertext: base64Ciphertext(lowerBound),
+    };
+    const lastUnderCap = {
+      ...intent,
+      ciphertext: base64Ciphertext(lowerBound - 1),
+    };
 
     expect(
       Buffer.byteLength(canonicalIntentText(lastUnderCap), 'utf8'),

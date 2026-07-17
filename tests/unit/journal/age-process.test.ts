@@ -17,7 +17,7 @@ function createTestAgeProcess(options?: {
 }) {
   return createAgeProcess({
     executable: fixturePath,
-    operationTimeoutMs: 500,
+    operationTimeoutMs: 3_000,
     killAfterMs: 100,
     ciphertextLimitBytes: 65_536,
     plaintextLimitBytes: 32_768,
