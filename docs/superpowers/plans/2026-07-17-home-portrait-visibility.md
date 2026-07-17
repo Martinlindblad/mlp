@@ -4,7 +4,7 @@
 
 **Goal:** Replace the faded home-page background portrait with a responsive, full-opacity portrait panel that keeps Martin's face unobstructed on mobile and desktop.
 
-**Architecture:** Keep the change inside the existing `HeroIntroduction` component and replace its overlapping background layers with a content-driven responsive grid. Add one focused Playwright contract that verifies portrait visibility, 4:5 geometry, non-overlap, full opacity, and the mobile/desktop ordering in both themes.
+**Architecture:** First keep Vitest discovery inside the active checkout by extending its default exclusions with `.worktrees`. Then keep the visual change inside the existing `HeroIntroduction` component and replace its overlapping background layers with a content-driven responsive grid. Add one focused Playwright contract that verifies portrait visibility, 4:5 geometry, non-overlap, full opacity, and the mobile/desktop ordering in both themes.
 
 **Tech Stack:** Next.js 15 Pages Router, React 18, TypeScript, Tailwind CSS 3, `next/image`, Playwright 1.61.
 
@@ -20,19 +20,122 @@
 - Preserve the portrait alt text and all existing keyboard focus styles and link accessible names.
 - Verify at 390 × 844 and 1440 × 1000 CSS pixels in both light and dark themes.
 - Run commands with the repository's Node `>=22.23.1 <23` engine and Yarn 1.22.22. Do not add dependencies.
-- Follow red-green-refactor: observe the focused Playwright test fail before modifying the component, then make only the minimal implementation change.
+- Follow red-green-refactor in both tasks: observe the focused regression test fail before modifying production or configuration code, then make only the minimal implementation change.
 - Do not stage unrelated user changes.
+- Keep Vitest's default `node_modules` and `.git` exclusions while adding the project-local `.worktrees` exclusion.
 
 ## Planned File Map
 
 | Path | Responsibility |
 | --- | --- |
+| `tests/unit/infra/vitest-config.test.ts` | Vitest worktree-exclusion regression contract |
+| `vitest.config.ts` | Active-checkout test discovery boundary |
 | `tests/e2e/home-portrait.spec.ts` | Responsive portrait visibility, geometry, theme, and overflow contract |
 | `src/components/About/HeroIntroduction.tsx` | Home hero copy and the responsive dedicated portrait panel |
 
 ---
 
-### Task 1: Build and Verify the Dedicated Portrait Panel
+### Task 1: Exclude Local Worktrees from Vitest Discovery
+
+**Files:**
+
+- Create: `tests/unit/infra/vitest-config.test.ts`
+- Modify: `vitest.config.ts`
+
+**Interfaces:**
+
+- Consumes: Vitest's exported `configDefaults.exclude` array.
+- Produces: a `test.exclude` array that preserves Vitest defaults and adds `**/.worktrees/**`.
+
+- [ ] **Step 1: Write the failing Vitest configuration contract.**
+
+Create `tests/unit/infra/vitest-config.test.ts` with this exact content:
+
+```ts
+import { describe, expect, it } from 'vitest';
+import config from '../../../vitest.config';
+
+describe('vitest config', () => {
+  it('excludes ignored local worktrees without removing Vitest defaults', () => {
+    const configObject = config as {
+      test?: { exclude?: string[] };
+    };
+
+    expect(configObject.test?.exclude).toEqual(
+      expect.arrayContaining([
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/.worktrees/**',
+      ]),
+    );
+  });
+});
+```
+
+- [ ] **Step 2: Run the focused test and verify the red state.**
+
+Run:
+
+```bash
+npx --yes --package=node@22.23.1 --call 'yarn vitest run tests/unit/infra/vitest-config.test.ts'
+```
+
+Expected: FAIL because the current `test.exclude` value is `undefined`.
+
+- [ ] **Step 3: Extend Vitest's default exclusions with the local worktree directory.**
+
+Replace `vitest.config.ts` with this exact content:
+
+```ts
+import { configDefaults, defineConfig } from 'vitest/config';
+import path from 'node:path';
+
+export default defineConfig({
+  resolve: { alias: { src: path.resolve(__dirname) } },
+  test: {
+    environment: 'node',
+    clearMocks: true,
+    restoreMocks: true,
+    testTimeout: 10_000,
+    exclude: [...configDefaults.exclude, '**/.worktrees/**'],
+  },
+});
+```
+
+- [ ] **Step 4: Run the focused test and discovery check.**
+
+Run:
+
+```bash
+npx --yes --package=node@22.23.1 --call 'yarn vitest run tests/unit/infra/vitest-config.test.ts'
+npx --yes --package=node@22.23.1 --call 'yarn vitest list tests/unit --filesOnly'
+```
+
+Expected: the focused test PASSes, the list command exits 0, and no listed
+path starts with `.worktrees/`.
+
+- [ ] **Step 5: Run the repaired baseline.**
+
+Run:
+
+```bash
+npx --yes --package=node@22.23.1 --call 'yarn test:unit'
+npx --yes --package=node@22.23.1 --call 'yarn typecheck'
+npx --yes --package=node@22.23.1 --call 'yarn lint'
+```
+
+Expected: all commands PASS without collecting tests below `.worktrees`.
+
+- [ ] **Step 6: Commit the test-discovery repair.**
+
+```bash
+git add tests/unit/infra/vitest-config.test.ts vitest.config.ts
+git commit -m "test: exclude local worktrees from Vitest"
+```
+
+---
+
+### Task 2: Build and Verify the Dedicated Portrait Panel
 
 **Files:**
 
