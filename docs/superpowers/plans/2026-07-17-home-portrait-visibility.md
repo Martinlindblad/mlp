@@ -1,0 +1,297 @@
+# Home Portrait Visibility Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Replace the faded home-page background portrait with a responsive, full-opacity portrait panel that keeps Martin's face unobstructed on mobile and desktop.
+
+**Architecture:** Keep the change inside the existing `HeroIntroduction` component and replace its overlapping background layers with a content-driven responsive grid. Add one focused Playwright contract that verifies portrait visibility, 4:5 geometry, non-overlap, full opacity, and the mobile/desktop ordering in both themes.
+
+**Tech Stack:** Next.js 15 Pages Router, React 18, TypeScript, Tailwind CSS 3, `next/image`, Playwright 1.61.
+
+## Global Constraints
+
+- Preserve the existing portrait asset, hero copy, skill labels, social links, routes, and calls to action.
+- Do not add, replace, retouch, or generate any image asset.
+- Below 768 CSS pixels, render the portrait first as a centered 4:5 card and the copy second.
+- At 768 CSS pixels and above, render the copy in the left column and the portrait in the right column.
+- Use full image opacity, `object-cover`, and a face-aware vertical position near the upper third of the source image.
+- Do not place text, gradients, or other visual layers over Martin's face.
+- Keep the hero content-driven; do not add a fixed or minimum viewport-height constraint.
+- Preserve the portrait alt text and all existing keyboard focus styles and link accessible names.
+- Verify at 390 × 844 and 1440 × 1000 CSS pixels in both light and dark themes.
+- Run commands with the repository's Node `>=22.23.1 <23` engine and Yarn 1.22.22. Do not add dependencies.
+- Follow red-green-refactor: observe the focused Playwright test fail before modifying the component, then make only the minimal implementation change.
+- Do not stage unrelated user changes.
+
+## Planned File Map
+
+| Path | Responsibility |
+| --- | --- |
+| `tests/e2e/home-portrait.spec.ts` | Responsive portrait visibility, geometry, theme, and overflow contract |
+| `src/components/About/HeroIntroduction.tsx` | Home hero copy and the responsive dedicated portrait panel |
+
+---
+
+### Task 1: Build and Verify the Dedicated Portrait Panel
+
+**Files:**
+
+- Create: `tests/e2e/home-portrait.spec.ts`
+- Modify: `src/components/About/HeroIntroduction.tsx`
+
+**Interfaces:**
+
+- Consumes: `/images/profilepicture.webp`, `useAboutQuery('introduction')`, `SocialMediaLinks`, and the existing `/showcases`, `/experience`, and `/contact` routes.
+- Produces: stable `home-hero`, `home-hero-copy`, and `home-portrait` test IDs plus a responsive 4:5 portrait panel.
+
+- [ ] **Step 1: Write the failing responsive Playwright contract.**
+
+Create `tests/e2e/home-portrait.spec.ts` with this exact content:
+
+```ts
+import { expect, test } from '@playwright/test';
+
+type Rect = {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+};
+
+const viewports = [
+  { height: 844, layout: 'stacked', name: 'mobile', width: 390 },
+  { height: 1000, layout: 'columns', name: 'desktop', width: 1440 },
+] as const;
+
+const themes = ['light', 'dark'] as const;
+
+function rectanglesOverlap(left: Rect, right: Rect): boolean {
+  return !(
+    left.x + left.width <= right.x ||
+    right.x + right.width <= left.x ||
+    left.y + left.height <= right.y ||
+    right.y + right.height <= left.y
+  );
+}
+
+for (const viewport of viewports) {
+  for (const theme of themes) {
+    test(`${viewport.name} ${theme} hero keeps the portrait visible and separate`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({
+        height: viewport.height,
+        width: viewport.width,
+      });
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+      const hero = page.getByTestId('home-hero');
+      const copy = page.getByTestId('home-hero-copy');
+      const portrait = page.getByTestId('home-portrait');
+      const portraitImage = portrait.locator('img');
+
+      await expect(hero).toBeVisible();
+      await expect(copy).toBeVisible();
+      await expect(portrait).toBeVisible();
+      await expect(portraitImage).toBeVisible();
+
+      const copyBox = await copy.boundingBox();
+      const portraitBox = await portrait.boundingBox();
+      expect(copyBox).not.toBeNull();
+      expect(portraitBox).not.toBeNull();
+
+      const copyRect = copyBox as Rect;
+      const portraitRect = portraitBox as Rect;
+      expect(rectanglesOverlap(copyRect, portraitRect)).toBe(false);
+      expect(portraitRect.width / portraitRect.height).toBeCloseTo(0.8, 1);
+
+      if (viewport.layout === 'stacked') {
+        expect(portraitRect.y + portraitRect.height).toBeLessThanOrEqual(
+          copyRect.y,
+        );
+      } else {
+        expect(copyRect.x + copyRect.width).toBeLessThanOrEqual(
+          portraitRect.x,
+        );
+      }
+
+      const imageStyle = await portraitImage.evaluate((image) => {
+        const style = window.getComputedStyle(image);
+        return {
+          objectFit: style.objectFit,
+          opacity: style.opacity,
+        };
+      });
+
+      expect(imageStyle).toEqual({ objectFit: 'cover', opacity: '1' });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+    });
+  }
+}
+```
+
+- [ ] **Step 2: Run the focused test and verify the red state.**
+
+Run:
+
+```bash
+yarn test:e2e tests/e2e/home-portrait.spec.ts
+```
+
+Expected: FAIL because `getByTestId('home-hero-copy')` and
+`getByTestId('home-portrait')` do not exist in the current hero.
+
+- [ ] **Step 3: Replace the overlapping background hero with the dedicated portrait grid.**
+
+Replace `src/components/About/HeroIntroduction.tsx` with this exact content:
+
+```tsx
+import SocialMediaLinks from '../SocialMediaLinks';
+
+import Link from 'next/link';
+import Image from 'next/image';
+import useAboutQuery from '../../hooks/useAboutQuery';
+import { ProfessionalProfileintroduction } from 'src/types/DBTypes';
+
+const fallbackIntroduction = {
+  name: 'Martin',
+  surname: 'Lindblad',
+  title: 'Front-end Developer',
+  info: 'Stockholm-based front-end developer building accessible, reliable product experiences with React, React Native, Next.js, TypeScript, and modern API integrations.',
+  key: 'introduction',
+} as ProfessionalProfileintroduction;
+
+export default function Hero() {
+  const { data: personalInfo } = useAboutQuery('introduction');
+  const personalInfoData =
+    (personalInfo as unknown as ProfessionalProfileintroduction | undefined) ??
+    fallbackIntroduction;
+
+  return (
+    <main
+      data-testid="home-hero"
+      className="bg-white text-gray-950 dark:bg-gray-950 dark:text-white"
+    >
+      <div className="mx-auto w-full max-w-7xl px-6 pb-16 pt-24 sm:px-10 md:pb-20 lg:px-24">
+        <Link
+          href="/"
+          className="text-2xl font-extrabold tracking-wide text-gray-950 dark:text-white md:text-4xl"
+        >
+          Martin <span className="font-light text-blue-600">Lindblad</span>
+        </Link>
+
+        <div className="grid items-center gap-10 pt-10 md:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)] md:gap-12 md:pt-16">
+          <div
+            data-testid="home-hero-copy"
+            className="order-2 min-w-0 md:order-1"
+          >
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+              Front-end Developer in Stockholm
+            </p>
+            <h1 className="max-w-3xl break-words text-3xl font-extrabold leading-tight text-gray-950 dark:text-white sm:text-5xl lg:text-6xl">
+              React and mobile interfaces built for real users.
+            </h1>
+            <p className="max-w-2xl break-words py-6 text-base leading-7 text-gray-700 dark:text-gray-200 md:text-lg">
+              {personalInfoData?.info || fallbackIntroduction.info}
+            </p>
+            <div className="flex max-w-full flex-wrap gap-2 pb-6 text-sm font-medium text-gray-800 dark:text-gray-100">
+              {['React', 'React Native', 'Next.js', 'TypeScript'].map(
+                (skill) => (
+                  <span
+                    key={skill}
+                    className="rounded-full border border-gray-300 bg-white/80 px-3 py-1 dark:border-gray-700 dark:bg-gray-900/80"
+                  >
+                    {skill}
+                  </span>
+                ),
+              )}
+            </div>
+            <div className="grid gap-3 sm:flex sm:flex-wrap sm:gap-4">
+              <Link
+                href="/showcases"
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-400"
+              >
+                View case studies
+              </Link>
+              <Link
+                href="/experience"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-gray-400 bg-white/70 px-5 py-3 text-sm font-semibold text-gray-950 transition hover:bg-white focus:outline-none focus:ring-4 focus:ring-gray-300 dark:border-gray-600 dark:bg-gray-900/70 dark:text-white dark:hover:bg-gray-900"
+              >
+                See experience
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex min-h-11 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold text-gray-800 underline-offset-4 transition hover:underline focus:outline-none focus:ring-4 focus:ring-gray-300 dark:text-gray-100"
+              >
+                Contact Martin
+              </Link>
+            </div>
+            <SocialMediaLinks />
+          </div>
+
+          <div
+            data-testid="home-portrait"
+            className="relative order-1 mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 shadow-2xl shadow-gray-950/20 dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/50 md:order-2 md:max-w-md"
+          >
+            <Image
+              alt="Portrait of Martin Lindblad"
+              className="object-cover object-[50%_35%]"
+              src="/images/profilepicture.webp"
+              fill
+              priority
+              sizes="(max-width: 767px) calc(100vw - 48px), (max-width: 1279px) 42vw, 448px"
+            />
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+```
+
+- [ ] **Step 4: Run the focused test and verify the green state.**
+
+Run:
+
+```bash
+yarn test:e2e tests/e2e/home-portrait.spec.ts
+```
+
+Expected: all four viewport/theme cases PASS.
+
+- [ ] **Step 5: Run static and regression checks.**
+
+Run:
+
+```bash
+yarn typecheck
+yarn lint
+yarn test:e2e tests/e2e/public-routes.spec.ts tests/e2e/assets.spec.ts
+```
+
+Expected: all commands PASS. The public home marker and local portrait asset
+remain available.
+
+- [ ] **Step 6: Perform visual verification.**
+
+Render `/` at 390 × 844 and 1440 × 1000 in both light and dark themes. Confirm:
+
+- Martin's entire face is visible at full opacity.
+- No text, gradient, navigation, or action overlaps the portrait.
+- Mobile shows portrait then copy; desktop shows copy left and portrait right.
+- The 4:5 crop remains natural and the page has no horizontal overflow.
+
+Expected: all four renders match the approved dedicated-portrait-panel
+direction in `docs/superpowers/specs/2026-07-17-home-portrait-visibility-design.md`.
+
+- [ ] **Step 7: Commit the implementation.**
+
+```bash
+git add tests/e2e/home-portrait.spec.ts src/components/About/HeroIntroduction.tsx
+git commit -m "fix: make home portrait clearly visible"
+```
