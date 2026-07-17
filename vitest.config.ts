@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import path from 'node:path';
 
 export default defineConfig({
@@ -8,5 +8,6 @@ export default defineConfig({
     clearMocks: true,
     restoreMocks: true,
     testTimeout: 10_000,
+    exclude: [...configDefaults.exclude, '**/.worktrees/**'],
   },
 });
