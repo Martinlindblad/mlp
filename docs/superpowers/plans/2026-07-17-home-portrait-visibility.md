@@ -127,7 +127,10 @@ npx --yes --package=node@22.23.1 --call 'yarn typecheck'
 npx --yes --package=node@22.23.1 --call 'yarn lint'
 ```
 
-Expected: all commands PASS without collecting tests below `.worktrees`.
+Expected: no tests are collected below `.worktrees`; typecheck and lint PASS.
+If active-checkout unit tests still fail, record their exact files and errors as
+the RED evidence handed to Task 2 rather than broadening this configuration
+task.
 
 - [ ] **Step 6: Commit the test-discovery repair.**
 
