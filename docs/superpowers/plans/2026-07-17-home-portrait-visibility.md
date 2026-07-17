@@ -4,7 +4,7 @@
 
 **Goal:** Replace the faded home-page background portrait with a responsive, full-opacity portrait panel that keeps Martin's face unobstructed on mobile and desktop.
 
-**Architecture:** First keep Vitest discovery inside the active checkout by extending its default exclusions with `.worktrees`. Then keep the visual change inside the existing `HeroIntroduction` component and replace its overlapping background layers with a content-driven responsive grid. Add one focused Playwright contract that verifies portrait visibility, 4:5 geometry, non-overlap, full opacity, and the mobile/desktop ordering in both themes.
+**Architecture:** First keep Vitest discovery inside the active checkout by extending its default exclusions with `.worktrees`, then remove two test-only timing hazards exposed by the repaired discovery boundary. Finally keep the visual change inside the existing `HeroIntroduction` component and replace its overlapping background layers with a content-driven responsive grid. Add one focused Playwright contract that verifies portrait visibility, 4:5 geometry, non-overlap, full opacity, and the mobile/desktop ordering in both themes.
 
 **Tech Stack:** Next.js 15 Pages Router, React 18, TypeScript, Tailwind CSS 3, `next/image`, Playwright 1.61.
 
@@ -23,6 +23,7 @@
 - Follow red-green-refactor in both tasks: observe the focused regression test fail before modifying production or configuration code, then make only the minimal implementation change.
 - Do not stage unrelated user changes.
 - Keep Vitest's default `node_modules` and `.git` exclusions while adding the project-local `.worktrees` exclusion.
+- Keep the production journal timeout and byte-cap behavior unchanged; stabilize only the test fixture deadline and the boundary-search algorithm.
 
 ## Planned File Map
 
@@ -30,6 +31,8 @@
 | --- | --- |
 | `tests/unit/infra/vitest-config.test.ts` | Vitest worktree-exclusion regression contract |
 | `vitest.config.ts` | Active-checkout test discovery boundary |
+| `tests/unit/journal/age-process.test.ts` | Age subprocess test-fixture timing contract |
+| `tests/unit/journal/contracts.test.ts` | Efficient intent-envelope byte-boundary contract |
 | `tests/e2e/home-portrait.spec.ts` | Responsive portrait visibility, geometry, theme, and overflow contract |
 | `src/components/About/HeroIntroduction.tsx` | Home hero copy and the responsive dedicated portrait panel |
 
@@ -135,7 +138,123 @@ git commit -m "test: exclude local worktrees from Vitest"
 
 ---
 
-### Task 2: Build and Verify the Dedicated Portrait Panel
+### Task 2: Stabilize the Repaired Journal Unit Baseline
+
+**Files:**
+
+- Modify: `tests/unit/journal/age-process.test.ts`
+- Modify: `tests/unit/journal/contracts.test.ts`
+
+**Interfaces:**
+
+- Consumes: the existing fake-age fixture, `INTENT_MAX_BYTES`, `intentEnvelopeJson`, and `canonicalIntentText`.
+- Produces: the same journal behavior assertions without a load-sensitive subprocess deadline or an O(n²) allocation loop.
+
+- [ ] **Step 1: Reproduce the two baseline failures.**
+
+Run:
+
+```bash
+npx --yes --package=node@22.23.1 --call 'yarn test:unit'
+```
+
+Expected: FAIL in the existing age-process success case with `journal
+encryption unavailable` under full-suite load and/or in `rejects the first
+valid outbound intent envelope above the byte cap` at the 10,000 ms timeout.
+Record whichever of the two timing failures reproduce; Task 1's report is the
+authoritative original RED evidence for both failures.
+
+- [ ] **Step 2: Give non-timeout fake-age cases the production-equivalent deadline.**
+
+In `createTestAgeProcess` inside `tests/unit/journal/age-process.test.ts`, change
+only the default operation timeout from 500 to 3,000 milliseconds:
+
+```ts
+  return createAgeProcess({
+    executable: fixturePath,
+    operationTimeoutMs: 3_000,
+    killAfterMs: 100,
+    ciphertextLimitBytes: 65_536,
+    plaintextLimitBytes: 32_768,
+    ...options,
+  });
+```
+
+Keep the dedicated timeout test's explicit 50-millisecond override and the
+abort test's explicit 1,000-millisecond override unchanged.
+
+- [ ] **Step 3: Replace the linear byte-boundary scan with binary search.**
+
+Inside `rejects the first valid outbound intent envelope above the byte cap`
+in `tests/unit/journal/contracts.test.ts`, replace the mutable candidates and
+linear `for` loop with this exact boundary search:
+
+```ts
+    let lowerBound = 1;
+    let upperBound = INTENT_MAX_BYTES;
+
+    while (lowerBound < upperBound) {
+      const candidateBytes = Math.floor((lowerBound + upperBound) / 2);
+      const candidate = {
+        ...intent,
+        ciphertext: base64Ciphertext(candidateBytes),
+      };
+      const size = Buffer.byteLength(canonicalIntentText(candidate), 'utf8');
+
+      if (size <= INTENT_MAX_BYTES) {
+        lowerBound = candidateBytes + 1;
+      } else {
+        upperBound = candidateBytes;
+      }
+    }
+
+    const firstOverCap = {
+      ...intent,
+      ciphertext: base64Ciphertext(lowerBound),
+    };
+    const lastUnderCap = {
+      ...intent,
+      ciphertext: base64Ciphertext(lowerBound - 1),
+    };
+```
+
+Keep the four existing assertions after the search unchanged; they prove the
+search found the exact valid boundary and production serialization still
+rejects the first over-cap envelope.
+
+- [ ] **Step 4: Run the focused journal tests.**
+
+Run:
+
+```bash
+npx --yes --package=node@22.23.1 --call 'yarn vitest run tests/unit/journal/age-process.test.ts tests/unit/journal/contracts.test.ts --reporter=verbose'
+```
+
+Expected: 30 tests PASS. The boundary test completes well below its 10-second
+timeout and every age-process behavior remains covered.
+
+- [ ] **Step 5: Run the full repaired baseline.**
+
+Run:
+
+```bash
+npx --yes --package=node@22.23.1 --call 'yarn test:unit'
+npx --yes --package=node@22.23.1 --call 'yarn typecheck'
+npx --yes --package=node@22.23.1 --call 'yarn lint'
+```
+
+Expected: all commands PASS with no test files collected below `.worktrees`.
+
+- [ ] **Step 6: Commit the journal test stabilization.**
+
+```bash
+git add tests/unit/journal/age-process.test.ts tests/unit/journal/contracts.test.ts
+git commit -m "test: stabilize journal unit baseline"
+```
+
+---
+
+### Task 3: Build and Verify the Dedicated Portrait Panel
 
 **Files:**
 
