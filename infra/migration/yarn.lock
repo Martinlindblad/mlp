@@ -301,10 +301,10 @@ bson@^6.10.4:
   resolved "https://registry.yarnpkg.com/bson/-/bson-6.10.4.tgz#d530733bb5bb16fb25c162e01a3344fab332fd2b"
   integrity sha512-WIsKqkSC0ABoBJuT1LEX+2HEvNmNKKgnTAyd0fL8qzK4SH2i9NXg+t08YtdZp/V9IZ33cxe3iV4yM0qg8lMQng==
 
-kysely@0.29.3:
-  version "0.29.3"
-  resolved "https://registry.yarnpkg.com/kysely/-/kysely-0.29.3.tgz#e219d9290a4398706fb5d1aa73fbe46a13e37287"
-  integrity sha512-VHtBdW6XB/pgoTSqraM3UAa2rYoYdNXqnNPpX+8XXP+cwYbVEFuAp3HyPt1vpNfU9l7Y2kpUrA9QDPsy8uUqOQ==
+kysely@0.29.4:
+  version "0.29.4"
+  resolved "https://registry.yarnpkg.com/kysely/-/kysely-0.29.4.tgz#1d61f583026f9b071dc5c8fe58cc3bef5153dff4"
+  integrity sha512-y5mVgQNkMbs1eK9Xyc0pmNdabN2wHhRYY/5r4W5HrUT1rYCEPeVNSj1RUJeSDKT3U0p+mXCvLgkrFuIafYI6BA==
 
 memory-pager@^1.0.2:
   version "1.5.0"
