@@ -27,8 +27,8 @@ const repositoryRoot = path.resolve(
 const wrapperRelativePath = 'ops/compose.sh';
 const wrapperPath = path.join(repositoryRoot, wrapperRelativePath);
 const dockerHarnessImage =
-  'node:22.23.1-bookworm-slim@sha256:' +
-  '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
+  'python:3.12-slim-bookworm@sha256:' +
+  'd50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b';
 const commandTimeoutMs = 15_000;
 const callerEnvironmentPrefixes = [
   'APP_',

@@ -286,11 +286,42 @@ async function createDnsHarness(options = {}) {
   const metadata = path.join(bin, 'stat');
   const dig = path.join(bin, 'dig');
   const date = path.join(bin, 'date');
+  const sha256sum = path.join(bin, 'sha256sum');
   await Promise.all([
     writeExecutable(id, identityAndMetadataStub),
     writeExecutable(metadata, identityAndMetadataStub),
     writeExecutable(dig, digStub),
     writeExecutable(date, dateStub),
+    writeExecutable(
+      sha256sum,
+      `#!${process.execPath}
+const { createHash } = require('node:crypto');
+const { createReadStream } = require('node:fs');
+
+function digestStream(stream) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('error', reject);
+  });
+}
+
+(async () => {
+  const files = process.argv.slice(2);
+  if (files.length === 0) {
+    process.stdout.write(\`\${await digestStream(process.stdin)}  -\\n\`);
+  } else {
+    for (const file of files) {
+      process.stdout.write(\`\${await digestStream(createReadStream(file))}  \${file}\\n\`);
+    }
+  }
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+`,
+    ),
   ]);
 
   const productionSource = await readRequired(dnsScriptRelative);
@@ -298,7 +329,7 @@ async function createDnsHarness(options = {}) {
     ['/usr/bin/id', id],
     ['/usr/bin/stat', metadata],
     ['/usr/bin/dig', dig],
-    ['/usr/bin/sha256sum', '/sbin/sha256sum'],
+    ['/usr/bin/sha256sum', sha256sum],
     ['/bin/date', date],
     ['/var/lib/mlp/cloudflare-authority-start', stateFile],
   ]);
