@@ -14,6 +14,16 @@ fail() {
   exit "$status"
 }
 
+run_python3() {
+  if [[ -x /usr/bin/python3 ]]; then
+    /usr/bin/python3 "$@"
+  elif [[ -x /usr/local/bin/python3 ]]; then
+    /usr/local/bin/python3 "$@"
+  else
+    fail 'trusted Python runtime is unavailable'
+  fi
+}
+
 validate_arguments() {
   local argument
   for argument in "$@"; do
@@ -50,7 +60,7 @@ validate_file() {
   [[ -f "$path" && ! -L "$path" && -s "$path" ]] || fail 'invalid runtime file'
   metadata=$(/usr/bin/stat -c '%u:%g:%a' -- "$path")
   [[ "$metadata" == 0:0:600 ]] || fail 'unsafe runtime file ownership or mode'
-  /usr/bin/python3 - "$path" <<'PY' || fail 'unsafe runtime file ownership or mode'
+  run_python3 - "$path" <<'PY' || fail 'unsafe runtime file ownership or mode'
 import os
 import stat
 import sys
@@ -162,7 +172,7 @@ validate_secret_file() {
 
 read_validated_secret_payload() {
   local path=$1
-  /usr/bin/python3 - "$path" <<'PY'
+  run_python3 - "$path" <<'PY'
 import os
 import stat
 import sys

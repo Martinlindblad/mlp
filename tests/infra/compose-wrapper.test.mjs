@@ -267,6 +267,9 @@ function assertFixedWrapperContract(source) {
   assert.match(validateFile, /\[\[?[^\n]*-s/u);
   assert.match(validateFile, /\/usr\/bin\/stat/u);
   assert.match(validateFile, /0:0:600/u);
+  assert.match(source, /\/usr\/bin\/python3/u);
+  assert.match(source, /\/usr\/local\/bin\/python3/u);
+  assert.match(source, /run_python3 - "\$path"/u);
   assert.match(source, /os\.O_NOFOLLOW/u);
   assert.match(source, /os\.fstat/u);
   assert.match(source, /os\.lstat/u);
