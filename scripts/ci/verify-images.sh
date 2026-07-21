@@ -1940,14 +1940,14 @@ verify_caddy_runtime() {
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
     --user 65532:65532 \
-    --entrypoint /bin/sh \
-    "$CADDY_IMAGE" -eu -c 'test -z "$(getcap /usr/bin/caddy)"' \
-    >"$WORK_DIRECTORY/caddy-capability.txt" 2>&1 ||
-    fail 'Caddy file capability inspection failed'
+    --entrypoint /usr/bin/caddy \
+    "$CADDY_IMAGE" version \
+    >"$WORK_DIRECTORY/caddy-version.txt" 2>&1 ||
+    fail 'Caddy hardened version smoke failed'
   assert_container_hardening \
     caddy 65532:65532 "$CADDY_CAPABILITY_CONTAINER"
-  [ ! -s "$WORK_DIRECTORY/caddy-capability.txt" ] ||
-    fail 'Caddy image retained a file capability'
+  grep -F 'v2.11.4' "$WORK_DIRECTORY/caddy-version.txt" >/dev/null ||
+    fail 'Caddy version mismatch'
 
   track_container "$CADDY_CONTAINER"
   docker run --detach \

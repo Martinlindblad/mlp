@@ -15,32 +15,53 @@ const dockerfilePath = path.join(
   'caddy',
   'Dockerfile',
 );
-const caddyBase =
-  'caddy:2.11.4-alpine@sha256:' +
-  '5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648';
+const golangBase =
+  'golang:1.26.5-alpine@sha256:' +
+  '0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2';
+const alpineBase =
+  'alpine:3.24.1@sha256:' +
+  '28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b';
 
-test('Caddy image removes only its unnecessary privileged-port file capability', async () => {
+test('Caddy image builds Caddy with the fixed Go toolchain into a minimal runtime', async () => {
   const source = await readFile(dockerfilePath, 'utf8');
 
   assert.equal(
-    source.match(new RegExp(caddyBase.replaceAll('.', '\\.')), 'gu')?.length,
+    source.match(new RegExp(golangBase.replaceAll('.', '\\.')), 'gu')?.length,
     1,
-    'Caddy must derive from exactly one literal digest-pinned official base',
+    'Caddy must use exactly one literal digest-pinned Go builder base',
+  );
+  assert.equal(
+    source.match(new RegExp(alpineBase.replaceAll('.', '\\.')), 'gu')?.length,
+    1,
+    'Caddy must use exactly one literal digest-pinned Alpine runtime base',
   );
   assert.doesNotMatch(source, /^ARG\s+(?:CADDY|BASE).*IMAGE/imu);
   assert.match(
     source,
-    /getcap\s+\/usr\/bin\/caddy[^\n]*cap_net_bind_service=ep/u,
-    'the build must prove the official base has the expected capability before changing it',
+    /go version \| grep -Fx 'go version go1\.26\.5 linux\/amd64'/u,
+    'the build must prove the fixed Go toolchain',
   );
-  assert.match(source, /setcap\s+-r\s+\/usr\/bin\/caddy/u);
   assert.match(
     source,
-    /test\s+-z\s+"\$\(getcap\s+\/usr\/bin\/caddy\)"/u,
-    'the build must fail unless no Caddy file capability remains',
+    /go get github\.com\/caddyserver\/caddy\/v2\/cmd\/caddy@v2\.11\.4/u,
+    'the build must pin the reviewed Caddy version',
+  );
+  assert.match(
+    source,
+    /install -o root -g root -m 0555 \/go\/bin\/caddy \/usr\/bin\/caddy/u,
+    'the build must install a root-owned read-only Caddy binary',
+  );
+  assert.match(
+    source,
+    /COPY --from=caddy-builder --chown=0:0 --chmod=0555 \/usr\/bin\/caddy \/usr\/bin\/caddy/u,
+  );
+  assert.match(
+    source,
+    /COPY --from=caddy-builder --chown=0:0 --chmod=0444 \/etc\/ssl\/certs\/ca-certificates\.crt \/etc\/ssl\/certs\/ca-certificates\.crt/u,
   );
   assert.doesNotMatch(source, /\b(?:apk|apt-get|apt)\s+(?:add|install)\b/iu);
-  assert.doesNotMatch(source, /^(?:ADD|COPY)\s/imu);
+  assert.doesNotMatch(source, /\b(?:getcap|setcap)\b/u);
+  assert.doesNotMatch(source, /^VOLUME\s/imu);
 });
 
 test('Caddy image is revision-labelled and defaults to the production numeric user', async () => {
@@ -52,11 +73,16 @@ test('Caddy image is revision-labelled and defaults to the production numeric us
     source,
     /^LABEL org\.opencontainers\.image\.source="https:\/\/github\.com\/martinlindblad\/mlp" org\.opencontainers\.image\.revision="\$COMMIT_SHA"$/mu,
   );
-  assert.equal(source.match(/^USER 0:0$/gmu)?.length, 1);
+  assert.equal(source.match(/^USER 0:0$/gmu)?.length ?? 0, 0);
   assert.equal(source.match(/^USER 65532:65532$/gmu)?.length, 1);
   assert.ok(
-    source.lastIndexOf('USER 65532:65532') > source.lastIndexOf('USER 0:0'),
+    source.lastIndexOf('USER 65532:65532') > source.lastIndexOf('ARG COMMIT_SHA'),
     'the final image user must be the fixed Caddy runtime UID',
   );
   assert.match(source, /caddy version[^\n]*v2\.11\.4/u);
+  assert.match(source, /^ENTRYPOINT \["\/usr\/bin\/caddy"\]$/mu);
+  assert.match(
+    source,
+    /^CMD \["run", "--config", "\/etc\/caddy\/Caddyfile", "--adapter", "caddyfile"\]$/mu,
+  );
 });

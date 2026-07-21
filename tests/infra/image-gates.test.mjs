@@ -1971,7 +1971,9 @@ test('image gate enforces hardened runtime settings and retains only verified su
     'app hardening smoke must use the distroless Node runtime instead of /bin/true',
   );
   assert.match(source, /verify_caddy_runtime/u);
-  assert.match(source, /getcap \/usr\/bin\/caddy/u);
+  assert.match(source, /--entrypoint \/usr\/bin\/caddy/u);
+  assert.match(source, /Caddy hardened version smoke failed/u);
+  assert.match(source, /grep -F 'v2\.11\.4'/u);
   assert.match(source, /RUN_RANDOM_SUFFIX=\$\{WORK_DIRECTORY##\*\.\}/u);
   assert.match(
     source,

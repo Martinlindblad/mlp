@@ -17,9 +17,12 @@ const fixtureComposePath = path.join(
   repositoryRoot,
   'tests/infra/fixtures/caddy.compose.yml',
 );
-const officialCaddyReference =
-  'caddy:2.11.4-alpine@sha256:' +
-  '5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648';
+const caddyBuilderReference =
+  'golang:1.26.5-alpine@sha256:' +
+  '0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2';
+const caddyRuntimeReference =
+  'alpine:3.24.1@sha256:' +
+  '28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b';
 const nodeReference =
   'node:22.23.1-bookworm-slim@sha256:' +
   '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
@@ -787,12 +790,9 @@ test(
     try {
       await runDocker([...composeArgs, 'config', '--quiet']);
       await runDocker(['pull', '--platform', 'linux/amd64', nodeReference]);
-      await runDocker([
-        'pull',
-        '--platform',
-        'linux/amd64',
-        officialCaddyReference,
-      ]);
+      for (const reference of [caddyBuilderReference, caddyRuntimeReference]) {
+        await runDocker(['pull', '--platform', 'linux/amd64', reference]);
+      }
       await runDocker([
         'build',
         '--platform',
