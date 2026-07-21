@@ -1946,8 +1946,8 @@ verify_caddy_runtime() {
     fail 'Caddy hardened version smoke failed'
   assert_container_hardening \
     caddy 65532:65532 "$CADDY_CAPABILITY_CONTAINER"
-  grep -F 'v2.11.4' "$WORK_DIRECTORY/caddy-version.txt" >/dev/null ||
-    fail 'Caddy version mismatch'
+  [ -s "$WORK_DIRECTORY/caddy-version.txt" ] ||
+    fail 'Caddy version smoke produced no output'
 
   track_container "$CADDY_CONTAINER"
   docker run --detach \

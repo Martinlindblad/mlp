@@ -48,6 +48,11 @@ test('Caddy image builds Caddy with the fixed Go toolchain into a minimal runtim
   );
   assert.match(
     source,
+    /go version -m \/usr\/bin\/caddy \| grep -E '\^\[\[:space:\]\]\*mod\[\[:space:\]\]\+github\\\.com\/caddyserver\/caddy\/v2\[\[:space:\]\]\+v2\\\.11\\\.4/u,
+    'the build must prove the Caddy module version through Go build metadata',
+  );
+  assert.match(
+    source,
     /install -o root -g root -m 0555 \/go\/bin\/caddy \/usr\/bin\/caddy/u,
     'the build must install a root-owned read-only Caddy binary',
   );
@@ -79,7 +84,7 @@ test('Caddy image is revision-labelled and defaults to the production numeric us
     source.lastIndexOf('USER 65532:65532') > source.lastIndexOf('ARG COMMIT_SHA'),
     'the final image user must be the fixed Caddy runtime UID',
   );
-  assert.match(source, /caddy version[^\n]*v2\.11\.4/u);
+  assert.match(source, /caddy version/u);
   assert.match(source, /^ENTRYPOINT \["\/usr\/bin\/caddy"\]$/mu);
   assert.match(
     source,

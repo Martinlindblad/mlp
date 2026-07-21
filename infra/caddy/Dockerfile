@@ -9,7 +9,7 @@ RUN test -x /go/bin/caddy && \
     install -o root -g root -m 0555 /go/bin/caddy /usr/bin/caddy && \
     rm -rf /go/pkg/mod /root/.cache/go-build
 RUN /usr/bin/caddy version && \
-    /usr/bin/caddy version | grep -F 'v2.11.4' && \
+    go version -m /usr/bin/caddy | grep -E '^[[:space:]]*mod[[:space:]]+github\.com/caddyserver/caddy/v2[[:space:]]+v2\.11\.4[[:space:]]' && \
     test "$(stat -c '%U:%G %a' /usr/bin/caddy)" = "root:root 555" && \
     test -r /etc/ssl/certs/ca-certificates.crt
 
@@ -17,7 +17,7 @@ FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6ee
 COPY --from=caddy-builder --chown=0:0 --chmod=0555 /usr/bin/caddy /usr/bin/caddy
 COPY --from=caddy-builder --chown=0:0 --chmod=0444 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 RUN test "$(uname -m)" = "x86_64" && \
-    caddy version | grep -F 'v2.11.4' && \
+    caddy version && \
     test -r /etc/ssl/certs/ca-certificates.crt && \
     test ! -w /etc/ssl/certs/ca-certificates.crt
 ARG COMMIT_SHA
