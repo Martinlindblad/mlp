@@ -1974,10 +1974,8 @@ verify_caddy_runtime() {
       "$CADDY_CONTAINER" 2>/dev/null) ||
       fail 'Caddy runtime state inspection failed'
     if [ "$caddy_running" = true ] &&
-      caddy_status=$(docker exec "$CADDY_CONTAINER" curl \
-        --silent --output /dev/null --write-out '%{http_code}' \
-        --header 'Host: unknown.invalid' \
-        http://127.0.0.1:8080/ 2>/dev/null) &&
+      caddy_status=$(docker exec "$CADDY_CONTAINER" /bin/sh -eu -c \
+        'wget -q --server-response --header "Host: unknown.invalid" --spider http://127.0.0.1:8080/ 2>&1 | awk "/^  HTTP/{ code = \$2 } END { print code }"') &&
       [ "$caddy_status" = 421 ]; then
       return 0
     fi
