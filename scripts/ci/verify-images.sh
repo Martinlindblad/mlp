@@ -2311,7 +2311,22 @@ MARKER_SQL
   verify_database_security_contract "$SOURCE_DATABASE_CONTAINER" imagegate_source
 }
 
-app_curl() {
+app_wget() {
+  [ "$#" -ge 1 ] || fail 'application probe URL is required'
+  app_wget_url=$1
+  shift
+  app_wget_output=-
+  while [ "$#" -gt 0 ]; do
+    case $1 in
+      --output)
+        [ "$#" -ge 2 ] || fail 'application probe output path is required'
+        app_wget_output=$2
+        shift 2
+        ;;
+      *) fail "unsupported application probe argument: $1" ;;
+    esac
+  done
+
   docker run --rm \
     --label "mlp.image-gate.run=$RUN_ID" \
     --platform linux/amd64 \
@@ -2321,10 +2336,16 @@ app_curl() {
     --security-opt no-new-privileges:true \
     --user 65532:65532 \
     --tmpfs /tmp:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=1770 \
-    --entrypoint curl \
+    --entrypoint /bin/sh \
     "$CADDY_IMAGE" \
-    --silent --show-error --fail --max-time 10 \
-    "$@"
+    -eu -c '
+      output_path=$1
+      url=$2
+      if [ "$output_path" = - ]; then
+        exec wget --quiet --timeout=10 --tries=1 --output-document=- "$url"
+      fi
+      exec wget --quiet --timeout=10 --tries=1 --output-document="$output_path" "$url"
+    ' sh "$app_wget_output" "$app_wget_url"
 }
 
 verify_app_video_range() {
@@ -2339,16 +2360,18 @@ verify_app_video_range() {
     --tmpfs /tmp:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=1770 \
     --entrypoint /bin/sh \
     "$CADDY_IMAGE" -eu -c '
-      range_status=$(curl --silent --show-error --fail --max-time 10 \
+      wget --quiet --timeout=10 --tries=1 \
+        --server-response \
         --header "Range: bytes=0-31" \
-        --dump-header /tmp/video-range-headers.txt \
-        --output /tmp/video-range-body.bin \
-        --write-out "%{http_code}" \
-        http://app:3000/assets/man.mp4)
-      [ "$range_status" -eq 206 ]
+        --output-document=/tmp/video-range-body.bin \
+        http://app:3000/assets/man.mp4 \
+        2>/tmp/video-range-headers.txt
       tr -d "\r" </tmp/video-range-headers.txt \
         >/tmp/video-range-headers-normalized.txt
-      grep -Eiq "^Content-Range:[[:space:]]*bytes 0-31/[1-9][0-9]*$" \
+      range_status=$(awk "/^  HTTP/{ code = \$2 } END { print code }" \
+        /tmp/video-range-headers-normalized.txt)
+      [ "$range_status" -eq 206 ]
+      grep -Eiq "^[[:space:]]*Content-Range:[[:space:]]*bytes 0-31/[1-9][0-9]*$" \
         /tmp/video-range-headers-normalized.txt
       range_bytes=$(wc -c </tmp/video-range-body.bin | awk "{ print \$1 }")
       [ "$range_bytes" -eq 32 ]
@@ -2383,8 +2406,8 @@ start_and_verify_app() {
 
   attempt=0
   while [ "$attempt" -lt 60 ]; do
-    if app_curl http://app:3000/api/health/live >/dev/null 2>&1 &&
-      app_curl http://app:3000/api/health/ready >/dev/null 2>&1; then
+    if app_wget http://app:3000/api/health/live >/dev/null 2>&1 &&
+      app_wget http://app:3000/api/health/ready >/dev/null 2>&1; then
       break
     fi
     container_running=$(docker container inspect --format='{{.State.Running}}' "$APP_CONTAINER" 2>/dev/null) ||
@@ -2396,13 +2419,13 @@ start_and_verify_app() {
   [ "$attempt" -lt 60 ] || fail 'application readiness timed out'
 
   for required_path in /api/health/live /api/health/ready /sw.js /sw-manifest.json; do
-    app_curl "http://app:3000$required_path" --output /dev/null ||
+    app_wget "http://app:3000$required_path" --output /dev/null ||
       fail 'required application route failed'
   done
 
   manifest_file="$WORK_DIRECTORY/sw-manifest.json"
   manifest_paths="$WORK_DIRECTORY/sw-manifest-paths.txt"
-  app_curl http://app:3000/sw-manifest.json >"$manifest_file" ||
+  app_wget http://app:3000/sw-manifest.json >"$manifest_file" ||
     fail 'service worker manifest request failed'
   jq --exit-status \
     'type == "array" and length > 0 and all(.[]; type == "string" and startswith("/"))' \
@@ -2410,7 +2433,7 @@ start_and_verify_app() {
     fail 'service worker manifest validation failed'
   jq --raw-output '.[]' "$manifest_file" >"$manifest_paths"
   while IFS= read -r asset_path; do
-    app_curl "http://app:3000$asset_path" --output /dev/null ||
+    app_wget "http://app:3000$asset_path" --output /dev/null ||
       fail 'precache asset request failed'
   done <"$manifest_paths"
 

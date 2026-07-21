@@ -1974,7 +1974,10 @@ test('image gate enforces hardened runtime settings and retains only verified su
   assert.match(source, /--entrypoint \/usr\/bin\/caddy/u);
   assert.match(source, /Caddy hardened version smoke failed/u);
   assert.match(source, /Caddy version smoke produced no output/u);
-  assert.match(source, /wget -q --server-response --header "Host: unknown\.invalid"/u);
+  assert.match(
+    source,
+    /wget -q --server-response --header "Host: unknown\.invalid"/u,
+  );
   assert.match(source, /\[ "\$caddy_status" = 421 \]/u);
   assert.match(source, /RUN_RANDOM_SUFFIX=\$\{WORK_DIRECTORY##\*\.\}/u);
   assert.match(
@@ -2066,13 +2069,13 @@ test('image gate migrates a source database and exercises app health, precache, 
   );
   assert.doesNotMatch(
     appVerification,
-    /app_curl http:\/\/app:3000\/sw-manifest\.json --output "\$manifest_file"/u,
-    'sidecar curl must not write host manifest paths inside the container',
+    /app_wget http:\/\/app:3000\/sw-manifest\.json --output "\$manifest_file"/u,
+    'sidecar fetch must not write host manifest paths inside the container',
   );
   assert.match(
     appVerification,
-    /app_curl http:\/\/app:3000\/sw-manifest\.json >"\$manifest_file"/u,
-    'sidecar curl must stream the manifest back to the host for jq validation',
+    /app_wget http:\/\/app:3000\/sw-manifest\.json >"\$manifest_file"/u,
+    'sidecar fetch must stream the manifest back to the host for jq validation',
   );
   for (const pathName of [
     '/api/health/live',
@@ -2084,7 +2087,11 @@ test('image gate migrates a source database and exercises app health, precache, 
   }
   assert.match(source, /jq --exit-status/u);
   assert.match(source, /type == "array"/u);
-  assert.match(source, /curl[\s\S]*--fail/u);
+  assert.match(
+    source,
+    /app_wget\(\)[\s\S]*wget --quiet --timeout=10 --tries=1/u,
+  );
+  assert.doesNotMatch(source, /--entrypoint curl/u);
   assert.match(source, /\/assets\/man\.mp4/u);
   assert.match(source, /Range: bytes=0-31/u);
   assert.match(source, /Content-Range/u);
