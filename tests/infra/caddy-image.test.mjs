@@ -90,9 +90,9 @@ test('Caddy image is revision-labelled and defaults to the production numeric us
     'the runtime proof must run as the fixed Caddy runtime UID',
   );
   assert.match(source, /caddy version/u);
-  assert.match(source, /^ENTRYPOINT \["\/usr\/bin\/caddy"\]$/mu);
+  assert.doesNotMatch(source, /^ENTRYPOINT\s/mu);
   assert.match(
     source,
-    /^CMD \["run", "--config", "\/etc\/caddy\/Caddyfile", "--adapter", "caddyfile"\]$/mu,
+    /^CMD \["\/usr\/bin\/caddy", "run", "--config", "\/etc\/caddy\/Caddyfile", "--adapter", "caddyfile"\]$/mu,
   );
 });

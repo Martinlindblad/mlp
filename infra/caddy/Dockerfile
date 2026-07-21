@@ -24,5 +24,4 @@ RUN test "$(uname -m)" = "x86_64" && \
     caddy version && \
     test -r /etc/ssl/certs/ca-certificates.crt && \
     test ! -w /etc/ssl/certs/ca-certificates.crt
-ENTRYPOINT ["/usr/bin/caddy"]
-CMD ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+CMD ["/usr/bin/caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
