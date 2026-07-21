@@ -2030,7 +2030,10 @@ test('image gate migrates a source database and exercises app health, precache, 
   );
   assert.match(source, /create role portfolio_app login/u);
   assert.match(source, /create role portfolio_backup login/u);
-  assert.match(source, /"\$APP_IMAGE"\s+\/app\/dist\/scripts\/db\/migrate\.js/u);
+  assert.match(
+    source,
+    /"\$APP_IMAGE"\s+\/app\/dist\/scripts\/db\/migrate\.js/u,
+  );
   assert.doesNotMatch(source, /node \/app\/dist\/scripts\/db\/migrate\.js/u);
   assert.match(
     appVerification,

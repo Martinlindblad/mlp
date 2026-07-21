@@ -60,9 +60,7 @@ for (const viewport of viewports) {
           copyRect.y,
         );
       } else {
-        expect(copyRect.x + copyRect.width).toBeLessThanOrEqual(
-          portraitRect.x,
-        );
+        expect(copyRect.x + copyRect.width).toBeLessThanOrEqual(portraitRect.x);
       }
 
       const imageStyle = await portraitImage.evaluate((image) => {

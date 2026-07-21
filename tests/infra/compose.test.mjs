@@ -1132,6 +1132,15 @@ function productionInterpolationValues(values) {
   };
 }
 
+function unconfiguredJournalInterpolationValues(values) {
+  return {
+    ...values,
+    APP_JOURNAL_ACTIVE_KEY_ID: 'unconfigured-active',
+    APP_JOURNAL_AGE_RECIPIENT: `age1${'q'.repeat(58)}`,
+    APP_JOURNAL_R2_ENDPOINT: 'https://unconfigured.eu.r2.cloudflarestorage.com',
+  };
+}
+
 function canonicalVerifierConfig(source, values) {
   const replaceInterpolations = (value) => {
     if (Array.isArray(value)) return value.map(replaceInterpolations);
@@ -1428,9 +1437,27 @@ cat ${shellQuote(configPath)}
     try {
       layout = await createVerifierLayout(wrapperSource);
       const exampleInterpolationValues = await readExampleInterpolationValues();
-      const placeholderCanonical = canonicalVerifierConfig(
+      const canonical = canonicalVerifierConfig(
         source,
         exampleInterpolationValues,
+      );
+      await writeFile(configPath, `${JSON.stringify(canonical)}\n`, 'utf8');
+
+      const valid = runVerifier(layout.verifierPath, {
+        MLP_POSTGRES_APP_PASSWORD: sentinel,
+      });
+      assertNoSentinelLeak(valid, [sentinel], 'production verifier success');
+      assert.equal(
+        valid.status,
+        0,
+        'the verifier must accept tracked runtime example values used by CI rendering',
+      );
+      assert.equal(valid.stdout, 'production config valid\n');
+      assert.equal(valid.stderr, '');
+
+      const placeholderCanonical = canonicalVerifierConfig(
+        source,
+        unconfiguredJournalInterpolationValues(exampleInterpolationValues),
       );
       await writeFile(
         configPath,
@@ -1448,26 +1475,8 @@ cat ${shellQuote(configPath)}
       assert.notEqual(
         placeholder.status,
         0,
-        'the verifier must reject tracked unconfigured journal placeholders',
+        'the verifier must reject unconfigured journal placeholders',
       );
-
-      const interpolationValues = productionInterpolationValues(
-        exampleInterpolationValues,
-      );
-      const canonical = canonicalVerifierConfig(source, interpolationValues);
-      await writeFile(configPath, `${JSON.stringify(canonical)}\n`, 'utf8');
-
-      const valid = runVerifier(layout.verifierPath, {
-        MLP_POSTGRES_APP_PASSWORD: sentinel,
-      });
-      assertNoSentinelLeak(valid, [sentinel], 'production verifier success');
-      assert.equal(
-        valid.status,
-        0,
-        'the verifier must accept canonical wrapper-rendered JSON',
-      );
-      assert.equal(valid.stdout, 'production config valid\n');
-      assert.equal(valid.stderr, '');
       assert.deepEqual(
         (await readFile(argumentsPath, 'utf8')).trim().split('\n'),
         ['--profile', '*', 'config', '--format', 'json'],

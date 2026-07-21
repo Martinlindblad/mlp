@@ -778,18 +778,27 @@ test('runtime examples use collision-free prefixes and keep the Restic provider 
   );
   assert.match(
     parsed['app.env'].APP_JOURNAL_ACTIVE_KEY_ID,
-    /^unconfigured-[a-z0-9._-]+$/u,
+    /^[a-z0-9][a-z0-9._-]{0,31}$/u,
   );
   assert.match(
     parsed['app.env'].APP_JOURNAL_AGE_RECIPIENT,
-    /^age1[023456789acdefghjklmnpqrstuvwxyz]+$/u,
+    /^age1[023456789acdefghjklmnpqrstuvwxyz]{58}$/u,
+  );
+  assert.doesNotMatch(
+    parsed['app.env'].APP_JOURNAL_R2_ENDPOINT,
+    /unconfigured|placeholder|example/iu,
+  );
+  assert.doesNotMatch(
+    parsed['app.env'].APP_JOURNAL_ACTIVE_KEY_ID,
+    /^unconfigured\b/u,
+  );
+  assert.notEqual(
+    parsed['app.env'].APP_JOURNAL_AGE_RECIPIENT,
+    `age1${'q'.repeat(58)}`,
   );
   assert.equal(parsed['app.env'].APP_PGSTATEMENT_TIMEOUT_MS, '5000');
   assert.equal(parsed['migrator.env'].MIGRATOR_PGUSER, 'portfolio_migrator');
-  assert.equal(
-    parsed['migrator.env'].MIGRATOR_PGSTATEMENT_TIMEOUT_MS,
-    '60000',
-  );
+  assert.equal(parsed['migrator.env'].MIGRATOR_PGSTATEMENT_TIMEOUT_MS, '60000');
   assert.equal(parsed['backup.env'].BACKUP_PGUSER, 'portfolio_backup');
   assert.match(
     parsed['backup.env'].BACKUP_RESTIC_REPOSITORY,

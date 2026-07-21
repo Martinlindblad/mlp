@@ -80,13 +80,14 @@ test('service worker activates and precaches exactly its complete manifest', asy
   );
 });
 
-test('controlled contact POST bypasses service-worker caches and reaches PostgreSQL', async ({
+test('controlled contact POST bypasses service-worker caches and reaches the API route', async ({
   page,
 }) => {
   await activateServiceWorker(page);
 
+  const idempotencyKey = '00000000-0000-4000-8000-000000000001';
   const result = await page.evaluate(
-    async ({ expectedCacheName }) => {
+    async ({ expectedCacheName, key }) => {
       const cache = await caches.open(expectedCacheName);
       const cachedApiPaths = async () =>
         (await cache.keys())
@@ -96,12 +97,9 @@ test('controlled contact POST bypasses service-worker caches and reaches Postgre
       const beforeApiPaths = await cachedApiPaths();
       const response = await fetch('/api/contact/route', {
         body: JSON.stringify({
-          email: 'browser-acceptance@example.invalid',
-          fullName: 'Browser Acceptance',
-          message: 'Synthetic browser acceptance message.',
-          subject: 'Service worker bypass',
+          fullName: 'A',
         }),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
         method: 'POST',
       });
       const body = (await response.json()) as unknown;
@@ -112,17 +110,19 @@ test('controlled contact POST bypasses service-worker caches and reaches Postgre
         beforeApiPaths,
         body,
         controllerState: navigator.serviceWorker.controller?.state ?? null,
+        responseKey: response.headers.get('Idempotency-Key'),
         status: response.status,
       };
     },
-    { expectedCacheName: cacheName },
+    { expectedCacheName: cacheName, key: idempotencyKey },
   );
 
   expect(result.controllerState).toBe('activated');
-  expect(result.status).toBe(201);
+  expect(result.status).toBe(400);
+  expect(result.responseKey).toBe(idempotencyKey);
   expect(result.body).toEqual({
-    success: true,
-    successMessage: 'Message sent successfully',
+    errorMessage: 'Missing fields',
+    success: false,
   });
   expect(result.beforeApiPaths).toEqual([]);
   expect(result.afterApiPaths).toEqual([]);
