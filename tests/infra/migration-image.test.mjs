@@ -550,6 +550,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     'sh',
     'sha256sum',
     'stat',
+    'true',
     'uname',
   ]) {
     assert.match(

@@ -79,11 +79,11 @@ FROM busybox:1.37.0-musl@sha256:222ad6d973c0d198014546a65cd02c5fdedcc172123c5b4c
 RUN set -eu; \
   mkdir -p /shell-bin; \
   cp /bin/busybox /shell-bin/busybox; \
-  for applet in cat chmod chown date find grep head id mkdir mktemp mv rm sed sh sha256sum stat uname; do \
+  for applet in cat chmod chown date find grep head id mkdir mktemp mv rm sed sh sha256sum stat true uname; do \
     /bin/busybox --list | grep -Fx "$applet" >/dev/null; \
     ln /shell-bin/busybox "/shell-bin/$applet"; \
   done; \
-  for applet in busybox cat chmod chown date find grep head id mkdir mktemp mv rm sed sh sha256sum stat uname; do \
+  for applet in busybox cat chmod chown date find grep head id mkdir mktemp mv rm sed sh sha256sum stat true uname; do \
     test "$(stat -c '%U:%G %a' "/shell-bin/$applet")" = 'root:root 755'; \
   done
 
