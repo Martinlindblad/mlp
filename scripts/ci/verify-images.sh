@@ -2356,29 +2356,23 @@ verify_app_video_range() {
     --read-only \
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
-    --user 65532:65532 \
-    --tmpfs /tmp:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=1770 \
-    --entrypoint /bin/sh \
-    "$CADDY_IMAGE" -eu -c '
-      wget_exit=0
-      wget --quiet --timeout=10 --tries=1 \
-        --server-response \
-        --header "Range: bytes=0-31" \
-        --output-document=/tmp/video-range-body.bin \
-        http://app:3000/assets/man.mp4 \
-        2>/tmp/video-range-headers.txt || wget_exit=$?
-      tr -d "\r" </tmp/video-range-headers.txt \
-        >/tmp/video-range-headers-normalized.txt
-      range_status=$(awk "/^  HTTP/{ code = \$2 } END { print code }" \
-        /tmp/video-range-headers-normalized.txt)
-      printf "%s\n" "range status: $range_status"
-      printf "%s\n" "wget exit: $wget_exit"
-      [ "$range_status" -eq 206 ]
-      grep -Eiq "^[[:space:]]*Content-Range:[[:space:]]*bytes 0-31/[1-9][0-9]*$" \
-        /tmp/video-range-headers-normalized.txt
-      range_bytes=$(wc -c </tmp/video-range-body.bin | awk "{ print \$1 }")
-      printf "%s\n" "range bytes: $range_bytes"
-      [ "$range_bytes" -eq 32 ]
+    --user 1000:1000 \
+    --entrypoint /nodejs/bin/node \
+    "$APP_IMAGE" \
+    --input-type=module \
+    -e '
+      const response = await fetch("http://app:3000/assets/man.mp4", {
+        headers: { Range: "bytes=0-31" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      const contentRange = response.headers.get("content-range") ?? "";
+      const body = new Uint8Array(await response.arrayBuffer());
+      console.log(`range status: ${response.status}`);
+      console.log(`Content-Range: ${contentRange}`);
+      console.log(`range bytes: ${body.byteLength}`);
+      if (response.status !== 206) process.exit(1);
+      if (!/^bytes 0-31\/[1-9][0-9]*$/u.test(contentRange)) process.exit(1);
+      if (body.byteLength !== 32) process.exit(1);
     '
 }
 

@@ -2092,13 +2092,16 @@ test('image gate migrates a source database and exercises app health, precache, 
     /app_wget\(\)[\s\S]*wget --quiet --timeout=10 --tries=1/u,
   );
   assert.doesNotMatch(source, /--entrypoint curl/u);
+  const videoRange = shellFunctionBody(source, 'verify_app_video_range');
+  assert.match(videoRange, /--entrypoint \/nodejs\/bin\/node/u);
+  assert.match(videoRange, /fetch\("http:\/\/app:3000\/assets\/man\.mp4"/u);
   assert.match(source, /\/assets\/man\.mp4/u);
-  assert.match(source, /Range: bytes=0-31/u);
-  assert.match(source, /wget_exit=0/u);
-  assert.match(source, /wget[\s\S]*\|\| wget_exit=\$\?/u);
+  assert.match(videoRange, /Range: "bytes=0-31"/u);
+  assert.doesNotMatch(videoRange, /wget/u);
   assert.match(source, /Content-Range/u);
-  assert.match(source, /\[ "\$range_status" -eq 206 \]/u);
-  assert.match(source, /\[ "\$range_bytes" -eq 32 \]/u);
+  assert.match(videoRange, /response\.status !== 206/u);
+  assert.match(videoRange, /content-range/u);
+  assert.match(videoRange, /body\.byteLength !== 32/u);
 });
 
 test('image gate uses the restricted migrator as owner and proves the production ACL contract before and after restore', async () => {
