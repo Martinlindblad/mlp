@@ -61,9 +61,6 @@ const golangReference =
 const postgresReference =
   'postgres:18.4-alpine@sha256:' +
   '9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15';
-const resticReference =
-  'restic/restic:0.18.1@sha256:' +
-  '39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76';
 const alpineReference =
   'alpine:3.24.1@sha256:' +
   '28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b';
@@ -105,22 +102,25 @@ function assertReadableNonemptySecret(source, variableName) {
   );
 }
 
-function assertSafeMuslStaticResticProof(resticProof) {
-  assert.ok(resticProof, 'Restic tool stage must inspect dynamic linkage');
+function assertFixedResticBuilderProof(resticProof) {
+  assert.ok(
+    resticProof,
+    'Restic tool stage must build with the fixed Go toolchain',
+  );
   assertOrdered(
     resticProof,
     [
-      'set +e',
-      'ldd_output="$(ldd /usr/bin/restic 2>&1)"',
-      'ldd_status=$?',
-      'set -e',
-      'test "$ldd_status" -ne 0',
-      'case "$ldd_output" in',
-      '*": /usr/bin/restic: Not a valid dynamic program") : ;;',
-      '*) exit 1 ;;',
-      'esac',
+      "go version | grep -Fx 'go version go1.26.5 linux/amd64'",
+      'go get github.com/restic/restic/cmd/restic@v0.19.1',
+      'go install github.com/restic/restic/cmd/restic',
+      'install -o root -g root -m 0555 /go/bin/restic /usr/local/bin/restic',
+      'rm -rf /tmp/restic-build /go/pkg/mod /root/.cache/go-build',
+      "/usr/local/bin/restic version | grep -F 'restic 0.19.1'",
+      "/usr/local/bin/restic version | grep -F 'go1.26.5'",
+      `test "$(stat -c '%U:%G %a' /usr/local/bin/restic)" = "root:root 555"`,
+      'test -r /etc/ssl/certs/ca-certificates.crt',
     ],
-    'Restic static-link proof must require the safe musl path/diagnostic suffix',
+    'Restic builder proof must require v0.19.1 and the fixed Go 1.26.5 toolchain',
   );
 }
 
@@ -991,13 +991,13 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
     'infra/backup/Dockerfile',
   );
   assertLiteralDigestBases(source, [
-    resticReference,
+    golangReference,
     postgresReference,
     alpineReference,
   ]);
   assert.deepEqual(
     dockerStages(source).map(({ name }) => name),
-    ['restic', 'postgres-tools', 'backup'],
+    ['restic-builder', 'postgres-tools', 'backup'],
   );
   assertNoSecretDockerMetadata(source);
   assertOciRevisionMetadata(source);
@@ -1010,12 +1010,12 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
       destination: '/',
     },
     {
-      from: 'restic',
-      source: '/usr/bin/restic',
+      from: 'restic-builder',
+      source: '/usr/local/bin/restic',
       destination: '/usr/local/bin/restic',
     },
     {
-      from: 'restic',
+      from: 'restic-builder',
       source: '/etc/ssl/certs/ca-certificates.crt',
       destination: '/etc/ssl/certs/ca-certificates.crt',
     },
@@ -1032,9 +1032,11 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
   const resticProof = dockerStages(source)[0].instructions.find(
     (instruction) =>
       /^RUN\s/iu.test(instruction) &&
-      instruction.includes('ldd /usr/bin/restic'),
+      instruction.includes(
+        'go get github.com/restic/restic/cmd/restic@v0.19.1',
+      ),
   );
-  assertSafeMuslStaticResticProof(resticProof);
+  assertFixedResticBuilderProof(resticProof);
   const postgresTools = dockerStages(source)[1].instructions.join('\n');
   assert.match(postgresTools, /ldd[^\n]*pg_dump/u);
   assert.match(postgresTools, /ldd[^\n]*pg_restore/u);
@@ -1105,13 +1107,13 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
   const caCopy = finalDockerStage(source).instructions.find(
     (instruction) =>
       /^COPY\s/iu.test(instruction) &&
-      instruction.includes('--from=restic') &&
+      instruction.includes('--from=restic-builder') &&
       instruction.includes('/etc/ssl/certs/ca-certificates.crt') &&
       instruction.endsWith('/etc/ssl/certs/ca-certificates.crt'),
   );
   assert.ok(
     caCopy,
-    'backup image must copy the CA bundle from the digest-pinned Restic stage',
+    'backup image must copy the CA bundle from the digest-pinned Restic builder stage',
   );
   assert.match(caCopy, /--chmod=0?444(?:\s|$)/u);
 
@@ -1127,7 +1129,8 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
   for (const [versionCommand, version] of [
     ['pg_dump --version', '18.4'],
     ['pg_restore --version', '18.4'],
-    ['restic version', '0.18.1'],
+    ['restic version', '0.19.1'],
+    ['restic version', 'go1.26.5'],
   ]) {
     assert.match(runtimeProof, new RegExp(versionCommand, 'u'));
     assert.match(runtimeProof, new RegExp(version.replaceAll('.', '\\.'), 'u'));
@@ -1141,7 +1144,7 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
     /test ! -w \/etc\/ssl\/certs\/ca-certificates\.crt/u,
   );
   for (const [sourcePath, destination] of [
-    ['/usr/bin/restic', '/usr/local/bin/restic'],
+    ['/usr/local/bin/restic', '/usr/local/bin/restic'],
     ['infra/backup/backup.sh', '/usr/local/bin/mlp-backup'],
     ['infra/backup/restic.sh', '/usr/local/bin/mlp-restic'],
   ]) {
@@ -1167,21 +1170,22 @@ test('backup image pins tools, CA support, labels, ownership, and fixed UID', as
 
 test('backup validators reject Bash, owner/ACL stripping, and retained PGPASSWORD', async () => {
   const safeResticProof =
-    `RUN set +e; ldd_output="$(ldd /usr/bin/restic 2>&1)"; ` +
-    `ldd_status=$?; set -e; test "$ldd_status" -ne 0; ` +
-    `case "$ldd_output" in ` +
-    `*": /usr/bin/restic: Not a valid dynamic program") : ;; ` +
-    `*) exit 1 ;; esac`;
-  assertSafeMuslStaticResticProof(safeResticProof);
+    `RUN go version | grep -Fx 'go version go1.26.5 linux/amd64' && ` +
+    `go get github.com/restic/restic/cmd/restic@v0.19.1 && ` +
+    `go install github.com/restic/restic/cmd/restic && ` +
+    `install -o root -g root -m 0555 /go/bin/restic /usr/local/bin/restic && ` +
+    `rm -rf /tmp/restic-build /go/pkg/mod /root/.cache/go-build && ` +
+    `/usr/local/bin/restic version | grep -F 'restic 0.19.1' && ` +
+    `/usr/local/bin/restic version | grep -F 'go1.26.5' && ` +
+    `test "$(stat -c '%U:%G %a' /usr/local/bin/restic)" = "root:root 555" && ` +
+    `test -r /etc/ssl/certs/ca-certificates.crt`;
+  assertFixedResticBuilderProof(safeResticProof);
   assert.throws(
     () =>
-      assertSafeMuslStaticResticProof(
-        safeResticProof.replace(
-          'Not a valid dynamic program',
-          'unexpected ldd diagnostic',
-        ),
+      assertFixedResticBuilderProof(
+        safeResticProof.replace('go1.26.5 linux/amd64', 'go1.26.4 linux/amd64'),
       ),
-    /safe musl path\/diagnostic suffix/iu,
+    /fixed Go 1\.26\.5 toolchain/iu,
   );
   assert.throws(
     () =>

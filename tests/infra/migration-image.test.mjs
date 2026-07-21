@@ -41,8 +41,8 @@ const postgresBookwormReference =
   'postgres:18.4-bookworm@sha256:' +
   '1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296';
 const resticReference =
-  'restic/restic:0.18.1@sha256:' +
-  '39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76';
+  'restic/restic:0.19.1@sha256:' +
+  '136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510';
 const golangReference =
   'golang:1.26.5-alpine@sha256:' +
   '0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2';

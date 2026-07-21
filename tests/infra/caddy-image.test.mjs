@@ -16,8 +16,8 @@ const dockerfilePath = path.join(
   'Dockerfile',
 );
 const caddyBase =
-  'caddy:2.10.2-alpine@sha256:' +
-  '4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d';
+  'caddy:2.11.4-alpine@sha256:' +
+  '5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648';
 
 test('Caddy image removes only its unnecessary privileged-port file capability', async () => {
   const source = await readFile(dockerfilePath, 'utf8');
@@ -58,5 +58,5 @@ test('Caddy image is revision-labelled and defaults to the production numeric us
     source.lastIndexOf('USER 65532:65532') > source.lastIndexOf('USER 0:0'),
     'the final image user must be the fixed Caddy runtime UID',
   );
-  assert.match(source, /caddy version[^\n]*v2\.10\.2/u);
+  assert.match(source, /caddy version[^\n]*v2\.11\.4/u);
 });

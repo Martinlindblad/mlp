@@ -18,8 +18,8 @@ const fixtureComposePath = path.join(
   'tests/infra/fixtures/caddy.compose.yml',
 );
 const officialCaddyReference =
-  'caddy:2.10.2-alpine@sha256:' +
-  '4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d';
+  'caddy:2.11.4-alpine@sha256:' +
+  '5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648';
 const nodeReference =
   'node:22.23.1-bookworm-slim@sha256:' +
   '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
