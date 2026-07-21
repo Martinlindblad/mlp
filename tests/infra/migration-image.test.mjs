@@ -37,6 +37,10 @@ const nodeTag = 'node:22.23.1-bookworm-slim';
 const nodeReference =
   `${nodeTag}@sha256:` +
   '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
+const runtimeNodeTag = 'node:22.23.1-trixie-slim';
+const runtimeNodeReference =
+  `${runtimeNodeTag}@sha256:` +
+  '4653dc205e772d0200f195ff333fe45157c5aa19385eab098f2af0517f982498';
 const resticReference =
   'restic/restic:0.19.1@sha256:' +
   '136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510';
@@ -280,7 +284,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     golangReference,
     golangReference,
     resticReference,
-    nodeReference,
+    runtimeNodeReference,
   ]);
   assert.deepEqual(
     dockerStages(source).map(({ name }) => name),
@@ -543,27 +547,32 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   const finalSource = final.instructions.join('\n');
   assert.match(
     finalSource,
-    /\/usr\/local\/lib\/node_modules\/npm\/docs/u,
-    'operator runner must prune npm docs that embed private-key config examples',
+    /rm -rf[\s\S]*\/usr\/local\/lib\/node_modules\/npm[\s\S]*\/usr\/local\/lib\/node_modules\/corepack/u,
+    'operator runner must remove npm and corepack package trees before scanning',
   );
   assert.match(
     finalSource,
-    /\/usr\/local\/lib\/node_modules\/npm\/man/u,
-    'operator runner must prune npm manpages that embed private-key config examples',
+    /rm -f[\s\S]*\/usr\/local\/bin\/npm[\s\S]*\/usr\/local\/bin\/npx[\s\S]*\/usr\/local\/bin\/corepack/u,
+    'operator runner must remove npm/npx/corepack shims before scanning',
   );
   assert.match(
     finalSource,
-    /@npmcli\/config\/lib\/definitions\/definitions\.js/u,
-    'operator runner must prune npm config definitions with private-key examples',
+    /test ! -e \/usr\/local\/lib\/node_modules\/npm/u,
+    'operator runner must prove npm package metadata is absent',
   );
   assert.match(
     finalSource,
-    /apt-get purge -y --allow-remove-essential[\s\S]*\bapt\b[\s\S]*\blibgnutls30\b/u,
+    /test ! -e \/usr\/local\/lib\/node_modules\/corepack/u,
+    'operator runner must prove corepack package metadata is absent',
+  );
+  assert.match(
+    finalSource,
+    /purge_packages='[^']*\bapt\b[^']*\blibgnutls30t64\b[^']*'[\s\S]*apt-get purge -y --allow-remove-essential/u,
     'operator runner must remove apt and libgnutls so base-image private-key fixtures are not shipped',
   );
   assert.match(
     finalSource,
-    /test ! -e \/usr\/lib\/x86_64-linux-gnu\/libgnutls\.so\.30\.34\.3/u,
+    /test ! -e \/usr\/lib\/x86_64-linux-gnu\/libgnutls\.so\.30/u,
     'operator runner must prove the known libgnutls private-key fixture is absent',
   );
   assert.match(
@@ -575,7 +584,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     finalSource,
     [
       'apt-get purge -y --allow-remove-essential',
-      'test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30.34.3',
+      'test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30',
       'USER 1000:1000',
     ],
     'operator package-manager/private-key-fixture purge must run as root before dropping to the runtime user',

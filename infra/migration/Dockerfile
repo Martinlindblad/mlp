@@ -75,31 +75,33 @@ RUN test -r /etc/ssl/certs/ca-certificates.crt \
   && mkdir -p /ca-runtime/etc/ssl/certs \
   && cp -a /etc/ssl/certs/ca-certificates.crt /ca-runtime/etc/ssl/certs/ca-certificates.crt
 
-FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS runner
-RUN apt-get purge -y --allow-remove-essential \
-    apt \
-    libgnutls30 \
-    adduser \
-    debian-archive-keyring \
-    gpgv \
-    libapt-pkg6.0 \
-    libffi8 \
-    libhogweed6 \
-    libnettle8 \
-    libp11-kit0 \
-    libseccomp2 \
-    libtasn1-6 \
-    libxxhash0 \
-  && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /var/log/apt/* \
+FROM node:22.23.1-trixie-slim@sha256:4653dc205e772d0200f195ff333fe45157c5aa19385eab098f2af0517f982498 AS runner
+RUN set -eu; \
+  purge_packages='apt libgnutls30 libgnutls30t64 adduser debian-archive-keyring gpgv libapt-pkg6.0 libapt-pkg7.0 libffi8 libhogweed6 libhogweed6t64 libnettle8 libnettle8t64 libp11-kit0 libseccomp2 libtasn1-6 libxxhash0'; \
+  installed_packages=''; \
+  for package in $purge_packages; do \
+    if dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii'; then \
+      installed_packages="$installed_packages $package"; \
+    fi; \
+  done; \
+  if [ -n "$installed_packages" ]; then apt-get purge -y --allow-remove-essential $installed_packages; fi; \
+  rm -rf /var/lib/apt/lists/* /var/cache/apt/* /var/log/apt/* \
   && node --version >/dev/null \
   && ! ldd /usr/local/bin/node | grep -q 'not found' \
-  && test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30.34.3 \
+  && test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30 \
   && test ! -e /usr/bin/apt-get \
   && rm -f \
-    /usr/local/lib/node_modules/npm/node_modules/@npmcli/config/lib/definitions/definitions.js \
+    /usr/local/bin/npm \
+    /usr/local/bin/npx \
+    /usr/local/bin/corepack \
   && rm -rf \
-    /usr/local/lib/node_modules/npm/docs \
-    /usr/local/lib/node_modules/npm/man
+    /usr/local/lib/node_modules/npm \
+    /usr/local/lib/node_modules/corepack \
+  && test ! -e /usr/local/lib/node_modules/npm \
+  && test ! -e /usr/local/lib/node_modules/corepack \
+  && test ! -e /usr/local/bin/npm \
+  && test ! -e /usr/local/bin/npx \
+  && test ! -e /usr/local/bin/corepack
 ARG COMMIT_SHA
 RUN printf '%s\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'
 LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" org.opencontainers.image.revision="$COMMIT_SHA"
