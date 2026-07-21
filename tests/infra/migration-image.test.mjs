@@ -37,9 +37,6 @@ const nodeTag = 'node:22.23.1-bookworm-slim';
 const nodeReference =
   `${nodeTag}@sha256:` +
   '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
-const postgresBookwormReference =
-  'postgres:18.4-bookworm@sha256:' +
-  '1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296';
 const resticReference =
   'restic/restic:0.19.1@sha256:' +
   '136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510';
@@ -47,10 +44,10 @@ const golangReference =
   'golang:1.26.5-alpine@sha256:' +
   '0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2';
 const mongoToolsUrl =
-  'https://fastdl.mongodb.org/tools/db/' +
-  'mongodb-database-tools-debian12-x86_64-100.17.0.tgz';
+  'https://github.com/mongodb/mongo-tools/archive/refs/tags/100.17.0.tar.gz';
 const mongoToolsSha256 =
-  '15b3562b13ff9aac3baa2594c705ea0ac3597f4b85c7653f17efcd36e8588678';
+  '27d00697a7715443912ce0c76f11e760cfec450a885ac18b499412d4097eeab2';
+const mongoToolsGitCommit = 'b414a2d909375f76e2c36fef91d1e3804b6b2c02';
 
 async function assertPosixSyntax(relativePath) {
   await execFile('/bin/sh', ['-n', path.join(repositoryRoot, relativePath)], {
@@ -281,7 +278,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     nodeReference,
     nodeReference,
     golangReference,
-    postgresBookwormReference,
+    golangReference,
     resticReference,
     nodeReference,
   ]);
@@ -290,8 +287,8 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     [
       'production-dependencies',
       'builder',
+      'mongodump-builder',
       'age-builder',
-      'mongodump-libraries',
       'ca-certificates',
       'runner',
     ],
@@ -349,18 +346,13 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       destination: './node_modules',
     },
     {
-      from: 'mongodump-libraries',
-      source: '/mongodump-runtime/',
-      destination: '/',
-    },
-    {
       from: 'ca-certificates',
       source: '/ca-runtime/',
       destination: '/',
     },
     { from: 'builder', source: '/app/public', destination: './public' },
     {
-      from: 'builder',
+      from: 'mongodump-builder',
       source: '/usr/local/bin/mongodump',
       destination: '/usr/local/bin/mongodump',
     },
@@ -375,13 +367,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     },
   ]);
 
-  const [
-    dependencies,
-    builder,
-    ageBuilder,
-    mongodumpLibraries,
-    caCertificates,
-  ] =
+  const [dependencies, builder, mongodumpBuilder, ageBuilder, caCertificates] =
     dockerStages(source);
   assert.match(
     dependencies.instructions.join('\n'),
@@ -434,6 +420,65 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     'operator builder dependencies must be deterministic and script-free',
   );
   assertNarrowOperatorBuilder(builder);
+  const mongodumpBuilderSource = mongodumpBuilder.instructions.join('\n');
+  assert.match(
+    mongodumpBuilderSource,
+    /^ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=mod$/mu,
+    'operator mongodump must be rebuilt as a static scanner-patched Go binary',
+  );
+  assert.match(
+    mongodumpBuilderSource,
+    /go version \| grep -Fx 'go version go1\.26\.5 linux\/amd64'/u,
+    'operator mongodump builder must prove the scanner-fixed Go toolchain',
+  );
+  assert.match(
+    mongodumpBuilderSource,
+    /go mod edit -go=1\.26\.5/u,
+    'operator mongodump build must pin module semantics to the patched Go release',
+  );
+  assert.match(
+    mongodumpBuilderSource,
+    /go get[\s\S]*golang\.org\/x\/crypto@v0\.52\.0[\s\S]*golang\.org\/x\/net@v0\.55\.0/u,
+    'operator mongodump build must patch scanner-flagged Go module dependencies',
+  );
+  assert.match(
+    mongodumpBuilderSource,
+    new RegExp(
+      String.raw`go build[\s\S]*-X main\.VersionStr=100\.17\.0[\s\S]*-X main\.GitCommit=${mongoToolsGitCommit}[\s\S]*\./mongodump/main/mongodump\.go`,
+      'u',
+    ),
+    'operator mongodump build must compile the reviewed command from source with traceable version metadata',
+  );
+  assert.match(
+    mongodumpBuilderSource,
+    /mongodump --version \| grep -F 'mongodump version: 100\.17\.0'/u,
+    'operator mongodump build must prove the expected tool version',
+  );
+  assert.match(
+    mongodumpBuilderSource,
+    /go version -m \/usr\/local\/bin\/mongodump[\s\S]*go1\.26\.5/u,
+    'operator mongodump build must expose Go build metadata for scanner triage',
+  );
+  for (const [moduleName, version] of [
+    ['golang.org/x/crypto', 'v0.52.0'],
+    ['golang.org/x/net', 'v0.55.0'],
+    ['golang.org/x/sys', 'v0.40.0'],
+  ]) {
+    assert.ok(
+      mongodumpBuilderSource.includes(
+        `go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+${moduleName.replaceAll(
+          '.',
+          String.raw`\.`,
+        )}[[:space:]]+${version.replaceAll('.', String.raw`\.`)}'`,
+      ),
+      `operator mongodump build must prove ${moduleName} ${version}`,
+    );
+  }
+  assert.match(
+    mongodumpBuilderSource,
+    /install[^\n]*-o root -g root -m 0555[^\n]*\/usr\/local\/bin\/mongodump/u,
+    'operator mongodump executable must be installed as root-owned 0555',
+  );
   assert.match(
     ageBuilder.instructions.join('\n'),
     /go get filippo\.io\/age\/cmd\/age@v1\.3\.1 golang\.org\/x\/crypto@v0\.52\.0/u,
@@ -449,37 +494,10 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     /install[^\n]*-o root -g root -m 0555[^\n]*\/usr\/local\/bin\/age/u,
     'operator age executable must be installed as root-owned 0555',
   );
-  const mongodumpLibrarySource = mongodumpLibraries.instructions.join('\n');
-  assert.match(
-    mongodumpLibrarySource,
-    /libgssapi_krb5\.so\.2/u,
-    'operator must provide the digest-pinned GSSAPI library required by mongodump',
-  );
-  for (const library of [
-    'libkrb5.so.3',
-    'libk5crypto.so.3',
-    'libcom_err.so.2',
-    'libkrb5support.so.0',
-    'libkeyutils.so.1',
-  ]) {
-    assert.match(
-      mongodumpLibrarySource,
-      new RegExp(library.replaceAll('.', '\\.'), 'u'),
-      `operator must copy mongodump transitive library ${library}`,
-    );
-  }
-  const copiedMongodumpLibraries =
-    mongodumpLibrarySource.match(/for library in (?<libraries>.*?)\s*; do/u)
-      ?.groups?.libraries ?? '';
-  assert.notEqual(
-    copiedMongodumpLibraries,
-    '',
-    'operator must expose the reviewed mongodump library copy list',
-  );
   assert.doesNotMatch(
-    copiedMongodumpLibraries,
-    /libgnutls/u,
-    'mongodump closure must not import libgnutls private-key fixtures',
+    source,
+    /(?:fastdl\.mongodb\.org\/tools\/db|mongodb-database-tools-debian12-x86_64-100\.17\.0\.tgz|mongodump-libraries|libgssapi_krb5)/u,
+    'operator image must not ship the vulnerable prebuilt mongodump runtime closure',
   );
   assert.match(
     caCertificates.instructions.join('\n'),
@@ -488,27 +506,27 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   );
   assert.equal(
     dockerStages(source)
-      .filter(({ name }) => name !== 'builder')
+      .filter(({ name }) => name !== 'mongodump-builder')
       .flatMap(({ instructions }) => instructions)
       .some((line) => /^ADD\s/iu.test(line)),
     false,
-    'only the isolated operator builder may ADD checksum-pinned tool archives',
+    'only the isolated mongodump builder may ADD checksum-pinned tool archives',
   );
 
-  const architectureIndex = builder.instructions.findIndex(
+  const architectureIndex = mongodumpBuilder.instructions.findIndex(
     (line) =>
       /^RUN\s/iu.test(line) &&
       line.includes('uname -m') &&
       line.includes('x86_64'),
   );
-  const extractionIndex = builder.instructions.findIndex(
+  const extractionIndex = mongodumpBuilder.instructions.findIndex(
     (line) => /^RUN\s/iu.test(line) && /\btar\b/u.test(line),
   );
   assert.ok(
     architectureIndex >= 0 && extractionIndex > architectureIndex,
-    'operator builder must reject non-x86_64 before extracting amd64 tools',
+    'operator mongodump builder must reject non-x86_64 before extracting amd64 tools',
   );
-  const verificationIndex = builder.instructions.findIndex(
+  const verificationIndex = mongodumpBuilder.instructions.findIndex(
     (line) =>
       /^RUN\s/iu.test(line) &&
       line.includes(mongoToolsSha256) &&
@@ -516,7 +534,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   );
   assert.ok(
     verificationIndex >= 0 && verificationIndex < extractionIndex,
-    'the mongodump archive checksum must be verified before extraction',
+    'the mongodump source archive checksum must be verified before extraction',
   );
 
   const final = finalDockerStage(source);
@@ -836,10 +854,7 @@ test('operator runtime manifest and lock contain only five exact direct dependen
       : `${escapedName}@${escapedVersion}:`;
     assert.match(
       lock,
-      new RegExp(
-        `^${heading}\\n  version "${escapedVersion}"$`,
-        'mu',
-      ),
+      new RegExp(`^${heading}\\n  version "${escapedVersion}"$`, 'mu'),
       `operator lock must pin ${dependency} exactly to ${version}`,
     );
   }

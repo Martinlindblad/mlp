@@ -24,14 +24,35 @@ COPY server/repositories/contact-repository.ts ./server/repositories/contact-rep
 COPY types/DBTypes.ts ./types/DBTypes.ts
 COPY public ./public
 RUN yarn install --frozen-lockfile --ignore-scripts --non-interactive
-ADD --checksum=sha256:15b3562b13ff9aac3baa2594c705ea0ac3597f4b85c7653f17efcd36e8588678 https://fastdl.mongodb.org/tools/db/mongodb-database-tools-debian12-x86_64-100.17.0.tgz /tmp/mongodb-tools.tgz
-RUN test "$(uname -m)" = x86_64
-RUN printf '%s  %s\n' '15b3562b13ff9aac3baa2594c705ea0ac3597f4b85c7653f17efcd36e8588678' /tmp/mongodb-tools.tgz | sha256sum -c -
-RUN mkdir -p /tmp/mongodb-tools \
-  && tar -xzf /tmp/mongodb-tools.tgz -C /tmp/mongodb-tools mongodb-database-tools-debian12-x86_64-100.17.0/bin/mongodump \
-  && install -o 0 -g 0 -m 0555 /tmp/mongodb-tools/mongodb-database-tools-debian12-x86_64-100.17.0/bin/mongodump /usr/local/bin/mongodump \
-  && rm -rf /tmp/mongodb-tools /tmp/mongodb-tools.tgz
 RUN yarn build:migration
+
+FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS mongodump-builder
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=mod
+RUN test "$(uname -m)" = x86_64 \
+  && go version | grep -Fx 'go version go1.26.5 linux/amd64'
+ADD --checksum=sha256:27d00697a7715443912ce0c76f11e760cfec450a885ac18b499412d4097eeab2 https://github.com/mongodb/mongo-tools/archive/refs/tags/100.17.0.tar.gz /tmp/mongo-tools.tgz
+RUN printf '%s  %s\n' '27d00697a7715443912ce0c76f11e760cfec450a885ac18b499412d4097eeab2' /tmp/mongo-tools.tgz | sha256sum -c -
+RUN mkdir -p /tmp/mongo-tools \
+  && tar -xzf /tmp/mongo-tools.tgz -C /tmp/mongo-tools --strip-components=1 \
+  && cd /tmp/mongo-tools \
+  && go mod edit -go=1.26.5 \
+  && go get \
+    golang.org/x/crypto@v0.52.0 \
+    golang.org/x/net@v0.55.0 \
+    golang.org/x/sys@v0.40.0 \
+    golang.org/x/term@v0.39.0 \
+    golang.org/x/text@v0.33.0 \
+  && go mod tidy \
+  && go build -trimpath -ldflags "-s -w -X main.VersionStr=100.17.0 -X main.GitCommit=b414a2d909375f76e2c36fef91d1e3804b6b2c02" -o /tmp/mongodump ./mongodump/main/mongodump.go \
+  && install -o root -g root -m 0555 /tmp/mongodump /usr/local/bin/mongodump \
+  && /usr/local/bin/mongodump --version | grep -F 'mongodump version: 100.17.0' \
+  && go version -m /usr/local/bin/mongodump \
+  && go version -m /usr/local/bin/mongodump | grep -F 'go1.26.5' \
+  && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/crypto[[:space:]]+v0\.52\.0' \
+  && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/net[[:space:]]+v0\.55\.0' \
+  && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/sys[[:space:]]+v0\.40\.0' \
+  && test "$(stat -c '%U:%G %a' /usr/local/bin/mongodump)" = 'root:root 555' \
+  && rm -rf /tmp/mongo-tools /tmp/mongo-tools.tgz /tmp/mongodump /go/pkg/mod /root/.cache/go-build
 
 FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS age-builder
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
@@ -46,26 +67,6 @@ RUN test "$(uname -m)" = x86_64 \
   && rm -rf /tmp/age-build /go/pkg/mod /root/.cache/go-build \
   && test "$(/usr/local/bin/age --version)" = v1.3.1 \
   && test "$(stat -c '%U:%G %a' /usr/local/bin/age)" = 'root:root 555'
-
-FROM postgres:18.4-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296 AS mongodump-libraries
-RUN set -eu; \
-  for library in \
-    /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 \
-    /usr/lib/x86_64-linux-gnu/libkrb5.so.3 \
-    /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 \
-    /usr/lib/x86_64-linux-gnu/libcom_err.so.2 \
-    /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 \
-    /usr/lib/x86_64-linux-gnu/libkeyutils.so.1; \
-  do \
-    case "$library" in *libgnutls*) exit 1 ;; esac; \
-    resolved="$(readlink -f "$library")"; \
-    test -f "$resolved"; \
-    test "${resolved%/*}" = "${library%/*}"; \
-    target_directory="/mongodump-runtime${library%/*}"; \
-    mkdir -p "$target_directory"; \
-    cp -a "$library" "$target_directory/"; \
-    if [ "$resolved" != "$library" ]; then cp -a "$resolved" "$target_directory/"; fi; \
-  done
 
 FROM restic/restic:0.19.1@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510 AS ca-certificates
 RUN test -r /etc/ssl/certs/ca-certificates.crt \
@@ -113,10 +114,9 @@ COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/server/journal .
 COPY --from=builder --chown=0:0 --chmod=0555 /app/migration/asset-paths.mjs ./migration/asset-paths.mjs
 COPY --from=builder --chown=0:0 --chmod=0555 /app/scripts/migration/export-mongo.sh ./scripts/migration/export-mongo.sh
 COPY --from=production-dependencies --chown=0:0 --chmod=0555 /app/node_modules ./node_modules
-COPY --from=mongodump-libraries --chown=0:0 --chmod=0555 /mongodump-runtime/ /
 COPY --from=ca-certificates --chown=0:0 --chmod=0555 /ca-runtime/ /
 COPY --from=builder --chown=0:0 --chmod=0555 /app/public ./public
-COPY --from=builder --chown=0:0 --chmod=0555 /usr/local/bin/mongodump /usr/local/bin/mongodump
+COPY --from=mongodump-builder --chown=0:0 --chmod=0555 /usr/local/bin/mongodump /usr/local/bin/mongodump
 COPY --from=age-builder --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
 COPY --chown=0:0 --chmod=0555 infra/migration/entrypoint.sh /usr/local/bin/mlp-migration
 USER 1000:1000
