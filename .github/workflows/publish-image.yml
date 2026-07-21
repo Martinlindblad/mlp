@@ -360,14 +360,12 @@ jobs:
             gh attestation verify "oci://${reference}" \
               --repo Martinlindblad/mlp \
               --signer-workflow Martinlindblad/mlp/.github/workflows/publish-image.yml \
-              --cert-identity "$identity" \
               --source-ref refs/heads/main \
               --source-digest "$GITHUB_SHA" \
               --deny-self-hosted-runners >/dev/null
             gh attestation verify "oci://${reference}" \
               --repo Martinlindblad/mlp \
               --signer-workflow Martinlindblad/mlp/.github/workflows/publish-image.yml \
-              --cert-identity "$identity" \
               --source-ref refs/heads/main \
               --source-digest "$GITHUB_SHA" \
               --deny-self-hosted-runners \
