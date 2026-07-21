@@ -349,7 +349,7 @@ jobs:
           install -d -m 0700 "$anonymous"
           printf '{"auths":{}}\n' >"$anonymous/config.json"
           export DOCKER_CONFIG="$anonymous"
-          identity='https://github.com/martinlindblad/mlp/.github/workflows/publish-image.yml@refs/heads/main'
+          identity='https://github.com/Martinlindblad/mlp/.github/workflows/publish-image.yml@refs/heads/main'
           verify_one() {
             local reference=$1
             docker pull --platform linux/amd64 "$reference" >/dev/null
@@ -358,15 +358,15 @@ jobs:
               --certificate-oidc-issuer https://token.actions.githubusercontent.com \
               "$reference" >/dev/null
             gh attestation verify "oci://${reference}" \
-              --repo martinlindblad/mlp \
-              --signer-workflow martinlindblad/mlp/.github/workflows/publish-image.yml \
+              --repo Martinlindblad/mlp \
+              --signer-workflow Martinlindblad/mlp/.github/workflows/publish-image.yml \
               --cert-identity "$identity" \
               --source-ref refs/heads/main \
               --source-digest "$GITHUB_SHA" \
               --deny-self-hosted-runners >/dev/null
             gh attestation verify "oci://${reference}" \
-              --repo martinlindblad/mlp \
-              --signer-workflow martinlindblad/mlp/.github/workflows/publish-image.yml \
+              --repo Martinlindblad/mlp \
+              --signer-workflow Martinlindblad/mlp/.github/workflows/publish-image.yml \
               --cert-identity "$identity" \
               --source-ref refs/heads/main \
               --source-digest "$GITHUB_SHA" \

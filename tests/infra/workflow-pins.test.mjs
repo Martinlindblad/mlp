@@ -285,6 +285,21 @@ test('manual publication gates all four exact amd64 images before signing and an
     source,
     /imagetools inspect "\$\{image\}@\$\{digest\}" --format/u,
   );
+  assert.match(
+    source,
+    /identity='https:\/\/github\.com\/Martinlindblad\/mlp\/\.github\/workflows\/publish-image\.yml@refs\/heads\/main'/u,
+    'attestation identity must match the exact GitHub repository casing emitted in certificates',
+  );
+  assert.match(
+    source,
+    /--signer-workflow Martinlindblad\/mlp\/\.github\/workflows\/publish-image\.yml/u,
+    'attestation signer workflow must match the exact GitHub repository casing',
+  );
+  assert.doesNotMatch(
+    source,
+    /identity='https:\/\/github\.com\/martinlindblad\/mlp\/\.github\/workflows\/publish-image\.yml@refs\/heads\/main'/u,
+    'attestation identity must not force lowercase repository casing',
+  );
   assert.doesNotMatch(source, /imagetools inspect "\$tagged" --format/u);
   assert.match(source, /scan_and_save caddy\b/u);
   assert.match(source, /publish_one caddy "\$CADDY_IMAGE" 65532:65532/u);
