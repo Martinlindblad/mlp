@@ -77,7 +77,7 @@ RUN test -r /etc/ssl/certs/ca-certificates.crt \
 
 FROM node:22.23.1-trixie-slim@sha256:4653dc205e772d0200f195ff333fe45157c5aa19385eab098f2af0517f982498 AS runner
 RUN set -eu; \
-  purge_packages='apt libgnutls30 libgnutls30t64 adduser debian-archive-keyring gpgv libapt-pkg6.0 libapt-pkg7.0 libffi8 libhogweed6 libhogweed6t64 libnettle8 libnettle8t64 libp11-kit0 libseccomp2 libtasn1-6 libxxhash0'; \
+  purge_packages='apt libgnutls30 libgnutls30t64 adduser debian-archive-keyring gpgv libapt-pkg6.0 libapt-pkg7.0 libffi8 libhogweed6 libhogweed6t64 libnettle8 libnettle8t64 libp11-kit0 libseccomp2 libtasn1-6 libxxhash0 bsdutils gzip libacl1 libblkid1 liblastlog2-2 libmount1 libsmartcols1 libtinfo6 libuuid1 login mount ncurses-base ncurses-bin perl-base util-linux util-linux-extra'; \
   installed_packages=''; \
   for package in $purge_packages; do \
     if dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii'; then \
@@ -85,6 +85,9 @@ RUN set -eu; \
     fi; \
   done; \
   if [ -n "$installed_packages" ]; then apt-get purge -y --allow-remove-essential $installed_packages; fi; \
+  for package in $purge_packages; do \
+    ! dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii'; \
+  done; \
   rm -rf /var/lib/apt/lists/* /var/cache/apt/* /var/log/apt/* \
   && node --version >/dev/null \
   && ! ldd /usr/local/bin/node | grep -q 'not found' \

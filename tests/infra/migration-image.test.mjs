@@ -570,6 +570,29 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     /purge_packages='[^']*\bapt\b[^']*\blibgnutls30t64\b[^']*'[\s\S]*apt-get purge -y --allow-remove-essential/u,
     'operator runner must remove apt and libgnutls so base-image private-key fixtures are not shipped',
   );
+  for (const vulnerablePackage of [
+    'bsdutils',
+    'gzip',
+    'libacl1',
+    'libblkid1',
+    'liblastlog2-2',
+    'libmount1',
+    'libsmartcols1',
+    'libtinfo6',
+    'libuuid1',
+    'login',
+    'mount',
+    'ncurses-base',
+    'ncurses-bin',
+    'perl-base',
+    'util-linux',
+  ]) {
+    assert.match(
+      finalSource,
+      new RegExp(`purge_packages='[^']*\\b${vulnerablePackage}\\b[^']*'`, 'u'),
+      `operator runner must purge scanner-flagged ${vulnerablePackage}`,
+    );
+  }
   assert.match(
     finalSource,
     /test ! -e \/usr\/lib\/x86_64-linux-gnu\/libgnutls\.so\.30/u,
