@@ -84,6 +84,11 @@ test('Caddy image is revision-labelled and defaults to the production numeric us
     source.lastIndexOf('USER 65532:65532') > source.lastIndexOf('ARG COMMIT_SHA'),
     'the final image user must be the fixed Caddy runtime UID',
   );
+  assert.ok(
+    source.lastIndexOf('caddy version &&') >
+      source.lastIndexOf('USER 65532:65532'),
+    'the runtime proof must run as the fixed Caddy runtime UID',
+  );
   assert.match(source, /caddy version/u);
   assert.match(source, /^ENTRYPOINT \["\/usr\/bin\/caddy"\]$/mu);
   assert.match(
