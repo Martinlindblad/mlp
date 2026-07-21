@@ -1965,6 +1965,11 @@ test('image gate enforces hardened runtime settings and retains only verified su
     /docker container inspect --format='\{\{json \.HostConfig\.SecurityOpt\}\}'/u,
   );
   assert.match(source, /assert_runtime_hardening/u);
+  assert.match(
+    shellFunctionBody(source, 'assert_runtime_hardening'),
+    /app\)[\s\S]*--entrypoint \/nodejs\/bin\/node[\s\S]*"\$image_reference"\s+-e 'process\.exit\(0\)'/u,
+    'app hardening smoke must use the distroless Node runtime instead of /bin/true',
+  );
   assert.match(source, /verify_caddy_runtime/u);
   assert.match(source, /getcap \/usr\/bin\/caddy/u);
   assert.match(source, /RUN_RANDOM_SUFFIX=\$\{WORK_DIRECTORY##\*\.\}/u);

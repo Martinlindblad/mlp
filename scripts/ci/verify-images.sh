@@ -1896,16 +1896,33 @@ assert_runtime_hardening() {
   container_name="$RUN_ID-hardening-$image_name"
 
   track_container "$container_name"
-  docker create \
-    --name "$container_name" \
-    --label "mlp.image-gate.run=$RUN_ID" \
-    --read-only \
-    --cap-drop ALL \
-    --security-opt no-new-privileges:true \
-    --user "$expected_user" \
-    --entrypoint /bin/true \
-    "$image_reference" >"$WORK_DIRECTORY/hardening-create-$image_name.txt" 2>&1 ||
-    fail "hardened container creation failed: $image_name"
+  case $image_name in
+    app)
+      docker create \
+        --name "$container_name" \
+        --label "mlp.image-gate.run=$RUN_ID" \
+        --read-only \
+        --cap-drop ALL \
+        --security-opt no-new-privileges:true \
+        --user "$expected_user" \
+        --entrypoint /nodejs/bin/node \
+        "$image_reference" -e 'process.exit(0)' \
+        >"$WORK_DIRECTORY/hardening-create-$image_name.txt" 2>&1 ||
+        fail "hardened container creation failed: $image_name"
+      ;;
+    *)
+      docker create \
+        --name "$container_name" \
+        --label "mlp.image-gate.run=$RUN_ID" \
+        --read-only \
+        --cap-drop ALL \
+        --security-opt no-new-privileges:true \
+        --user "$expected_user" \
+        --entrypoint /bin/true \
+        "$image_reference" >"$WORK_DIRECTORY/hardening-create-$image_name.txt" 2>&1 ||
+        fail "hardened container creation failed: $image_name"
+      ;;
+  esac
 
   assert_container_hardening "$image_name" "$expected_user" "$container_name"
   docker start --attach "$container_name" >"$WORK_DIRECTORY/hardening-run-$image_name.txt" 2>&1 ||
