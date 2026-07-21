@@ -273,6 +273,16 @@ test('manual publication gates all four exact amd64 images before signing and an
   assert.match(source, /digest: \(sha256:\[0-9a-f\]\{64\}\) size:/u);
   assert.match(
     source,
+    /index \.Config\.Labels "org\.opencontainers\.image\.revision"/u,
+    'publish metadata inspection must pass literal template quotes to Docker',
+  );
+  assert.doesNotMatch(
+    source,
+    /index \.Config\.Labels \\"org\.opencontainers\.image\.revision\\"/u,
+    'publish metadata inspection must not pass escaped quotes into the Docker template',
+  );
+  assert.match(
+    source,
     /imagetools inspect "\$\{image\}@\$\{digest\}" --format/u,
   );
   assert.doesNotMatch(source, /imagetools inspect "\$tagged" --format/u);

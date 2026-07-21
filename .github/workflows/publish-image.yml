@@ -162,7 +162,7 @@ jobs:
             local user=$3
             local tagged="${image}:${COMMIT_SHA}"
             local digest image_json push_digest_count push_log
-            test "$(docker image inspect --format '{{.Os}}|{{.Architecture}}|{{.Config.User}}|{{index .Config.Labels \"org.opencontainers.image.revision\"}}' "$tagged")" = \
+            test "$(docker image inspect --format '{{.Os}}|{{.Architecture}}|{{.Config.User}}|{{index .Config.Labels "org.opencontainers.image.revision"}}' "$tagged")" = \
               "linux|amd64|${user}|${COMMIT_SHA}"
             push_log="$RUNNER_TEMP/push-${key}.log"
             docker push "$tagged" | tee "$push_log"
