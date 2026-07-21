@@ -43,8 +43,8 @@ test('Caddy image builds Caddy with the fixed Go toolchain into a minimal runtim
   );
   assert.match(
     source,
-    /go get github\.com\/caddyserver\/caddy\/v2\/cmd\/caddy@v2\.11\.4/u,
-    'the build must pin the reviewed Caddy version',
+    /go install github\.com\/caddyserver\/caddy\/v2\/cmd\/caddy@v2\.11\.4/u,
+    'the build must install the reviewed Caddy release version',
   );
   assert.match(
     source,
