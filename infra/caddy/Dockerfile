@@ -3,10 +3,12 @@
 FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS caddy-builder
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 RUN test "$(uname -m)" = "x86_64" && \
-    go version | grep -Fx 'go version go1.26.5 linux/amd64' && \
-    go install github.com/caddyserver/caddy/v2/cmd/caddy@v2.11.4 && \
+    go version | grep -Fx 'go version go1.26.5 linux/amd64'
+RUN go install github.com/caddyserver/caddy/v2/cmd/caddy@v2.11.4
+RUN test -x /go/bin/caddy && \
     install -o root -g root -m 0555 /go/bin/caddy /usr/bin/caddy && \
-    rm -rf /go/pkg/mod /root/.cache/go-build && \
+    rm -rf /go/pkg/mod /root/.cache/go-build
+RUN /usr/bin/caddy version && \
     /usr/bin/caddy version | grep -F 'v2.11.4' && \
     test "$(stat -c '%U:%G %a' /usr/bin/caddy)" = "root:root 555" && \
     test -r /etc/ssl/certs/ca-certificates.crt
