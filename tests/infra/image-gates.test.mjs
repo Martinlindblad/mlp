@@ -2094,6 +2094,8 @@ test('image gate migrates a source database and exercises app health, precache, 
   assert.doesNotMatch(source, /--entrypoint curl/u);
   assert.match(source, /\/assets\/man\.mp4/u);
   assert.match(source, /Range: bytes=0-31/u);
+  assert.match(source, /wget_exit=0/u);
+  assert.match(source, /wget[\s\S]*\|\| wget_exit=\$\?/u);
   assert.match(source, /Content-Range/u);
   assert.match(source, /\[ "\$range_status" -eq 206 \]/u);
   assert.match(source, /\[ "\$range_bytes" -eq 32 \]/u);

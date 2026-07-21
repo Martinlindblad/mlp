@@ -2360,20 +2360,24 @@ verify_app_video_range() {
     --tmpfs /tmp:rw,nosuid,nodev,noexec,uid=65532,gid=65532,mode=1770 \
     --entrypoint /bin/sh \
     "$CADDY_IMAGE" -eu -c '
+      wget_exit=0
       wget --quiet --timeout=10 --tries=1 \
         --server-response \
         --header "Range: bytes=0-31" \
         --output-document=/tmp/video-range-body.bin \
         http://app:3000/assets/man.mp4 \
-        2>/tmp/video-range-headers.txt
+        2>/tmp/video-range-headers.txt || wget_exit=$?
       tr -d "\r" </tmp/video-range-headers.txt \
         >/tmp/video-range-headers-normalized.txt
       range_status=$(awk "/^  HTTP/{ code = \$2 } END { print code }" \
         /tmp/video-range-headers-normalized.txt)
+      printf "%s\n" "range status: $range_status"
+      printf "%s\n" "wget exit: $wget_exit"
       [ "$range_status" -eq 206 ]
       grep -Eiq "^[[:space:]]*Content-Range:[[:space:]]*bytes 0-31/[1-9][0-9]*$" \
         /tmp/video-range-headers-normalized.txt
       range_bytes=$(wc -c </tmp/video-range-body.bin | awk "{ print \$1 }")
+      printf "%s\n" "range bytes: $range_bytes"
       [ "$range_bytes" -eq 32 ]
     '
 }
@@ -2437,8 +2441,11 @@ start_and_verify_app() {
       fail 'precache asset request failed'
   done <"$manifest_paths"
 
-  verify_app_video_range >"$WORK_DIRECTORY/video-range.txt" 2>&1 ||
+  if ! verify_app_video_range >"$WORK_DIRECTORY/video-range.txt" 2>&1; then
+    printf '%s\n' 'video range diagnostics' >&2
+    sed -n '1,80p' "$WORK_DIRECTORY/video-range.txt" >&2 || :
     fail 'video byte-range request failed'
+  fi
 }
 
 run_backup_restore_cycle() {
