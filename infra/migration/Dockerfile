@@ -75,41 +75,24 @@ RUN test -r /etc/ssl/certs/ca-certificates.crt \
   && mkdir -p /ca-runtime/etc/ssl/certs \
   && cp -a /etc/ssl/certs/ca-certificates.crt /ca-runtime/etc/ssl/certs/ca-certificates.crt
 
-FROM node:22.23.1-trixie-slim@sha256:4653dc205e772d0200f195ff333fe45157c5aa19385eab098f2af0517f982498 AS runner
+FROM busybox:1.37.0-musl@sha256:222ad6d973c0d198014546a65cd02c5fdedcc172123c5b4c2bf0af636550bd94 AS shell-tools
 RUN set -eu; \
-  purge_packages='apt libgnutls30 libgnutls30t64 adduser debian-archive-keyring gpgv libapt-pkg6.0 libapt-pkg7.0 libffi8 libhogweed6 libhogweed6t64 libnettle8 libnettle8t64 libp11-kit0 libseccomp2 libtasn1-6 libxxhash0 bsdutils gzip libacl1 libblkid1 liblastlog2-2 libmount1 libsmartcols1 libtinfo6 libuuid1 login mount ncurses-base ncurses-bin perl-base util-linux util-linux-extra'; \
-  installed_packages=''; \
-  for package in $purge_packages; do \
-    if dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii'; then \
-      installed_packages="$installed_packages $package"; \
-    fi; \
+  mkdir -p /shell-bin; \
+  cp /bin/busybox /shell-bin/busybox; \
+  for applet in cat chmod chown date find grep head id mkdir mktemp mv rm sed sh sha256sum stat uname; do \
+    /bin/busybox --list | grep -Fx "$applet" >/dev/null; \
+    ln /shell-bin/busybox "/shell-bin/$applet"; \
   done; \
-  if [ -n "$installed_packages" ]; then apt-get purge -y --allow-remove-essential $installed_packages; fi; \
-  for package in $purge_packages; do \
-    ! dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii'; \
-  done; \
-  rm -rf /var/lib/apt/lists/* /var/cache/apt/* /var/log/apt/* \
-  && node --version >/dev/null \
-  && ! ldd /usr/local/bin/node | grep -q 'not found' \
-  && test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30 \
-  && test ! -e /usr/bin/apt-get \
-  && rm -f \
-    /usr/local/bin/npm \
-    /usr/local/bin/npx \
-    /usr/local/bin/corepack \
-  && rm -rf \
-    /usr/local/lib/node_modules/npm \
-    /usr/local/lib/node_modules/corepack \
-  && test ! -e /usr/local/lib/node_modules/npm \
-  && test ! -e /usr/local/lib/node_modules/corepack \
-  && test ! -e /usr/local/bin/npm \
-  && test ! -e /usr/local/bin/npx \
-  && test ! -e /usr/local/bin/corepack
+  for applet in busybox cat chmod chown date find grep head id mkdir mktemp mv rm sed sh sha256sum stat uname; do \
+    test "$(stat -c '%U:%G %a' "/shell-bin/$applet")" = 'root:root 755'; \
+  done
+
+FROM gcr.io/distroless/nodejs22-debian13:nonroot@sha256:a2723a2817c5b01b8e7b98d567bc8b5a6b0e713e25bfb0a82b6ade4b9db06f50 AS runner
 ARG COMMIT_SHA
-RUN printf '%s\n' "$COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$'
+RUN ["/nodejs/bin/node", "-e", "const sha = process.env.COMMIT_SHA || \"\"; if (!/^[0-9a-f]{40}$/.test(sha)) process.exit(1);"]
 LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" org.opencontainers.image.revision="$COMMIT_SHA"
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=production PATH=/nodejs/bin:/usr/local/bin:/bin
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/migration ./migration
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/scripts/journal ./scripts/journal
 COPY --from=builder --chown=0:0 --chmod=0555 /app/operator-dist/scripts/migration ./scripts/migration
@@ -122,12 +105,15 @@ COPY --from=builder --chown=0:0 --chmod=0555 /app/migration/asset-paths.mjs ./mi
 COPY --from=builder --chown=0:0 --chmod=0555 /app/scripts/migration/export-mongo.sh ./scripts/migration/export-mongo.sh
 COPY --from=production-dependencies --chown=0:0 --chmod=0555 /app/node_modules ./node_modules
 COPY --from=ca-certificates --chown=0:0 --chmod=0555 /ca-runtime/ /
+COPY --from=shell-tools --chown=0:0 --chmod=0555 /shell-bin /bin
 COPY --from=builder --chown=0:0 --chmod=0555 /app/public ./public
 COPY --from=mongodump-builder --chown=0:0 --chmod=0555 /usr/local/bin/mongodump /usr/local/bin/mongodump
 COPY --from=age-builder --chown=0:0 --chmod=0555 /usr/local/bin/age /usr/local/bin/age
 COPY --chown=0:0 --chmod=0555 infra/migration/entrypoint.sh /usr/local/bin/mlp-migration
 USER 1000:1000
 RUN test "$(uname -m)" = x86_64 \
+  && test "$(node --version)" = v22.23.1 \
+  && test "$(command -v node)" = /nodejs/bin/node \
   && mongodump --version | grep -F 'mongodump version: 100.17.0' \
   && age --version | grep -Fx 'v1.3.1' \
   && test -r /etc/ssl/certs/ca-certificates.crt \

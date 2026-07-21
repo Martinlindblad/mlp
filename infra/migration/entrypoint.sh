@@ -14,25 +14,25 @@ case "${1-}" in
     ;;
   rehearsal)
     [ "$#" -eq 1 ] || usage
-    exec /usr/local/bin/node /app/scripts/migration/run-rehearsal.js
+    exec /nodejs/bin/node /app/scripts/migration/run-rehearsal.js
     ;;
   preload)
     [ "$#" -eq 1 ] || usage
-    exec /usr/local/bin/node /app/scripts/migration/preload-content.js
+    exec /nodejs/bin/node /app/scripts/migration/preload-content.js
     ;;
   contacts)
     [ "$#" -eq 1 ] || usage
-    exec /usr/local/bin/node /app/scripts/migration/finalize-contacts.js
+    exec /nodejs/bin/node /app/scripts/migration/finalize-contacts.js
     ;;
   journal-recover)
     [ "$#" -eq 1 ] || usage
     unset MONGO_URI_FILE MONGO_DATABASE MONGODB_URI MONGO_URI
-    exec /usr/local/bin/node /app/scripts/journal/recover.js
+    exec /nodejs/bin/node /app/scripts/journal/recover.js
     ;;
   remove-synthetic)
     [ "$#" -eq 2 ] || usage
     unset MONGO_URI_FILE MONGO_DATABASE
-    exec /usr/local/bin/node /app/scripts/migration/remove-synthetic-contact.js "$2"
+    exec /nodejs/bin/node /app/scripts/migration/remove-synthetic-contact.js "$2"
     ;;
   *)
     usage

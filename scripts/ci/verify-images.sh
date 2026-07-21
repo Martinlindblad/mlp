@@ -2723,7 +2723,7 @@ verify_migration_operator() {
     "$MIGRATION_IMAGE" -eu -c '
       operator_uid=$(id -u)
       [ "$operator_uid" -eq 1000 ]
-      [ "$(command -v node)" = /usr/local/bin/node ]
+      [ "$(command -v node)" = /nodejs/bin/node ]
       [ "$(node --version)" = v22.23.1 ]
       [ "$(command -v mongodump)" = /usr/local/bin/mongodump ]
       mongodump --version | grep -F "mongodump version: 100.17.0" >/dev/null
@@ -2820,11 +2820,10 @@ artifact_bytes=$(stat -c '%s' "$artifact")
 expected_digest_line=$(printf '%s' \
   'deterministic-image-gate-mongo-archive' | sha256sum)
 expected_digest=${expected_digest_line%% *}
-decrypted_digest_line=$(
-  /bin/bash -o pipefail -c \
-    'age --decrypt --identity "$1" "$2" | sha256sum' \
-    operator-export-verifier "$AGE_IDENTITY_FILE" "$artifact"
-) || exit 1
+decrypted_payload=$(mktemp /tmp/operator-export.XXXXXX)
+trap 'rm -f "$decrypted_payload"' 0 HUP INT TERM
+age --decrypt --identity "$AGE_IDENTITY_FILE" "$artifact" >"$decrypted_payload" || exit 1
+decrypted_digest_line=$(sha256sum "$decrypted_payload") || exit 1
 decrypted_digest=${decrypted_digest_line%% *}
 [ "$decrypted_digest" = "$expected_digest" ]
 ! find "$ARTIFACT_DIR" -mindepth 1 -maxdepth 1 \
@@ -2907,6 +2906,7 @@ OPERATOR_EXPORT_VERIFIER
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
     --user 1000:1000 \
+    --tmpfs /tmp:rw,nosuid,nodev,noexec,size=16m,mode=1777 \
     --mount "type=volume,source=$operator_fixture_volume,target=/fixtures,readonly" \
     --mount "type=volume,source=$operator_identity_volume,target=/identity,readonly" \
     --mount "type=bind,source=$operator_export_verifier,target=/usr/local/bin/verify-operator-export,readonly" \
@@ -2942,7 +2942,7 @@ OPERATOR_EXPORT_VERIFIER
       --cap-drop ALL \
       --security-opt no-new-privileges:true \
       --user 1000:1000 \
-      --mount "type=bind,source=$node_target_stub,target=/usr/local/bin/node,readonly" \
+      --mount "type=bind,source=$node_target_stub,target=/nodejs/bin/node,readonly" \
       --env CONTACT_TRAFFIC_DRAINED=yes \
       --env "EXPECTED_NODE_TARGET=$expected_node_target" \
       "$MIGRATION_IMAGE" "$dispatcher_command" \

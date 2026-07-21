@@ -37,10 +37,14 @@ const nodeTag = 'node:22.23.1-bookworm-slim';
 const nodeReference =
   `${nodeTag}@sha256:` +
   '6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3';
-const runtimeNodeTag = 'node:22.23.1-trixie-slim';
-const runtimeNodeReference =
-  `${runtimeNodeTag}@sha256:` +
-  '4653dc205e772d0200f195ff333fe45157c5aa19385eab098f2af0517f982498';
+const distrolessNodeTag = 'gcr.io/distroless/nodejs22-debian13:nonroot';
+const distrolessNodeReference =
+  `${distrolessNodeTag}@sha256:` +
+  'a2723a2817c5b01b8e7b98d567bc8b5a6b0e713e25bfb0a82b6ade4b9db06f50';
+const busyboxTag = 'busybox:1.37.0-musl';
+const busyboxReference =
+  `${busyboxTag}@sha256:` +
+  '222ad6d973c0d198014546a65cd02c5fdedcc172123c5b4c2bf0af636550bd94';
 const resticReference =
   'restic/restic:0.19.1@sha256:' +
   '136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510';
@@ -284,7 +288,8 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     golangReference,
     golangReference,
     resticReference,
-    runtimeNodeReference,
+    busyboxReference,
+    distrolessNodeReference,
   ]);
   assert.deepEqual(
     dockerStages(source).map(({ name }) => name),
@@ -294,6 +299,7 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       'mongodump-builder',
       'age-builder',
       'ca-certificates',
+      'shell-tools',
       'runner',
     ],
   );
@@ -354,6 +360,11 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
       source: '/ca-runtime/',
       destination: '/',
     },
+    {
+      from: 'shell-tools',
+      source: '/shell-bin',
+      destination: '/bin',
+    },
     { from: 'builder', source: '/app/public', destination: './public' },
     {
       from: 'mongodump-builder',
@@ -371,8 +382,14 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     },
   ]);
 
-  const [dependencies, builder, mongodumpBuilder, ageBuilder, caCertificates] =
-    dockerStages(source);
+  const [
+    dependencies,
+    builder,
+    mongodumpBuilder,
+    ageBuilder,
+    caCertificates,
+    shellTools,
+  ] = dockerStages(source);
   assert.match(
     dependencies.instructions.join('\n'),
     /^RUN yarn install --frozen-lockfile --production=true --ignore-scripts --non-interactive$/mu,
@@ -510,6 +527,37 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
     /\/ca-runtime\/etc\/ssl\/certs\/ca-certificates\.crt/u,
     'operator CA stage must expose the reviewed CA runtime tree',
   );
+  const shellToolSource = shellTools.instructions.join('\n');
+  assert.match(
+    shellToolSource,
+    /cp \/bin\/busybox \/shell-bin\/busybox/u,
+    'operator shell-tools stage must copy only the BusyBox executable into the reviewed applet set',
+  );
+  for (const applet of [
+    'cat',
+    'chmod',
+    'chown',
+    'date',
+    'find',
+    'grep',
+    'head',
+    'id',
+    'mkdir',
+    'mktemp',
+    'mv',
+    'rm',
+    'sed',
+    'sh',
+    'sha256sum',
+    'stat',
+    'uname',
+  ]) {
+    assert.match(
+      shellToolSource,
+      new RegExp(`\\b${applet}\\b`, 'u'),
+      `operator shell-tools stage must expose BusyBox ${applet}`,
+    );
+  }
   assert.equal(
     dockerStages(source)
       .filter(({ name }) => name !== 'mongodump-builder')
@@ -545,72 +593,25 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
 
   const final = finalDockerStage(source);
   const finalSource = final.instructions.join('\n');
-  assert.match(
+  assert.doesNotMatch(
     finalSource,
-    /rm -rf[\s\S]*\/usr\/local\/lib\/node_modules\/npm[\s\S]*\/usr\/local\/lib\/node_modules\/corepack/u,
-    'operator runner must remove npm and corepack package trees before scanning',
+    /\b(?:apt|apt-get|dpkg|purge_packages|corepack|npm|npx)\b/u,
+    'operator runner must use the npm-free distroless runtime instead of fragile package-manager purges',
   );
   assert.match(
     finalSource,
-    /rm -f[\s\S]*\/usr\/local\/bin\/npm[\s\S]*\/usr\/local\/bin\/npx[\s\S]*\/usr\/local\/bin\/corepack/u,
-    'operator runner must remove npm/npx/corepack shims before scanning',
-  );
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/local\/lib\/node_modules\/npm/u,
-    'operator runner must prove npm package metadata is absent',
-  );
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/local\/lib\/node_modules\/corepack/u,
-    'operator runner must prove corepack package metadata is absent',
-  );
-  assert.match(
-    finalSource,
-    /purge_packages='[^']*\bapt\b[^']*\blibgnutls30t64\b[^']*'[\s\S]*apt-get purge -y --allow-remove-essential/u,
-    'operator runner must remove apt and libgnutls so base-image private-key fixtures are not shipped',
-  );
-  for (const vulnerablePackage of [
-    'bsdutils',
-    'gzip',
-    'libacl1',
-    'libblkid1',
-    'liblastlog2-2',
-    'libmount1',
-    'libsmartcols1',
-    'libtinfo6',
-    'libuuid1',
-    'login',
-    'mount',
-    'ncurses-base',
-    'ncurses-bin',
-    'perl-base',
-    'util-linux',
-  ]) {
-    assert.match(
-      finalSource,
-      new RegExp(`purge_packages='[^']*\\b${vulnerablePackage}\\b[^']*'`, 'u'),
-      `operator runner must purge scanner-flagged ${vulnerablePackage}`,
-    );
-  }
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/lib\/x86_64-linux-gnu\/libgnutls\.so\.30/u,
-    'operator runner must prove the known libgnutls private-key fixture is absent',
-  );
-  assert.match(
-    finalSource,
-    /test ! -e \/usr\/bin\/apt-get/u,
-    'operator runner must prove apt-get is absent after the package-manager purge',
+    /ENV\s[^\n]*NODE_ENV=production[\s\S]*PATH=\/nodejs\/bin:\/usr\/local\/bin:\/bin/u,
+    'operator runner PATH must expose distroless Node and the reviewed BusyBox applets',
   );
   assertOrdered(
     finalSource,
-    [
-      'apt-get purge -y --allow-remove-essential',
-      'test ! -e /usr/lib/x86_64-linux-gnu/libgnutls.so.30',
-      'USER 1000:1000',
-    ],
-    'operator package-manager/private-key-fixture purge must run as root before dropping to the runtime user',
+    ['COPY --from=shell-tools', 'USER 1000:1000'],
+    'operator shell tools must be installed before dropping to the runtime user',
+  );
+  assertOrdered(
+    finalSource,
+    ['PATH=/nodejs/bin:/usr/local/bin:/bin', 'USER 1000:1000'],
+    'operator PATH must expose distroless Node before dropping to the runtime user',
   );
   const copies = final.instructions.filter((line) => /^COPY\s/iu.test(line));
   assertRequiredOperatorCopy(
@@ -714,9 +715,16 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   );
   assert.match(runtimeProof, /mongodump --version[^\n]*100\.17\.0/u);
   assert.match(runtimeProof, /age --version[^\n]*1\.3\.1/u);
+  assert.match(runtimeProof, /node --version[^\n]*v22\.23\.1/u);
   assertOrdered(
     runtimeProof,
-    ['uname -m', 'x86_64', 'mongodump --version', 'age --version'],
+    [
+      'uname -m',
+      'x86_64',
+      'node --version',
+      'mongodump --version',
+      'age --version',
+    ],
     'operator runtime architecture/tool proof',
   );
   assert.match(
@@ -745,6 +753,39 @@ test('migration operator uses immutable stages and packages only compiled ETL ru
   assert.doesNotMatch(source, /age-v1\.3\.1-linux-amd64\.tar\.gz/u);
 });
 
+test('POSIX migration export streams Mongo archives through age without Bash', async () => {
+  const relativePath = 'scripts/migration/export-mongo.sh';
+  const source = await readRequiredText(repositoryRoot, relativePath);
+  assertPosixScript(source);
+  await assertExecutableRegularFile(repositoryRoot, relativePath);
+  await assertPosixSyntax(relativePath);
+  assert.match(
+    source,
+    /mongodump_status_file="\$work\/mongodump\.status"/u,
+    'export must capture the mongodump status outside the streaming pipeline',
+  );
+  assert.match(
+    source,
+    /age_status_file="\$work\/age\.status"/u,
+    'export must capture the age status outside the streaming pipeline',
+  );
+  assert.match(
+    source,
+    /mongodump[\s\S]*\|[\s\S]*age --recipient "\$ARCHIVE_RECIPIENT" --output "\$encrypted_tmp"/u,
+    'export must stream mongodump output directly into age',
+  );
+  assert.match(
+    source,
+    /dump_status="\$\(cat "\$mongodump_status_file"/u,
+    'export must capture the mongodump exit status explicitly',
+  );
+  assert.match(
+    source,
+    /age_status="\$\(cat "\$age_status_file"/u,
+    'export must capture the age exit status explicitly',
+  );
+});
+
 test('POSIX migration entrypoint dispatches only six reviewed commands', async () => {
   const relativePath = 'infra/migration/entrypoint.sh';
   const source = await readRequiredText(repositoryRoot, relativePath);
@@ -763,19 +804,19 @@ test('POSIX migration entrypoint dispatches only six reviewed commands', async (
     ['export', 'exec /app/scripts/migration/export-mongo.sh'],
     [
       'rehearsal',
-      'exec /usr/local/bin/node /app/scripts/migration/run-rehearsal.js',
+      'exec /nodejs/bin/node /app/scripts/migration/run-rehearsal.js',
     ],
     [
       'preload',
-      'exec /usr/local/bin/node /app/scripts/migration/preload-content.js',
+      'exec /nodejs/bin/node /app/scripts/migration/preload-content.js',
     ],
     [
       'contacts',
-      'exec /usr/local/bin/node /app/scripts/migration/finalize-contacts.js',
+      'exec /nodejs/bin/node /app/scripts/migration/finalize-contacts.js',
     ],
     [
       'journal-recover',
-      'exec /usr/local/bin/node /app/scripts/journal/recover.js',
+      'exec /nodejs/bin/node /app/scripts/journal/recover.js',
     ],
   ]);
   for (const [command, invocation] of mappings) {
@@ -789,7 +830,7 @@ test('POSIX migration entrypoint dispatches only six reviewed commands', async (
     removeArm,
     [
       'unset MONGO_URI_FILE MONGO_DATABASE',
-      'exec /usr/local/bin/node /app/scripts/migration/remove-synthetic-contact.js "$2"',
+      'exec /nodejs/bin/node /app/scripts/migration/remove-synthetic-contact.js "$2"',
     ],
     'remove-synthetic must discard Mongo settings before PostgreSQL cleanup',
   );
@@ -803,7 +844,7 @@ test('POSIX migration entrypoint dispatches only six reviewed commands', async (
     journalRecoverArm,
     [
       'unset MONGO_URI_FILE MONGO_DATABASE MONGODB_URI MONGO_URI',
-      'exec /usr/local/bin/node /app/scripts/journal/recover.js',
+      'exec /nodejs/bin/node /app/scripts/journal/recover.js',
     ],
     'journal-recover must discard Mongo settings before recovery',
   );

@@ -2232,6 +2232,7 @@ test('image gate verifies the operator tools, exact public tree, and fail-closed
   const source = await readHarness();
 
   for (const expectedToolCheck of [
+    '/nodejs/bin/node',
     'node --version',
     'v22.23.1',
     'mongodump --version',
@@ -2276,6 +2277,8 @@ test('image gate executes every valid migration dispatcher path without an exter
   assert.match(operator, /\[ "\$artifact_bytes" -gt 200 \]/u);
   assert.match(operator, /ssh-keygen -q -t ed25519/u);
   assert.match(operator, /age --decrypt --identity/u);
+  assert.match(operator, /mktemp \/tmp\/operator-export/u);
+  assert.doesNotMatch(operator, /\/bin\/bash/u);
   assert.match(operator, /deterministic-image-gate-mongo-archive/u);
   assert.match(operator, /\/app\/scripts\/migration\/run-rehearsal\.js/u);
   assert.match(operator, /\/app\/scripts\/migration\/preload-content\.js/u);
