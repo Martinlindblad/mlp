@@ -39,9 +39,9 @@ RUN mkdir -p /tmp/mongo-tools \
   && go get \
     golang.org/x/crypto@v0.52.0 \
     golang.org/x/net@v0.55.0 \
-    golang.org/x/sys@v0.40.0 \
-    golang.org/x/term@v0.39.0 \
-    golang.org/x/text@v0.33.0 \
+    golang.org/x/sys@v0.45.0 \
+    golang.org/x/term@v0.43.0 \
+    golang.org/x/text@v0.37.0 \
   && go mod tidy \
   && go build -trimpath -ldflags "-s -w -X main.VersionStr=100.17.0 -X main.GitCommit=b414a2d909375f76e2c36fef91d1e3804b6b2c02" -o /tmp/mongodump ./mongodump/main/mongodump.go \
   && install -o root -g root -m 0555 /tmp/mongodump /usr/local/bin/mongodump \
@@ -50,7 +50,9 @@ RUN mkdir -p /tmp/mongo-tools \
   && go version -m /usr/local/bin/mongodump | grep -F 'go1.26.5' \
   && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/crypto[[:space:]]+v0\.52\.0' \
   && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/net[[:space:]]+v0\.55\.0' \
-  && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/sys[[:space:]]+v0\.40\.0' \
+  && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/sys[[:space:]]+v0\.45\.0' \
+  && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/term[[:space:]]+v0\.43\.0' \
+  && go version -m /usr/local/bin/mongodump | grep -E 'dep[[:space:]]+golang\.org/x/text[[:space:]]+v0\.37\.0' \
   && test "$(stat -c '%U:%G %a' /usr/local/bin/mongodump)" = 'root:root 555' \
   && rm -rf /tmp/mongo-tools /tmp/mongo-tools.tgz /tmp/mongodump /go/pkg/mod /root/.cache/go-build
 
