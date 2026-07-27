@@ -75,7 +75,7 @@ RUN test -r /etc/ssl/certs/ca-certificates.crt \
   && mkdir -p /ca-runtime/etc/ssl/certs \
   && cp -a /etc/ssl/certs/ca-certificates.crt /ca-runtime/etc/ssl/certs/ca-certificates.crt
 
-FROM busybox:1.37.0-musl@sha256:222ad6d973c0d198014546a65cd02c5fdedcc172123c5b4c2bf0af636550bd94 AS shell-tools
+FROM busybox:1.38.0-musl@sha256:8635836765b0c4c43970660219739baa58b0883c2e429e4b8918f7dd1519455c AS shell-tools
 RUN set -eu; \
   mkdir -p /shell-bin; \
   cp /bin/busybox /shell-bin/busybox; \
