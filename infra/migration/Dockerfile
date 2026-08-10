@@ -87,7 +87,7 @@ RUN set -eu; \
     test "$(stat -c '%U:%G %a' "/shell-bin/$applet")" = 'root:root 755'; \
   done
 
-FROM gcr.io/distroless/nodejs22-debian13:nonroot@sha256:a2723a2817c5b01b8e7b98d567bc8b5a6b0e713e25bfb0a82b6ade4b9db06f50 AS runner
+FROM gcr.io/distroless/nodejs22-debian13:nonroot@sha256:939d6f1671529d230f50b563578e9b5d206af58f038b10ebd7e1233023d4e167 AS runner
 ARG COMMIT_SHA
 RUN ["/nodejs/bin/node", "-e", "const sha = process.env.COMMIT_SHA || \"\"; if (!/^[0-9a-f]{40}$/.test(sha)) process.exit(1);"]
 LABEL org.opencontainers.image.source="https://github.com/martinlindblad/mlp" org.opencontainers.image.revision="$COMMIT_SHA"
