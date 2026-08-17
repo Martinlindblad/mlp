@@ -16,7 +16,7 @@ RUN test "$(uname -m)" = "x86_64" && \
   test "$(stat -c '%U:%G %a' /usr/local/bin/restic)" = "root:root 555" && \
   test -r /etc/ssl/certs/ca-certificates.crt
 
-FROM postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15 AS postgres-tools
+FROM postgres:18.6-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2 AS postgres-tools
 RUN set -eu; \
     pg_dump --version | grep -F '18.4'; \
     pg_restore --version | grep -F '18.4'; \
