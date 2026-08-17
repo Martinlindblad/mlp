@@ -26,7 +26,7 @@ COPY public ./public
 RUN yarn install --frozen-lockfile --ignore-scripts --non-interactive
 RUN yarn build:migration
 
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS mongodump-builder
+FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS mongodump-builder
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=mod
 RUN test "$(uname -m)" = x86_64 \
   && go version | grep -Fx 'go version go1.26.5 linux/amd64'
@@ -56,7 +56,7 @@ RUN mkdir -p /tmp/mongo-tools \
   && test "$(stat -c '%U:%G %a' /usr/local/bin/mongodump)" = 'root:root 555' \
   && rm -rf /tmp/mongo-tools /tmp/mongo-tools.tgz /tmp/mongodump /go/pkg/mod /root/.cache/go-build
 
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS age-builder
+FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS age-builder
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 RUN test "$(uname -m)" = x86_64 \
   && go version | grep -Fx 'go version go1.26.5 linux/amd64' \
