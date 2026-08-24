@@ -11,7 +11,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN yarn build:production
 
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS age-builder
+FROM golang:1.27.0-alpine@sha256:4c9fe60190a2a3350ddc51de80d0224b8a6698d12bdfc999fee45ea9d6c46dbc AS age-builder
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 RUN test "$(uname -m)" = "x86_64" && \
   go version | grep -Fx 'go version go1.26.5 linux/amd64' && \
