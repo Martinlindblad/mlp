@@ -13,7 +13,7 @@ RUN /usr/bin/caddy version && \
     test "$(stat -c '%U:%G %a' /usr/bin/caddy)" = "root:root 555" && \
     test -r /etc/ssl/certs/ca-certificates.crt
 
-FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS caddy
+FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS caddy
 COPY --from=caddy-builder --chown=0:0 --chmod=0555 /usr/bin/caddy /usr/bin/caddy
 COPY --from=caddy-builder --chown=0:0 --chmod=0444 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 ARG COMMIT_SHA
